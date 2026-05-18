@@ -1,0 +1,28 @@
+import type { Result } from "../errors";
+import type { Message } from "../entities";
+import type { OrgId } from "../value-objects";
+import type { AgentTool } from "./tool-registry";
+
+export interface AgentRunParams {
+  systemPrompt: string;
+  knowledgeBase: string;
+  history: Message[];
+  tools: AgentTool[];
+  orgId: OrgId;
+  model: string;
+  language: string;
+}
+
+export interface AgentOutput {
+  reply: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+export type AgentError = { code: "TIMEOUT" | "TOKEN_LIMIT" | "API_ERROR"; message: string };
+
+export interface AgentRunner {
+  run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>>;
+}
