@@ -1,8 +1,3 @@
-/**
- * CalendarProvider port — reserved for v1.1 (Cal.com integration).
- * Not implemented in MVP. Defined here for architectural reference.
- */
-
 import type { Result } from "../errors";
 
 export interface Slot {
@@ -24,6 +19,7 @@ export interface ListSlotsParams {
   eventTypeId: string;
   startDate: string;
   endDate: string;
+  timeZone: string;
   apiToken: string;
 }
 
@@ -32,6 +28,8 @@ export interface CreateBookingParams {
   start: string;
   attendeeName: string;
   attendeeEmail: string;
+  attendeePhone?: string;
+  timeZone: string;
   apiToken: string;
   idempotencyKey: string;
 }

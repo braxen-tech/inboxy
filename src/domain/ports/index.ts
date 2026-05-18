@@ -19,6 +19,7 @@ export type {
   AgentTool,
   ToolContext,
   ToolError,
+  CalendarContext,
 } from "./tool-registry";
 
 export type { EventBus, DomainEvent } from "./event-bus";

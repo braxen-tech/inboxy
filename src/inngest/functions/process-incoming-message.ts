@@ -3,7 +3,8 @@ import { processIncomingMessage } from "@/application/use-cases/process-incoming
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
-import { InMemoryToolRegistry } from "@/infrastructure/tools/registry";
+import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
+import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
 
@@ -26,7 +27,7 @@ export const processMessage = inngest.createFunction(
       const db = getAdminClient();
       const messagingChannel = new WhatsAppCloudAdapter();
       const agentRunner = new ClaudeAdapter();
-      const toolRegistry = new InMemoryToolRegistry();
+      const toolRegistry = createToolRegistry({ calendarProvider: new CalComAdapter() });
       const secretStore = new AesSecretStore(process.env.ENCRYPTION_KEY!);
 
       await processIncomingMessage(

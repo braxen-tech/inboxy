@@ -3,7 +3,8 @@ import { after } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
-import { InMemoryToolRegistry } from "@/infrastructure/tools/registry";
+import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
+import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { processIncomingMessage } from "@/application/use-cases/process-incoming-message";
 import { toOrgId, toContactId, toConversationId, toMessageId, toCorrelationId } from "@/domain/value-objects";
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
                 db: bgDb,
                 agentRunner: new ClaudeAdapter(),
                 messagingChannel: new WhatsAppCloudAdapter(),
-                toolRegistry: new InMemoryToolRegistry(),
+                toolRegistry: createToolRegistry({ calendarProvider: new CalComAdapter() }),
                 secretStore,
               },
               capturedCtx,

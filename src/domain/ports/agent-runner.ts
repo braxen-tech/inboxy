@@ -1,13 +1,14 @@
 import type { Result } from "../errors";
 import type { Message } from "../entities";
 import type { OrgId } from "../value-objects";
-import type { AgentTool } from "./tool-registry";
+import type { AgentTool, ToolContext } from "./tool-registry";
 
 export interface AgentRunParams {
   systemPrompt: string;
   knowledgeBase: string;
   history: Message[];
   tools: AgentTool[];
+  toolContext: ToolContext;
   orgId: OrgId;
   model: string;
   language: string;

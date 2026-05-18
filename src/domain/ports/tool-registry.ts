@@ -2,10 +2,18 @@ import type { z } from "zod/v4";
 import type { Result } from "../errors";
 import type { OrgId } from "../value-objects";
 
+export interface CalendarContext {
+  eventTypeId: string;
+  apiToken: string;
+  timezone: string;
+  bookingUrl: string | null;
+}
+
 export interface ToolContext {
   orgId: OrgId;
   contactPhone: string;
   conversationId: string;
+  calendar?: CalendarContext;
 }
 
 export interface AgentTool {

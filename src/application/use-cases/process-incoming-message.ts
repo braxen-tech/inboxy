@@ -81,18 +81,50 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       createdAt: new Date(m.created_at as string),
     }));
 
-    const tools = toolRegistry.getToolsForOrg(
-      toOrgId(orgId),
-      org.tools_enabled ?? [],
-    );
+    // Derive enabled tool names from org config.
+    // Cal.com tools are always enabled when cal is active — avoids state drift
+    // between tools_enabled and cal_status.
+    const enabledToolNames = [...(org.tools_enabled ?? [])];
+    if (org.cal_status === "active" && org.cal_api_key && org.cal_event_type_id) {
+      const calToolNames = ["check_calendar_availability", "book_calendar_appointment"];
+      for (const name of calToolNames) {
+        if (!enabledToolNames.includes(name)) enabledToolNames.push(name);
+      }
+    }
 
-    logger.info("Running agent", { ...ctx, toolCount: tools.length, historyLength: history.length });
+    const tools = toolRegistry.getToolsForOrg(toOrgId(orgId), enabledToolNames);
+
+    let calendarCtx: import("@/domain/ports").CalendarContext | undefined;
+    if (org.cal_status === "active" && org.cal_api_key && org.cal_event_type_id) {
+      calendarCtx = {
+        eventTypeId: org.cal_event_type_id,
+        apiToken: secretStore.decrypt(org.cal_api_key),
+        timezone: org.cal_timezone ?? "America/Sao_Paulo",
+        bookingUrl: org.cal_booking_url ?? null,
+      };
+    }
+
+    const toolContext = {
+      orgId: toOrgId(orgId),
+      contactPhone: conversation.contacts.phone,
+      conversationId,
+      calendar: calendarCtx,
+    };
+
+    logger.info("Running agent", {
+      ...ctx,
+      toolCount: tools.length,
+      toolNames: tools.map((t) => t.name),
+      calendarEnabled: !!calendarCtx,
+      historyLength: history.length,
+    });
 
     const agentResult = await agentRunner.run({
       systemPrompt: org.system_prompt,
       knowledgeBase: org.knowledge_base,
       history,
       tools,
+      toolContext,
       orgId: toOrgId(orgId),
       model: org.model,
       language: org.language,
