@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
-import { inngest } from "@/infrastructure/events/inngest-client";
+import {
+  assertInngestEventKeyConfigured,
+  inngest,
+} from "@/infrastructure/events/inngest-client";
 import { incrementUsage } from "@/application/services/usage-tracker";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
@@ -175,6 +178,7 @@ export async function POST(request: Request) {
       await incrementUsage(db, orgId, { messagesIn: 1 });
 
       if (conversation.status !== "human") {
+        assertInngestEventKeyConfigured();
         await inngest.send({
           name: "message.received",
           data: {
