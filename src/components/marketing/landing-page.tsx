@@ -10,9 +10,9 @@ import {
   Send,
   Shield,
   Smartphone,
-  Sparkles,
   Zap,
 } from "lucide-react";
+import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -101,45 +101,7 @@ const steps = [
 export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
-              <Bot className="size-4" aria-hidden />
-            </span>
-            Agente IA
-          </Link>
-          <nav className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="#canais"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
-            >
-              Canais
-            </Link>
-            <Link
-              href="#integracoes"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
-            >
-              Integrações
-            </Link>
-            <Link
-              href="#recursos"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
-            >
-              Recursos
-            </Link>
-            <Link
-              href="#como-funciona"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
-            >
-              Como funciona
-            </Link>
-            <Link href="/login">
-              <Button size="sm">Entrar</Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <MarketingHeader />
 
       <main className="flex-1">
         {/* Hero */}
@@ -386,7 +348,7 @@ export function LandingPage() {
 
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
-          <p>&copy; {new Date().getFullYear()} Agente IA</p>
+          <p>&copy; {new Date().getFullYear()} Inboxy</p>
           <p className="text-center sm:text-right">
             Integração via{" "}
             <span className="text-foreground">Chatwoot</span> ·{" "}

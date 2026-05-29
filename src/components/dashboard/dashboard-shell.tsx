@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 import {
   BookOpen,
   Bot,
+  Inbox,
   LogOut,
   Menu,
-  MessageCircle,
   Plug,
   Settings,
   X,
@@ -88,12 +88,13 @@ function SidebarContent({
           onClick={onNavigate}
           className="flex min-w-0 flex-1 items-center gap-2"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#25D366]/15 text-[#128C7E]">
-            <MessageCircle className="size-4" aria-hidden />
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
+            <Inbox className="size-4" aria-hidden />
           </span>
-          <span className="truncate font-semibold text-sidebar-foreground">
-            {orgName}
-          </span>
+          <div className="min-w-0">
+            <span className="block truncate font-semibold text-sidebar-foreground">Inboxy</span>
+            <span className="block truncate text-xs text-sidebar-foreground/60">{orgName}</span>
+          </div>
         </Link>
       </div>
 
@@ -198,7 +199,8 @@ export function DashboardShell({
             <Menu className="size-5" />
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{orgName}</p>
+            <p className="truncate font-semibold">Inboxy</p>
+            <p className="truncate text-xs text-muted-foreground">{orgName}</p>
           </div>
           <Badge
             variant="secondary"

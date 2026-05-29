@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +66,9 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col">
+      <MarketingHeader showAuthButton={false} />
+      <div className="flex flex-1 items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{mode === "login" ? "Entrar" : "Criar conta"}</CardTitle>
@@ -154,6 +157,7 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

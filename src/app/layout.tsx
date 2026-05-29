@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agente IA — Atendimento automatizado com IA",
+  title: "Inboxy — Atenda, venda e agende em todos os canais",
   description:
-    "Configure base de conhecimento, personalize seu agente de IA e conecte ao Chatwoot para atender clientes automaticamente em qualquer canal.",
+    "Inbox unificado para WhatsApp, Telegram, SMS e e-mail. Agente de IA com vendas Stripe e agendamento Cal.com — tudo na mesma conversa.",
 };
 
 export default function RootLayout({
