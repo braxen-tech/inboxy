@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
     <DashboardShell
       orgSlug={orgSlug}
       orgName={org.name}
-      whatsappActive={org.whatsapp_status === "active"}
+      chatwootActive={org.chatwoot_status === "active"}
     >
       {children}
     </DashboardShell>

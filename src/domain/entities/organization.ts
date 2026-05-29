@@ -1,6 +1,6 @@
 import type { OrgId } from "../value-objects";
 
-export type WhatsAppStatus = "pending" | "active" | "disconnected";
+export type ChatwootStatus = "pending" | "active" | "disconnected";
 export type CalStatus = "pending" | "active" | "disconnected";
 
 export interface Organization {
@@ -15,12 +15,11 @@ export interface Organization {
   language: string;
   toolsEnabled: string[];
 
-  whatsappBusinessAccountId: string | null;
-  whatsappPhoneNumberId: string | null;
-  whatsappPhoneNumber: string | null;
-  whatsappAccessToken: string | null;
-  whatsappPin: string | null;
-  whatsappStatus: WhatsAppStatus;
+  chatwootApiUrl: string | null;
+  chatwootApiToken: string | null;
+  chatwootAccountId: string | null;
+  chatwootWebhookSecret: string | null;
+  chatwootStatus: ChatwootStatus;
 
   calApiKey: string | null;
   calEventTypeId: string | null;

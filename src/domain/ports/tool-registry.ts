@@ -9,11 +9,16 @@ export interface CalendarContext {
   bookingUrl: string | null;
 }
 
+export interface StripeContext {
+  apiKey: string;
+}
+
 export interface ToolContext {
   orgId: OrgId;
   contactPhone: string;
   conversationId: string;
   calendar?: CalendarContext;
+  stripe?: StripeContext;
 }
 
 export interface AgentTool {

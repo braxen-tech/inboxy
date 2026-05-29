@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger";
 
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_TIMEOUT_WITH_TOOLS_MS = 60_000;
-const MAX_STEPS_WITH_TOOLS = 3;
+const MAX_STEPS_WITH_TOOLS = 5;
 
 export class ClaudeAdapter implements AgentRunner {
   async run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>> {
@@ -58,6 +58,21 @@ export class ClaudeAdapter implements AgentRunner {
       if (toolContext.calendar.bookingUrl) {
         systemParts.push(`- Se o paciente recusar informar e-mail após 1 tentativa, ofereça APENAS o link: ${toolContext.calendar.bookingUrl}`);
       }
+    }
+
+    if (toolContext.stripe) {
+      systemParts.push("");
+      systemParts.push(`## Instruções de vendas e catálogo`);
+      systemParts.push(`- Você tem acesso ao catálogo de produtos da loja via tools. SEMPRE use search_products para consultar produtos reais — NUNCA invente produtos ou preços.`);
+      systemParts.push(`- Quando o cliente perguntar sobre produtos, preços ou quiser comprar algo, CHAME IMEDIATAMENTE search_products (com query se o cliente especificou algo, sem query para listar todos).`);
+      systemParts.push(`- Apresente os produtos retornados de forma natural e amigável, incluindo nome e preço. Não mostre IDs internos ao cliente.`);
+      systemParts.push(`- Se o cliente demonstrar interesse em um produto, use get_product_details para obter mais informações.`);
+      systemParts.push(`- Quando o cliente quiser comprar, use add_to_cart para adicionar ao carrinho. Confirme a adição.`);
+      systemParts.push(`- Se o cliente pedir para ver o carrinho, use view_cart.`);
+      systemParts.push(`- Se quiser remover algo, use remove_from_cart.`);
+      systemParts.push(`- Quando o cliente confirmar que quer finalizar a compra, use create_checkout para gerar o link de pagamento.`);
+      systemParts.push(`- IMPORTANTE: Quando create_checkout retornar a URL, você DEVE incluir a URL completa (https://...) na sua resposta ao cliente. NUNCA omita o link. O cliente precisa clicar nele para pagar.`);
+      systemParts.push(`- O link de pagamento expira em 30 minutos. Informe isso ao cliente.`);
     }
 
     const systemContent = systemParts.join("\n");

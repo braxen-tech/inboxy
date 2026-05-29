@@ -7,24 +7,27 @@ import {
   AesSecretStore,
   isValidEncryptionKeyHex,
 } from "@/infrastructure/crypto/aes-secret-store";
-import { connectWhatsAppManual } from "@/application/use-cases/connect-whatsapp-manual";
+import { connectChatwoot, disconnectChatwoot } from "@/application/use-cases/connect-chatwoot";
 import { connectCalCom, disconnectCalCom } from "@/application/use-cases/connect-cal-com";
+import { connectStripe, disconnectStripe } from "@/application/use-cases/connect-stripe";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
 
-const schema = z.object({
+// --- Chatwoot ---
+
+const chatwootSchema = z.object({
   orgSlug: z.string().min(1),
-  wabaId: z.string().min(1).max(64),
-  phoneNumberId: z.string().min(1).max(64),
-  accessToken: z.string().min(20).max(8000),
+  apiUrl: z.string().min(1).max(512),
+  accountId: z.string().min(1).max(32),
+  apiToken: z.string().min(5).max(8000),
 });
 
-export async function saveWhatsAppCredentials(raw: z.infer<typeof schema>) {
-  const parsed = schema.safeParse(raw);
+export async function saveChatwootCredentials(raw: z.infer<typeof chatwootSchema>) {
+  const parsed = chatwootSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
   }
 
-  const { orgSlug, wabaId, phoneNumberId, accessToken } = parsed.data;
+  const { orgSlug, apiUrl, accountId, apiToken } = parsed.data;
   const supabase = await getServerClientFromCookies();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,18 +47,18 @@ export async function saveWhatsAppCredentials(raw: z.infer<typeof schema>) {
 
   const key = process.env.ENCRYPTION_KEY?.trim() ?? "";
   if (!isValidEncryptionKeyHex(key)) {
-    return {
-      error:
-        "ENCRYPTION_KEY inválida no servidor: use exatamente 64 caracteres hex (ex.: openssl rand -hex 32).",
-    };
+    return { error: "ENCRYPTION_KEY inválida no servidor." };
   }
 
   const secretStore = new AesSecretStore(key);
-  const result = await connectWhatsAppManual(supabase, secretStore, {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const result = await connectChatwoot(supabase, secretStore, {
     orgId: org.id,
-    wabaId,
-    phoneNumberId,
-    accessToken,
+    apiUrl,
+    apiToken,
+    accountId,
+    appUrl,
   });
 
   if (!result.ok) {
@@ -63,10 +66,10 @@ export async function saveWhatsAppCredentials(raw: z.infer<typeof schema>) {
   }
 
   revalidatePath(`/${orgSlug}/integrations`);
-  return { success: true as const, phone: result.value.displayPhoneNumber };
+  return { success: true as const };
 }
 
-export async function disconnectWhatsApp(orgSlug: string) {
+export async function disconnectChatwootAction(orgSlug: string) {
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -83,20 +86,9 @@ export async function disconnectWhatsApp(orgSlug: string) {
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const { error } = await supabase
-    .from("organizations")
-    .update({
-      whatsapp_business_account_id: null,
-      whatsapp_phone_number_id: null,
-      whatsapp_phone_number: null,
-      whatsapp_access_token: null,
-      whatsapp_pin: null,
-      whatsapp_status: "disconnected",
-    })
-    .eq("id", org.id);
-
-  if (error) {
-    return { error: error.message };
+  const result = await disconnectChatwoot(supabase, org.id);
+  if (!result.ok) {
+    return { error: result.error.message };
   }
 
   revalidatePath(`/${orgSlug}/integrations`);
@@ -179,6 +171,85 @@ export async function disconnectCalComAction(orgSlug: string) {
   }
 
   const result = await disconnectCalCom(supabase, org.id);
+  if (!result.ok) {
+    return { error: result.error.message };
+  }
+
+  revalidatePath(`/${orgSlug}/integrations`);
+  return { success: true as const };
+}
+
+// --- Stripe ---
+
+const stripeSchema = z.object({
+  orgSlug: z.string().min(1),
+  secretKey: z.string().min(7).max(512),
+});
+
+export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
+  const parsed = stripeSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: "Dados inválidos. Verifique os campos." };
+  }
+
+  const { orgSlug, secretKey } = parsed.data;
+  const supabase = await getServerClientFromCookies();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Não autenticado." };
+  }
+
+  const { data: org, error: orgErr } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", orgSlug)
+    .maybeSingle();
+
+  if (orgErr || !org) {
+    return { error: "Organização não encontrada ou sem permissão." };
+  }
+
+  const key = process.env.ENCRYPTION_KEY?.trim() ?? "";
+  if (!isValidEncryptionKeyHex(key)) {
+    return { error: "ENCRYPTION_KEY inválida no servidor." };
+  }
+
+  const secretStore = new AesSecretStore(key);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const result = await connectStripe(supabase, secretStore, {
+    orgId: org.id,
+    secretKey,
+    appUrl,
+  });
+
+  if (!result.ok) {
+    return { error: result.error.message };
+  }
+
+  revalidatePath(`/${orgSlug}/integrations`);
+  return { success: true as const };
+}
+
+export async function disconnectStripeAction(orgSlug: string) {
+  const supabase = await getServerClientFromCookies();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Não autenticado." };
+  }
+
+  const { data: org, error: orgErr } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", orgSlug)
+    .maybeSingle();
+
+  if (orgErr || !org) {
+    return { error: "Organização não encontrada ou sem permissão." };
+  }
+
+  const result = await disconnectStripe(supabase, org.id);
   if (!result.ok) {
     return { error: result.error.message };
   }

@@ -1,24 +1,24 @@
 import { getOrgBySlug } from "@/lib/get-org";
 import { notFound } from "next/navigation";
 import { IntegrationCard } from "./integration-card";
-import { WhatsAppCredentialsForm } from "./whatsapp-credentials-form";
+import { ChatwootCredentialsForm } from "./chatwoot-credentials-form";
 import { CalComCredentialsForm } from "./cal-com-credentials-form";
+import { StripeCredentialsForm } from "./stripe-credentials-form";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
 }
 
-function WhatsAppIcon() {
+function ChatwootIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-5" fill="none">
       <path
-        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"
-        fill="#25D366"
+        d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l4.93-1.38A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.74 0-3.36-.56-4.68-1.5l-.32-.22-3.36.88.9-3.28-.24-.34A7.92 7.92 0 014 12c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8z"
+        fill="#1F93FF"
       />
-      <path
-        d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.96 7.96 0 01-4.11-1.14l-.29-.174-3.01.79.8-2.93-.19-.3A7.96 7.96 0 014 12c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8z"
-        fill="#25D366"
-      />
+      <circle cx="8" cy="12" r="1.5" fill="#1F93FF" />
+      <circle cx="12" cy="12" r="1.5" fill="#1F93FF" />
+      <circle cx="16" cy="12" r="1.5" fill="#1F93FF" />
     </svg>
   );
 }
@@ -34,13 +34,28 @@ function CalComIcon() {
   );
 }
 
+function StripeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="#635BFF" strokeWidth="2" />
+      <path
+        d="M12 9.5c-1.5 0-2.5.5-2.5 1.25 0 1.75 5 1 5 3.5 0 1-1.25 1.75-3 1.75s-2.75-.5-2.75-.5M12.5 8v8"
+        stroke="#635BFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default async function IntegrationsPage({ params }: Props) {
   const { orgSlug } = await params;
   const org = await getOrgBySlug(orgSlug);
   if (!org) notFound();
 
-  const isWhatsAppActive = org.whatsapp_status === "active";
+  const isChatwootActive = org.chatwoot_status === "active";
   const isCalActive = org.cal_status === "active";
+  const isStripeActive = org.stripe_status === "active";
 
   return (
     <div className="space-y-6">
@@ -53,30 +68,22 @@ export default async function IntegrationsPage({ params }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <IntegrationCard
-          name="WhatsApp"
-          description="Receba e envie mensagens pelo WhatsApp Cloud API"
+          name="Chatwoot"
+          description="Receba e responda mensagens de qualquer canal via Chatwoot"
           summary={
-            isWhatsAppActive
-              ? `Número: ${org.whatsapp_phone_number ?? "(sem exibição)"}`
+            isChatwootActive
+              ? `Account: ${org.chatwoot_account_id} · ${org.chatwoot_api_url}`
               : "Pendente de configuração"
           }
-          icon={<WhatsAppIcon />}
-          status={isWhatsAppActive ? "active" : "pending"}
+          icon={<ChatwootIcon />}
+          status={isChatwootActive ? "active" : "pending"}
         >
-          <div className="space-y-6">
-            <p className="text-sm text-amber-600">
-              Ao usar números na Cloud API, o app de celular deixa de ser o
-              cliente principal — garanta webhook em{" "}
-              <strong>Configuration</strong> no mesmo app na Meta que emitiu o
-              token.
-            </p>
-            <WhatsAppCredentialsForm
-              orgSlug={orgSlug}
-              isConnected={isWhatsAppActive}
-              savedWabaId={org.whatsapp_business_account_id ?? ""}
-              savedPhoneNumberId={org.whatsapp_phone_number_id ?? ""}
-            />
-          </div>
+          <ChatwootCredentialsForm
+            orgSlug={orgSlug}
+            isConnected={isChatwootActive}
+            savedApiUrl={org.chatwoot_api_url ?? ""}
+            savedAccountId={org.chatwoot_account_id ?? ""}
+          />
         </IntegrationCard>
 
         <IntegrationCard
@@ -96,6 +103,23 @@ export default async function IntegrationsPage({ params }: Props) {
             savedEventTypeId={org.cal_event_type_id ?? ""}
             savedTimezone={org.cal_timezone ?? "America/Sao_Paulo"}
             savedBookingUrl={org.cal_booking_url ?? ""}
+          />
+        </IntegrationCard>
+
+        <IntegrationCard
+          name="Stripe"
+          description="Venda produtos via WhatsApp com pagamento online"
+          summary={
+            isStripeActive
+              ? "Conectado — produtos sendo exibidos pelo agente"
+              : "Pendente de configuração"
+          }
+          icon={<StripeIcon />}
+          status={isStripeActive ? "active" : "pending"}
+        >
+          <StripeCredentialsForm
+            orgSlug={orgSlug}
+            isConnected={isStripeActive}
           />
         </IntegrationCard>
       </div>

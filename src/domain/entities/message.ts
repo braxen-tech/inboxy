@@ -9,7 +9,7 @@ export interface Message {
   conversationId: ConversationId;
   direction: MessageDirection;
   content: string;
-  whatsappMessageId: string | null;
+  externalMessageId: string | null;
   status: MessageStatus;
   aiMetadata: Record<string, unknown> | null;
   correlationId: CorrelationId | null;

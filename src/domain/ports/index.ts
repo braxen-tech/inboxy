@@ -3,7 +3,6 @@ export type {
   InboundMessage,
   SendParams,
   SendError,
-  VerifiedPayload,
   WebhookError,
 } from "./messaging-channel";
 
@@ -20,6 +19,7 @@ export type {
   ToolContext,
   ToolError,
   CalendarContext,
+  StripeContext,
 } from "./tool-registry";
 
 export type { EventBus, DomainEvent } from "./event-bus";
@@ -45,3 +45,19 @@ export type {
   Chunk,
   RetrieveError,
 } from "./knowledge-retriever";
+
+export type {
+  ProductCatalog,
+  Product,
+  Price,
+  CatalogError,
+} from "./product-catalog";
+
+export type {
+  PaymentGateway,
+  CheckoutInput,
+  CheckoutLineItem,
+  CheckoutResult,
+  PaymentError,
+  StripeWebhookEvent,
+} from "./payment-gateway";

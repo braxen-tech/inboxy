@@ -3,19 +3,20 @@
 ## Deployment
 
 ### Prerequisites
-1. Supabase project created and migration applied
+1. Supabase project created and migrations applied
 2. Inngest account configured
-3. Meta Developer App configured (see ADR-005)
+3. Chatwoot instance available (Cloud or self-hosted)
 4. Environment variables set in Vercel
 
-### WhatsApp (credenciais manuais no dashboard)
-Integrações usa **cole WABA ID, Phone number ID e Access Token** na organização — sem Embedded Signup.
+### Chatwoot (conexão via dashboard)
 
-1. Meta for Developers → app WhatsApp → copie IDs e gere um token (ideal: **usuário do sistema** com permissões permanentes onde a Meta permite “sem expiração”).
-2. Cole no dashboard dessa organização → o backend valida o token e guarda-o cifrado (`ENCRYPTION_KEY` com 64 caracteres hex).
-3. Configure o webhook no Meta (`META_WEBHOOK_VERIFY_TOKEN`; URL público HTTPS em produção; em localhost use túnel, ex.: ngrok).
+1. No Chatwoot, vá em **Settings > Profile** e copie seu **Access Token**.
+2. Identifique o **Account ID** na URL do Chatwoot (ex: `/app/accounts/1/...` → ID = 1).
+3. No dashboard da nossa app, abra **Integrações** → card Chatwoot → cole a URL, Account ID e Access Token.
+4. Ao salvar, o sistema valida o token, cria o webhook automaticamente no Chatwoot e habilita o processamento de mensagens.
+5. O Chatwoot funciona com qualquer canal configurado (WhatsApp, Email, Instagram, Telegram, Web widget, etc).
 
-`META_EMBEDDED_SIGNUP_CONFIG_ID` só é necessário se voltar a usar Embedded Signup.
+O token é criptografado com `ENCRYPTION_KEY` (64 caracteres hex). Se rotacionar a chave, será necessário reconectar.
 
 ### Cal.com (agendamento pela IA)
 
@@ -25,15 +26,11 @@ Integrações usa **cole WABA ID, Phone number ID e Access Token** na organizaç
 4. (Opcional) Cole o link público de agendamento (ex.: `https://cal.com/sua-clinica/consulta`) — a IA oferece como alternativa para pacientes que prefiram agendar sozinhos.
 5. Ao salvar, o sistema valida a credencial consultando slots e habilita as tools `check_calendar_availability` e `book_calendar_appointment` automaticamente.
 
-A API key é criptografada com `ENCRYPTION_KEY` (mesmo fluxo do WhatsApp). Se rotacionar a chave, re-criptografe `cal_api_key` também.
+A API key é criptografada com `ENCRYPTION_KEY` (mesmo fluxo do Chatwoot).
 
 ```bash
 # First deploy (Vercel)
 vercel --prod
-
-# After deploy: register webhook at Meta
-# URL: https://your-domain.vercel.app/api/webhooks/whatsapp
-# Verify token: value of META_WEBHOOK_VERIFY_TOKEN
 ```
 
 ### Database Migration
@@ -79,16 +76,17 @@ curl https://your-domain.vercel.app/api/health
 1. Check `/api/health` — is Supabase reachable?
 2. Check Inngest dashboard — is the function running?
 3. Check `webhook_failures` table for DLQ entries
-4. Verify org has `whatsapp_status = 'active'`
+4. Verify org has `chatwoot_status = 'active'`
 5. Check `conversations` table — is the conversation locked? (stale locks expire after 60s)
+6. Verify the Chatwoot webhook is registered (Chatwoot > Settings > Integrations > Webhooks)
 
 ### Duplicate messages
-- System has triple idempotency: `whatsapp_message_id` UNIQUE, `processed_webhook_events`, Inngest event key
+- System has triple idempotency: `external_message_id` UNIQUE, `processed_webhook_events`, Inngest event key
 - If duplicates still appear, check Inngest for duplicate event delivery
 
-### WhatsApp disconnected
-- Meta can revoke tokens if app review fails or terms are violated
+### Chatwoot disconnected
 - Re-connect via dashboard Integrations page
+- Verify the Chatwoot API token is still valid in Chatwoot Settings > Profile
 
 ### Cal.com not booking
 1. Verify `cal_status = 'active'` and `tools_enabled` contains `check_calendar_availability`
@@ -102,14 +100,14 @@ curl https://your-domain.vercel.app/api/health
 
 ## Incident Response
 
-### Failed webhook (Meta retrying)
-1. Meta retries up to 7 times over 72 hours
+### Failed webhook (Chatwoot retrying)
+1. Chatwoot retries webhook delivery on failure
 2. Check `webhook_failures` table for error details
-3. Fix the issue, then Inngest will process normally on next retry
+3. Fix the issue, then processing will resume on next delivery
 
 ### Token/secret rotation
 1. Generate new `ENCRYPTION_KEY`
-2. Write a migration script to re-encrypt all `whatsapp_access_token` and `whatsapp_pin` values
+2. Write a migration script to re-encrypt all `chatwoot_api_token` and `cal_api_key` values
 3. Deploy with new key
 
 ### Conversation lock stuck

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WhatsApp Agent — Agente de IA para WhatsApp",
+  title: "Agente IA — Atendimento automatizado com IA",
   description:
-    "Configure base de conhecimento, personalize seu agente de IA e conecte o WhatsApp Cloud API para atender clientes automaticamente.",
+    "Configure base de conhecimento, personalize seu agente de IA e conecte ao Chatwoot para atender clientes automaticamente em qualquer canal.",
 };
 
 export default function RootLayout({

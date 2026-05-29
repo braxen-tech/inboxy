@@ -5,25 +5,25 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { disconnectWhatsApp, saveWhatsAppCredentials } from "./actions";
+import { saveChatwootCredentials, disconnectChatwootAction } from "./actions";
 
 interface Props {
   orgSlug: string;
   isConnected: boolean;
-  savedWabaId?: string;
-  savedPhoneNumberId?: string;
+  savedApiUrl?: string;
+  savedAccountId?: string;
 }
 
-export function WhatsAppCredentialsForm({
+export function ChatwootCredentialsForm({
   orgSlug,
   isConnected,
-  savedWabaId = "",
-  savedPhoneNumberId = "",
+  savedApiUrl = "",
+  savedAccountId = "",
 }: Props) {
   const router = useRouter();
-  const [wabaId, setWabaId] = useState(savedWabaId);
-  const [phoneNumberId, setPhoneNumberId] = useState(savedPhoneNumberId);
-  const [accessToken, setAccessToken] = useState("");
+  const [apiUrl, setApiUrl] = useState(savedApiUrl);
+  const [accountId, setAccountId] = useState(savedAccountId);
+  const [apiToken, setApiToken] = useState("");
   const [pending, startTransition] = useTransition();
   const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -32,20 +32,20 @@ export function WhatsAppCredentialsForm({
     e.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const r = await saveWhatsAppCredentials({
+      const r = await saveChatwootCredentials({
         orgSlug,
-        wabaId,
-        phoneNumberId,
-        accessToken,
+        apiUrl,
+        accountId,
+        apiToken,
       });
       if ("error" in r && r.error) {
         setMessage({ type: "err", text: r.error });
       } else if ("success" in r && r.success) {
         setMessage({
           type: "ok",
-          text: `Conectado. Número: ${r.phone}. Webhook já deve estar apontando para este app.`,
+          text: "Conectado ao Chatwoot. Webhook criado automaticamente.",
         });
-        setAccessToken("");
+        setApiToken("");
         router.refresh();
       }
     });
@@ -54,14 +54,14 @@ export function WhatsAppCredentialsForm({
   async function onDisconnect() {
     setDisconnecting(true);
     setMessage(null);
-    const r = await disconnectWhatsApp(orgSlug);
+    const r = await disconnectChatwootAction(orgSlug);
     if ("error" in r && r.error) {
       setMessage({ type: "err", text: r.error });
     } else {
-      setMessage({ type: "ok", text: "WhatsApp desconectado nesta organização." });
-      setWabaId("");
-      setPhoneNumberId("");
-      setAccessToken("");
+      setMessage({ type: "ok", text: "Chatwoot desconectado." });
+      setApiUrl("");
+      setAccountId("");
+      setApiToken("");
     }
     setDisconnecting(false);
     router.refresh();
@@ -70,42 +70,30 @@ export function WhatsAppCredentialsForm({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        No{" "}
-        <a
-          href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started#get-a-temporary-access-token"
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          Meta for Developers
-        </a>{" "}
-        abra seu app WhatsApp Cloud API → copie o <strong>WhatsApp Business Account ID</strong>,{" "}
-        <strong>Phone number ID</strong> e use um{" "}
-        <strong className="text-foreground">
-          token de usuário do sistema (&quot;nunca expira&quot;)
-        </strong>{" "}
-        sempre que possível (Meta Business Suite → Usuários do sistema → token com permissões do app).
+        No Chatwoot, vá em <strong>Settings &rarr; Profile</strong> e copie seu{" "}
+        <strong>Access Token</strong>. O <strong>Account ID</strong> aparece na URL
+        do Chatwoot (ex: <code>/app/accounts/<strong>1</strong>/...</code>).
       </p>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-2">
-          <Label htmlFor="waba-id">WhatsApp Business Account ID (WABA)</Label>
+          <Label htmlFor="chatwoot-url">URL do Chatwoot</Label>
           <Input
-            id="waba-id"
-            value={wabaId}
-            onChange={(e) => setWabaId(e.target.value)}
-            placeholder="123456789012345"
+            id="chatwoot-url"
+            value={apiUrl}
+            onChange={(e) => setApiUrl(e.target.value)}
+            placeholder="https://app.chatwoot.com"
             autoComplete="off"
             readOnly={isConnected}
             className={isConnected ? "bg-muted" : ""}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone-number-id">Phone number ID</Label>
+          <Label htmlFor="chatwoot-account-id">Account ID</Label>
           <Input
-            id="phone-number-id"
-            value={phoneNumberId}
-            onChange={(e) => setPhoneNumberId(e.target.value)}
-            placeholder="987654321098765"
+            id="chatwoot-account-id"
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            placeholder="1"
             autoComplete="off"
             readOnly={isConnected}
             className={isConnected ? "bg-muted" : ""}
@@ -114,13 +102,13 @@ export function WhatsAppCredentialsForm({
         {!isConnected && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="access-token">Access token</Label>
+              <Label htmlFor="chatwoot-token">API Access Token</Label>
               <Input
-                id="access-token"
+                id="chatwoot-token"
                 type="password"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="Cole o token (nunca é armazenado em texto plano na base)"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                placeholder="Cole o token (armazenado de forma criptografada)"
                 autoComplete="new-password"
               />
             </div>
@@ -133,7 +121,7 @@ export function WhatsAppCredentialsForm({
       {isConnected && (
         <div className="border-t pt-4">
           <Button type="button" variant="destructive" disabled={disconnecting} onClick={onDisconnect}>
-            {disconnecting ? "..." : "Desconectar WhatsApp"}
+            {disconnecting ? "..." : "Desconectar Chatwoot"}
           </Button>
         </div>
       )}

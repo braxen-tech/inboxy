@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 interface DashboardShellProps {
   orgSlug: string;
   orgName: string;
-  whatsappActive: boolean;
+  chatwootActive: boolean;
   children: React.ReactNode;
 }
 
@@ -70,13 +70,13 @@ function NavLinks({
 function SidebarContent({
   orgSlug,
   orgName,
-  whatsappActive,
+  chatwootActive,
   pathname,
   onNavigate,
 }: {
   orgSlug: string;
   orgName: string;
-  whatsappActive: boolean;
+  chatwootActive: boolean;
   pathname: string;
   onNavigate?: () => void;
 }) {
@@ -98,17 +98,17 @@ function SidebarContent({
       </div>
 
       <div className="px-4 py-3">
-        <Badge
+        {/* <Badge
           variant="secondary"
           className={cn(
             "w-full justify-center text-xs",
-            whatsappActive
+            chatwootActive
               ? "bg-green-500/15 text-green-700 dark:text-green-400"
               : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
           )}
         >
-          {whatsappActive ? "WhatsApp ativo" : "WhatsApp pendente"}
-        </Badge>
+          {chatwootActive ? "Chatwoot ativo" : "Chatwoot pendente"}
+        </Badge> */}
       </div>
 
       <NavLinks orgSlug={orgSlug} pathname={pathname} onNavigate={onNavigate} />
@@ -132,7 +132,7 @@ function SidebarContent({
 export function DashboardShell({
   orgSlug,
   orgName,
-  whatsappActive,
+  chatwootActive,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -180,7 +180,7 @@ export function DashboardShell({
         <SidebarContent
           orgSlug={orgSlug}
           orgName={orgName}
-          whatsappActive={whatsappActive}
+          chatwootActive={chatwootActive}
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
         />
@@ -204,12 +204,12 @@ export function DashboardShell({
             variant="secondary"
             className={cn(
               "shrink-0 text-xs",
-              whatsappActive
+              chatwootActive
                 ? "bg-green-500/15 text-green-700"
                 : "bg-amber-500/15 text-amber-700",
             )}
           >
-            {whatsappActive ? "Ativo" : "Pendente"}
+            {chatwootActive ? "Ativo" : "Pendente"}
           </Badge>
         </header>
 

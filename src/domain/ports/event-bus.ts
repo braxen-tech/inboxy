@@ -21,8 +21,8 @@ export type DomainEvent =
       };
     }
   | {
-      type: "whatsapp.connected";
-      payload: { orgId: OrgId; phoneNumber: string };
+      type: "chatwoot.connected";
+      payload: { orgId: OrgId; accountId: string };
     };
 
 export interface EventBus {

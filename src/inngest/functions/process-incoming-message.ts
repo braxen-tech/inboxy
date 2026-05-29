@@ -1,9 +1,10 @@
 import { inngest } from "@/infrastructure/events/inngest-client";
 import { processIncomingMessage } from "@/application/use-cases/process-incoming-message";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud/adapter";
+import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
+import { StripeCatalogAdapter, StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
 import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
@@ -25,9 +26,15 @@ export const processMessage = inngest.createFunction(
 
     try {
       const db = getAdminClient();
-      const messagingChannel = new WhatsAppCloudAdapter();
+      const messagingChannel = new ChatwootAdapter();
       const agentRunner = new ClaudeAdapter();
-      const toolRegistry = createToolRegistry({ calendarProvider: new CalComAdapter() });
+      const toolRegistry = createToolRegistry({
+        calendarProvider: new CalComAdapter(),
+        productCatalog: new StripeCatalogAdapter(),
+        paymentGateway: new StripePaymentAdapter(),
+        db,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      });
       const secretStore = new AesSecretStore(process.env.ENCRYPTION_KEY!);
 
       await processIncomingMessage(

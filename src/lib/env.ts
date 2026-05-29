@@ -13,11 +13,6 @@ const envSchema = z.object({
   INNGEST_EVENT_KEY: z.string().optional().default(""),
   INNGEST_SIGNING_KEY: z.string().optional().default(""),
 
-  META_APP_ID: z.string().min(1),
-  META_APP_SECRET: z.string().min(1),
-  META_WEBHOOK_VERIFY_TOKEN: z.string().min(1),
-  META_EMBEDDED_SIGNUP_CONFIG_ID: z.string().optional().default(""),
-
   ENCRYPTION_KEY: z.string().refine(isValidEncryptionKeyHex, {
     message:
       "ENCRYPTION_KEY must be exactly 64 hex characters (openssl rand -hex 32)",
@@ -40,7 +35,7 @@ export function getEnv(): Env {
 
   if (!result.success) {
     const formatted = z.prettifyError(result.error);
-    console.error("❌ Invalid environment variables:\n", formatted);
+    console.error("Invalid environment variables:\n", formatted);
     throw new Error("Invalid environment variables");
   }
 

@@ -1,33 +1,35 @@
 import type { Result } from "../errors";
-import type { OrgId, PhoneNumber } from "../value-objects";
 
 export interface InboundMessage {
-  whatsappMessageId: string;
-  from: PhoneNumber;
-  profileName: string | null;
+  externalMessageId: string;
+  chatwootConversationId: number;
+  senderName: string | null;
+  senderPhone: string | null;
+  senderEmail: string | null;
   content: string;
   timestamp: Date;
-  phoneNumberId: string;
+  accountId: string;
 }
 
 export interface SendParams {
-  orgId: OrgId;
-  to: PhoneNumber;
+  apiUrl: string;
+  apiToken: string;
+  accountId: string;
+  conversationId: number;
   content: string;
-  phoneNumberId: string;
-  accessToken: string;
 }
 
-export type SendError = { code: "RATE_LIMITED" | "OUTSIDE_24H" | "API_ERROR" | "NETWORK_ERROR"; message: string };
+export type SendError = {
+  code: "RATE_LIMITED" | "API_ERROR" | "NETWORK_ERROR";
+  message: string;
+};
 
-export interface VerifiedPayload {
-  raw: unknown;
-}
-
-export type WebhookError = { code: "SIGNATURE_INVALID" | "PARSE_FAILED"; message: string };
+export type WebhookError = {
+  code: "SECRET_INVALID" | "PARSE_FAILED" | "IGNORED_EVENT";
+  message: string;
+};
 
 export interface MessagingChannel {
-  verifyWebhook(request: Request, appSecret: string): Promise<Result<VerifiedPayload, WebhookError>>;
-  parseInbound(payload: VerifiedPayload): InboundMessage[];
+  parseWebhook(request: Request, secret: string): Promise<Result<InboundMessage[], WebhookError>>;
   send(params: SendParams): Promise<Result<string, SendError>>;
 }

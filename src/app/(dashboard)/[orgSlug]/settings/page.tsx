@@ -39,10 +39,10 @@ export default async function SettingsPage({ params }: Props) {
           </div>
           <Separator />
           <div>
-            <p className="text-sm font-medium">WhatsApp</p>
+            <p className="text-sm font-medium">Chatwoot</p>
             <p className="text-sm text-muted-foreground">
-              {org.whatsapp_status === "active"
-                ? `Ativo — ${org.whatsapp_phone_number}`
+              {org.chatwoot_status === "active"
+                ? `Ativo — Account ${org.chatwoot_account_id}`
                 : "Não conectado"}
             </p>
           </div>
