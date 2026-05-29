@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/#integracoes", label: "Integrações" },
   { href: "/#recursos", label: "Recursos" },
   { href: "/#como-funciona", label: "Como funciona" },
+  { href: "/#contato", label: "Contato" },
 ] as const;
 
 interface MarketingHeaderProps {

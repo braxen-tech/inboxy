@@ -12,8 +12,11 @@ import {
   Smartphone,
   Zap,
 } from "lucide-react";
+import { BraxenContactCta } from "@/components/marketing/braxen-contact-cta";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { Button } from "@/components/ui/button";
+import { buildBraxenWhatsAppUrl } from "@/lib/braxen-contact";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -354,14 +357,29 @@ export function LandingPage() {
                 WhatsApp, Telegram, e-mail ou visitante no site — tudo na mesma fila.
                 Configure o agente, conecte Stripe e Cal.com — respostas na hora em qualquer canal.
               </p>
-              <Link href="/login" className="relative mt-8 inline-block">
-                <Button size="lg" className="min-w-[200px] bg-white text-blue-600 hover:bg-white/90">
-                  Acessar o painel
-                </Button>
-              </Link>
+              <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href="/login">
+                  <Button size="lg" className="min-w-[200px] bg-white text-blue-600 hover:bg-white/90">
+                    Acessar o painel
+                  </Button>
+                </Link>
+                <a
+                  href={buildBraxenWhatsAppUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    "min-w-[200px] border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white",
+                  )}
+                >
+                  Falar com a Braxen
+                </a>
+              </div>
             </div>
           </div>
         </section>
+
+        <BraxenContactCta />
       </main>
 
       <footer className="border-t py-8">
