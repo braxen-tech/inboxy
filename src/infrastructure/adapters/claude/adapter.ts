@@ -73,6 +73,7 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push(`- Quando o cliente confirmar que quer finalizar a compra, use create_checkout para gerar o link de pagamento.`);
       systemParts.push(`- IMPORTANTE: Quando create_checkout retornar a URL, você DEVE incluir a URL completa (https://...) na sua resposta ao cliente. NUNCA omita o link. O cliente precisa clicar nele para pagar.`);
       systemParts.push(`- O link de pagamento expira em 30 minutos. Informe isso ao cliente.`);
+      systemParts.push(`- No checkout o cliente pode pagar com cartão ou PIX (se a loja tiver PIX ativo no Stripe). Para PIX, explique que ele verá o QR code na página do link.`);
     }
 
     const systemContent = systemParts.join("\n");

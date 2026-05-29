@@ -17,9 +17,10 @@ export class StripePaymentAdapter implements PaymentGateway {
     try {
       const stripe = createStripeClient(input.apiKey);
 
+      // Omit payment_method_types so Stripe shows methods enabled in the Dashboard
+      // (card, PIX, etc.). PIX requires BRL prices + PIX enabled at dashboard.stripe.com.
       const params: Record<string, unknown> = {
         mode: "payment",
-        payment_method_types: ["card"],
         line_items: input.lineItems.map((li) => ({
           price: li.priceId,
           quantity: li.quantity,
