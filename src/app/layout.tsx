@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Inboxy — Atenda, venda e agende em todos os canais",
   description:
-    "Inbox unificado para WhatsApp, Telegram, SMS e e-mail. Agente de IA com vendas Stripe e agendamento Cal.com — tudo na mesma conversa.",
+    "Inbox unificado para WhatsApp, Telegram, SMS, e-mail e chat no site. Agente de IA com vendas Stripe e agendamento Cal.com — tudo na mesma conversa.",
 };
 
 export default function RootLayout({

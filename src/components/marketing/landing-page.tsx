@@ -28,7 +28,11 @@ const channels = [
   { icon: Send, name: "Telegram", copy: "DMs com resposta automática" },
   { icon: Smartphone, name: "SMS", copy: "Confirmações e lembretes por texto" },
   { icon: Mail, name: "E-mail", copy: "Tickets e respostas assíncronas" },
-  { icon: Globe, name: "Web chat e mais", copy: "Qualquer canal via Chatwoot" },
+  {
+    icon: Globe,
+    name: "Chat no site",
+    copy: "Widget no seu site — um script, um balão ao vivo",
+  },
 ] as const;
 
 const features = [
@@ -36,7 +40,7 @@ const features = [
     icon: MessageCircle,
     title: "Inbox unificado",
     description:
-      "WhatsApp, Telegram, SMS, e-mail e web chat em uma única fila. Sem perder mensagens entre apps.",
+      "WhatsApp, Telegram, SMS, e-mail e chat no site em uma única fila. Mensagens do widget do seu site entram no mesmo inbox.",
   },
   {
     icon: CreditCard,
@@ -89,7 +93,8 @@ const steps = [
   {
     step: "04",
     title: "Conecte os canais",
-    description: "Integre sua conta Chatwoot e comece a atender em WhatsApp, Telegram, e-mail e mais.",
+    description:
+      "Conecte Chatwoot, ative WhatsApp, Telegram, e-mail e cole o script do chat no seu site — mais um canal na mesma fila.",
   },
   {
     step: "05",
@@ -116,15 +121,16 @@ export function LandingPage() {
                 variant="secondary"
                 className="mb-6 border border-blue-500/20 bg-blue-500/10 text-blue-600"
               >
-                WhatsApp · Telegram · SMS · E-mail · Vendas · Agendamento
+                WhatsApp · Telegram · SMS · E-mail · Chat no site · Vendas · Agendamento
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
                 Todos os seus canais.{" "}
                 <span className="text-blue-600">Um só lugar para atender, vender e agendar.</span>
               </h1>
               <p className="mt-6 text-lg text-muted-foreground text-pretty sm:text-xl">
-                Conecte WhatsApp, Telegram, SMS e e-mail. O agente responde, vende com Stripe
-                e agenda com Cal.com — tudo na mesma conversa, sem trocar de ferramenta.
+                Conecte WhatsApp, Telegram, SMS, e-mail e o chat do seu site — com o widget
+                Chatwoot, basta colar um script na página. O agente responde, vende com Stripe
+                e agenda com Cal.com na mesma conversa.
               </p>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link href="/login">
@@ -177,7 +183,10 @@ export function LandingPage() {
                 Seus clientes falam por vários canais. Atenda em todos.
               </h2>
               <p className="mt-4 text-muted-foreground text-pretty">
-                Conecte via Chatwoot. O agente responde em cada canal — você gerencia tudo no mesmo painel.
+                Tudo passa pelo Chatwoot: canais de mensagem e também o{" "}
+                <strong className="font-medium text-foreground">live chat no seu site</strong>.
+                Você copia o script do widget, cola no HTML do site ou loja — visitantes
+                conversam pelo balão e o agente atende no mesmo inbox que o WhatsApp.
               </p>
             </div>
             <div className="mx-auto mt-14 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -193,6 +202,15 @@ export function LandingPage() {
                   <span className="text-xs text-muted-foreground">{copy}</span>
                 </div>
               ))}
+            </div>
+
+            <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 text-center text-sm text-muted-foreground">
+              <p className="text-pretty">
+                <span className="font-medium text-foreground">Chat no site:</span> no Chatwoot,
+                crie um inbox de Website, copie o snippet e publique na sua landing, WordPress
+                ou e-commerce. Sem desenvolver chat do zero — o Inboxy responde nesse canal
+                como nos demais.
+              </p>
             </div>
           </div>
         </section>
@@ -333,8 +351,8 @@ export function LandingPage() {
                 Atenda, venda e agende em todos os canais
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85 text-pretty">
-                Pare de pular entre WhatsApp, Telegram e e-mail. Configure o agente,
-                conecte Stripe e Cal.com — seus clientes ganham respostas na hora.
+                WhatsApp, Telegram, e-mail ou visitante no site — tudo na mesma fila.
+                Configure o agente, conecte Stripe e Cal.com — respostas na hora em qualquer canal.
               </p>
               <Link href="/login" className="relative mt-8 inline-block">
                 <Button size="lg" className="min-w-[200px] bg-white text-blue-600 hover:bg-white/90">
