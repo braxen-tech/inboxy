@@ -66,7 +66,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
-      .limit(20);
+      .limit(100);
 
     const history = (messages ?? []).map((m: Record<string, unknown>) => ({
       id: m.id as MessageId,
