@@ -157,6 +157,8 @@ export class ChatwootClient {
     const url = `${this.apiUrl.replace(/\/$/, "")}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`;
 
     try {
+      logger.info("Starting attachment send", { attachmentUrl, accountId, conversationId });
+
       const imageRes = await fetch(attachmentUrl);
       if (!imageRes.ok) {
         logger.error("Failed to fetch attachment", { attachmentUrl, status: imageRes.status });
@@ -166,7 +168,7 @@ export class ChatwootClient {
       const blob = await imageRes.blob();
       const resolvedFilename = filename ?? attachmentUrl.split("/").pop()?.split("?")[0] ?? "image.jpg";
 
-      logger.info("Sending attachment to Chatwoot", { url: attachmentUrl, filename: resolvedFilename, blobSize: blob.size });
+      logger.info("Attachment fetched", { url: attachmentUrl, filename: resolvedFilename, blobSize: blob.size, blobType: blob.type });
 
       const formData = new FormData();
       formData.append("attachments[]", blob, resolvedFilename);
@@ -176,25 +178,29 @@ export class ChatwootClient {
         formData.append("content", content);
       }
 
+      logger.info("FormData created, sending to Chatwoot", { url });
+
       const res = await fetch(url, {
         method: "POST",
         headers: { api_access_token: this.apiToken },
         body: formData,
       });
 
+      logger.info("Chatwoot response received", { status: res.status, statusText: res.statusText });
+
       const json = await res.json();
 
       if (!res.ok) {
         const errMsg = json?.error ?? json?.message ?? JSON.stringify(json);
-        logger.error("Chatwoot attachment API error", { url, status: res.status, error: errMsg, attachmentUrl });
+        logger.error("Chatwoot attachment API error", { url, status: res.status, error: errMsg, response: JSON.stringify(json) });
         return { ok: false, status: res.status, error: errMsg };
       }
 
-      logger.info("Attachment sent successfully", { url: attachmentUrl, messageId: json.id });
+      logger.info("Attachment sent successfully", { messageId: json.id });
       return { ok: true, data: json as ChatwootMessageResponse };
     } catch (err) {
       const errStr = err instanceof Error ? err.message : String(err);
-      logger.error("Chatwoot attachment network error", { url, error: errStr, attachmentUrl });
+      logger.error("Chatwoot attachment error", { url, error: errStr, stack: err instanceof Error ? err.stack : undefined });
       return { ok: false, status: 0, error: errStr };
     }
   }
