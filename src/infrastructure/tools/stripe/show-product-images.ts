@@ -48,6 +48,7 @@ export class ShowProductImagesTool implements AgentTool {
 
     const client = new ChatwootClient(ctx.chatwoot.apiUrl, ctx.chatwoot.apiToken);
     let sentCount = 0;
+    const errors: string[] = [];
 
     for (const imageUrl of product.images) {
       const caption = sentCount === 0 ? (parsed.data.caption ?? "") : "";
@@ -60,11 +61,13 @@ export class ShowProductImagesTool implements AgentTool {
 
       if (sendResult.ok) {
         sentCount++;
+      } else {
+        errors.push(`Imagem ${imageUrl}: ${sendResult.error}`);
       }
     }
 
     if (sentCount === 0) {
-      return Err({ code: "EXECUTION_FAILED", message: "Não foi possível enviar as imagens." });
+      return Err({ code: "EXECUTION_FAILED", message: `Não foi possível enviar as imagens. Erros: ${errors.join("; ")}` });
     }
 
     return Ok(`${sentCount} imagem(ns) de "${product.name}" enviada(s) ao cliente.`);

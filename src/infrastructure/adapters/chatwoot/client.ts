@@ -166,6 +166,8 @@ export class ChatwootClient {
       const blob = await imageRes.blob();
       const resolvedFilename = filename ?? attachmentUrl.split("/").pop()?.split("?")[0] ?? "image.jpg";
 
+      logger.info("Sending attachment to Chatwoot", { url: attachmentUrl, filename: resolvedFilename, blobSize: blob.size });
+
       const formData = new FormData();
       formData.append("attachments[]", blob, resolvedFilename);
       formData.append("message_type", "outgoing");
@@ -184,14 +186,16 @@ export class ChatwootClient {
 
       if (!res.ok) {
         const errMsg = json?.error ?? json?.message ?? JSON.stringify(json);
-        logger.error("Chatwoot attachment API error", { url, status: res.status, error: errMsg });
+        logger.error("Chatwoot attachment API error", { url, status: res.status, error: errMsg, attachmentUrl });
         return { ok: false, status: res.status, error: errMsg };
       }
 
+      logger.info("Attachment sent successfully", { url: attachmentUrl, messageId: json.id });
       return { ok: true, data: json as ChatwootMessageResponse };
     } catch (err) {
-      logger.error("Chatwoot attachment network error", { url, error: String(err) });
-      return { ok: false, status: 0, error: String(err) };
+      const errStr = err instanceof Error ? err.message : String(err);
+      logger.error("Chatwoot attachment network error", { url, error: errStr, attachmentUrl });
+      return { ok: false, status: 0, error: errStr };
     }
   }
 }
