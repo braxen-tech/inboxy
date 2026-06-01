@@ -81,7 +81,7 @@ export class ClaudeAdapter implements AgentRunner {
     const messages = history.map((msg, i) => ({
       role: msg.direction === "inbound" ? "user" as const : "assistant" as const,
       content: msg.content,
-      ...(i < history.length - 1 ? {
+      ...(i < 3 ? {
         providerOptions: {
           anthropic: { cacheControl: { type: "ephemeral" } },
         },
