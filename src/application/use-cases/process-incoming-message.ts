@@ -116,13 +116,16 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
-    if (org.chatwoot_status === "active" && org.chatwoot_api_token) {
+    if (org.chatwoot_status === "active" && org.chatwoot_api_token && org.chatwoot_account_id) {
       chatwootCtx = {
         apiUrl: org.chatwoot_api_url,
         apiToken: secretStore.decrypt(org.chatwoot_api_token),
         accountId: org.chatwoot_account_id,
         conversationId: conversation.chatwoot_conversation_id,
       };
+      logger.info("Chatwoot context initialized", { accountId: org.chatwoot_account_id, conversationId: conversation.chatwoot_conversation_id });
+    } else {
+      logger.warn("Chatwoot context not available", { chatwoot_status: org.chatwoot_status, has_api_token: !!org.chatwoot_api_token, has_account_id: !!org.chatwoot_account_id });
     }
 
     const toolContext = {
