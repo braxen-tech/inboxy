@@ -157,7 +157,7 @@ export class ChatwootClient {
     const url = `${this.apiUrl.replace(/\/$/, "")}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`;
 
     try {
-      logger.info("Starting attachment send", { attachmentUrl, accountId, conversationId });
+      logger.info("Starting attachment send", { attachmentUrl, accountId, conversationId: String(conversationId) });
 
       const imageRes = await fetch(attachmentUrl);
       if (!imageRes.ok) {
