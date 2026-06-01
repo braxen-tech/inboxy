@@ -11,12 +11,18 @@ export interface InboundMessage {
   accountId: string;
 }
 
+export interface Attachment {
+  url: string;
+  filename?: string;
+}
+
 export interface SendParams {
   apiUrl: string;
   apiToken: string;
   accountId: string;
   conversationId: number;
   content: string;
+  attachments?: Attachment[];
 }
 
 export type SendError = {

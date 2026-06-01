@@ -13,12 +13,20 @@ export interface StripeContext {
   apiKey: string;
 }
 
+export interface ChatwootContext {
+  apiUrl: string;
+  apiToken: string;
+  accountId: string;
+  conversationId: number;
+}
+
 export interface ToolContext {
   orgId: OrgId;
   contactPhone: string;
   conversationId: string;
   calendar?: CalendarContext;
   stripe?: StripeContext;
+  chatwoot?: ChatwootContext;
 }
 
 export interface AgentTool {

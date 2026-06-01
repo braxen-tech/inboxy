@@ -90,7 +90,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
     if (org.stripe_status === "active" && org.stripe_secret_key) {
       const stripeToolNames = [
-        "search_products", "get_product_details",
+        "search_products", "get_product_details", "show_product_images",
         "add_to_cart", "view_cart", "remove_from_cart", "create_checkout",
       ];
       for (const name of stripeToolNames) {
@@ -115,12 +115,23 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       stripeCtx = { apiKey: secretStore.decrypt(org.stripe_secret_key) };
     }
 
+    let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
+    if (org.chatwoot_status === "active" && org.chatwoot_api_token) {
+      chatwootCtx = {
+        apiUrl: org.chatwoot_api_url,
+        apiToken: secretStore.decrypt(org.chatwoot_api_token),
+        accountId: org.chatwoot_account_id,
+        conversationId: conversation.chatwoot_conversation_id,
+      };
+    }
+
     const toolContext = {
       orgId: toOrgId(orgId),
       contactPhone: conversation.contacts?.phone ?? "",
       conversationId,
       calendar: calendarCtx,
       stripe: stripeCtx,
+      chatwoot: chatwootCtx,
     };
 
     logger.info("Running agent", {

@@ -9,6 +9,7 @@ import { AddToCartTool } from "./stripe/add-to-cart";
 import { ViewCartTool } from "./stripe/view-cart";
 import { RemoveFromCartTool } from "./stripe/remove-from-cart";
 import { CreateCheckoutTool } from "./stripe/create-checkout";
+import { ShowProductImagesTool } from "./stripe/show-product-images";
 
 interface ToolRegistryDeps {
   calendarProvider: CalendarProvider;
@@ -30,6 +31,7 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new ViewCartTool(deps.db));
   registry.register(new RemoveFromCartTool(deps.db));
   registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway, deps.appUrl));
+  registry.register(new ShowProductImagesTool(deps.productCatalog));
 
   return registry;
 }

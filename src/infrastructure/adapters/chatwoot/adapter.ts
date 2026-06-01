@@ -81,6 +81,33 @@ export class ChatwootAdapter implements MessagingChannel {
 
   async send(params: SendParams): Promise<Result<string, SendError>> {
     const client = new ChatwootClient(params.apiUrl, params.apiToken);
+
+    if (params.attachments?.length) {
+      for (const att of params.attachments) {
+        const result = await client.sendMessageWithAttachment(
+          params.accountId,
+          params.conversationId,
+          "",
+          att.url,
+          att.filename,
+        );
+        if (!result.ok) {
+          if (result.status === 429) {
+            return Err({ code: "RATE_LIMITED", message: result.error });
+          }
+          logger.warn("Attachment send failed, continuing", { url: att.url, error: result.error });
+        }
+      }
+
+      if (!params.content) {
+        return Ok("attachments_sent");
+      }
+    }
+
+    return this.sendText(client, params);
+  }
+
+  private async sendText(client: ChatwootClient, params: SendParams): Promise<Result<string, SendError>> {
     let lastError = "";
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
