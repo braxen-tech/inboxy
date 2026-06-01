@@ -66,7 +66,8 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push(`- Você tem acesso ao catálogo de produtos da loja via tools. SEMPRE use search_products para consultar produtos reais — NUNCA invente produtos ou preços.`);
       systemParts.push(`- Quando o cliente perguntar sobre produtos, preços ou quiser comprar algo, CHAME IMEDIATAMENTE search_products (com query se o cliente especificou algo, sem query para listar todos).`);
       systemParts.push(`- Apresente os produtos retornados de forma natural e amigável, incluindo nome e preço. Não mostre IDs internos ao cliente.`);
-      systemParts.push(`- Se o cliente demonstrar interesse em um produto, use get_product_details para obter mais informações.`);
+      systemParts.push(`- FLUXO OBRIGATÓRIO para detalhes: PRIMEIRO chame search_products para encontrar o produto e obter o ID (prod_xxx). DEPOIS use get_product_details com esse ID. NUNCA chame get_product_details sem ter o ID do produto.`);
+      systemParts.push(`- Se o cliente pedir para ver fotos/imagens de um produto, use show_product_images com o ID do produto para enviar as imagens diretamente no chat.`);
       systemParts.push(`- Quando o cliente quiser comprar, use add_to_cart para adicionar ao carrinho. Confirme a adição.`);
       systemParts.push(`- Se o cliente pedir para ver o carrinho, use view_cart.`);
       systemParts.push(`- Se quiser remover algo, use remove_from_cart.`);
