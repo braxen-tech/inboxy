@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { ensureUserOrganization } from "@/lib/ensure-user-organization";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await ensureUserOrganization(user);
+      }
       return response;
     }
   }

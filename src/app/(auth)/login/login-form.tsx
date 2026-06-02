@@ -14,9 +14,10 @@ type Mode = "login" | "signup";
 interface LoginFormProps {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  authCallbackUrl: string;
 }
 
-export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
+export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: LoginFormProps) {
   const router = useRouter();
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
@@ -40,7 +41,7 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: authCallbackUrl },
       });
 
       if (signUpError) {

@@ -41,6 +41,11 @@ supabase db push
 
 ## Creating a New Organization
 
+Self-service signup now auto-provisions an organization for each new auth user (migration `00006_auto_create_organization.sql`).
+Existing accounts without an org are backfilled on first login via `ensureUserOrganization`.
+
+The admin API remains available for onboarding with a custom slug/name or sending a magic link:
+
 ```bash
 curl -X POST https://your-domain.vercel.app/api/admin/organizations \
   -H "Content-Type: application/json" \
@@ -52,6 +57,7 @@ curl -X POST https://your-domain.vercel.app/api/admin/organizations \
   }'
 ```
 
+If the owner already exists, the API updates their organization instead of failing.
 The owner will receive a magic link email to access the dashboard.
 
 ## Monitoring

@@ -1,9 +1,11 @@
 import { MarketingHeader } from "@/components/marketing/marketing-header";
+import { getAuthCallbackUrl } from "@/lib/app-url";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const authCallbackUrl = getAuthCallbackUrl();
 
   if (
     !supabaseUrl.trim() ||
@@ -26,6 +28,10 @@ export default function LoginPage() {
   }
 
   return (
-    <LoginForm supabaseUrl={supabaseUrl.trim()} supabaseAnonKey={supabaseAnonKey.trim()} />
+    <LoginForm
+      supabaseUrl={supabaseUrl.trim()}
+      supabaseAnonKey={supabaseAnonKey.trim()}
+      authCallbackUrl={authCallbackUrl}
+    />
   );
 }
