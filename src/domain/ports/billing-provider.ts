@@ -1,22 +1,34 @@
-/**
- * BillingProvider port — reserved for v1.3 (Stripe integration).
- * Not implemented in MVP. Defined here for architectural reference.
- */
-
 import type { Result } from "../errors";
 import type { OrgId } from "../value-objects";
+import type { PlanId } from "@/lib/plans";
+
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid";
 
 export interface Subscription {
   id: string;
-  plan: string;
-  status: "active" | "past_due" | "canceled";
+  plan: PlanId;
+  status: SubscriptionStatus;
   messageQuota: number;
-  currentPeriodEnd: Date;
+  currentPeriodEnd: Date | null;
+  stripeCustomerId: string | null;
 }
 
-export type BillingError = { code: "CHECKOUT_FAILED" | "SUBSCRIPTION_NOT_FOUND"; message: string };
+export type BillingError = {
+  code: "CHECKOUT_FAILED" | "SUBSCRIPTION_NOT_FOUND" | "PORTAL_FAILED" | "NOT_CONFIGURED";
+  message: string;
+};
 
 export interface BillingProvider {
-  createCheckoutSession(orgId: OrgId, plan: string): Promise<Result<string, BillingError>>;
+  createCheckoutSession(
+    orgId: OrgId,
+    plan: PlanId,
+    customerEmail: string,
+  ): Promise<Result<string, BillingError>>;
   getSubscription(orgId: OrgId): Promise<Result<Subscription, BillingError>>;
+  createPortalSession(orgId: OrgId): Promise<Result<string, BillingError>>;
 }

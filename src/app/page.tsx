@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { LandingPage } from "@/components/marketing/landing-page";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { ensureUserOrganization } from "@/lib/ensure-user-organization";
+import { getOrgBySlug } from "@/lib/get-org";
+import { needsBillingSetup } from "@/lib/billing-setup";
 
 export default async function HomePage() {
   const supabase = await getServerClientFromCookies();
@@ -16,6 +18,10 @@ export default async function HomePage() {
   const org = await ensureUserOrganization(user);
 
   if (org?.slug) {
+    const fullOrg = await getOrgBySlug(org.slug);
+    if (fullOrg && needsBillingSetup(fullOrg)) {
+      redirect(`/${org.slug}/billing?setup=required`);
+    }
     redirect(`/${org.slug}/kb`);
   }
 

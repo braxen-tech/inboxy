@@ -4,8 +4,17 @@ import type { SecretStore } from "@/domain/ports";
 import type { MessageId, ConversationId } from "@/domain/value-objects";
 import { toOrgId, toCorrelationId } from "@/domain/value-objects";
 import { acquireConversationLock, releaseConversationLock } from "../services/conversation-lock";
+import { getMonthlyUsage } from "../services/monthly-usage";
+import { notifyQuotaExceeded } from "../services/quota-notification";
 import { incrementUsage } from "../services/usage-tracker";
+import { needsBillingSetup } from "@/lib/billing-setup";
+import {
+  QUOTA_HANDOFF_MESSAGE,
+  resolveEnabledToolsForOrg,
+} from "@/lib/plans";
 import { logger } from "@/lib/logger";
+
+const BILLING_ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
 interface Deps {
   db: SupabaseClient;
@@ -45,6 +54,11 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
+    if (needsBillingSetup(org)) {
+      logger.warn("Billing setup incomplete, bot skipping", ctx);
+      return;
+    }
+
     const { data: conversation } = await db
       .from("conversations")
       .select("*, contacts(*)")
@@ -58,6 +72,55 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     if (conversation.status === "human") {
       logger.info("Conversation in human mode, bot skipping", ctx);
+      return;
+    }
+
+    const subscriptionStatus = org.subscription_status ?? "trialing";
+    if (!BILLING_ACTIVE_STATUSES.has(subscriptionStatus)) {
+      logger.warn("Subscription not active, bot skipping", { ...ctx, subscriptionStatus });
+      return;
+    }
+
+    const messageQuota = org.message_quota ?? 500;
+    const monthlyUsage = await getMonthlyUsage(db, orgId);
+
+    if (monthlyUsage.messagesOut >= messageQuota) {
+      await db
+        .from("conversations")
+        .update({ status: "human" })
+        .eq("id", conversationId);
+
+      let handoffToken: string | undefined;
+      try {
+        handoffToken = secretStore.decrypt(org.chatwoot_api_token);
+      } catch {
+        logger.error("Quota handoff: cannot decrypt Chatwoot token", ctx);
+      }
+
+      if (
+        handoffToken &&
+        org.chatwoot_account_id &&
+        conversation.chatwoot_conversation_id
+      ) {
+        await messagingChannel.send({
+          apiUrl: org.chatwoot_api_url,
+          apiToken: handoffToken,
+          accountId: org.chatwoot_account_id,
+          conversationId: conversation.chatwoot_conversation_id,
+          content: QUOTA_HANDOFF_MESSAGE,
+        });
+      }
+
+      await notifyQuotaExceeded(db, orgId, org.owner_user_id, {
+        messagesOut: monthlyUsage.messagesOut,
+        quota: messageQuota,
+      });
+
+      logger.warn("Quota exceeded, switching to human", {
+        ...ctx,
+        messagesOut: monthlyUsage.messagesOut,
+        quota: messageQuota,
+      });
       return;
     }
 
@@ -81,23 +144,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       createdAt: new Date(m.created_at as string),
     }));
 
-    const enabledToolNames = [...(org.tools_enabled ?? [])];
-    if (org.cal_status === "active" && org.cal_api_key && org.cal_event_type_id) {
-      const calToolNames = ["check_calendar_availability", "book_calendar_appointment"];
-      for (const name of calToolNames) {
-        if (!enabledToolNames.includes(name)) enabledToolNames.push(name);
-      }
-    }
-    if (org.stripe_status === "active" && org.stripe_secret_key) {
-      const stripeToolNames = [
-        "search_products", "get_product_details", "show_product_images",
-        "add_to_cart", "view_cart", "remove_from_cart", "create_checkout",
-      ];
-      for (const name of stripeToolNames) {
-        if (!enabledToolNames.includes(name)) enabledToolNames.push(name);
-      }
-    }
-
+    const enabledToolNames = resolveEnabledToolsForOrg(org);
     const tools = toolRegistry.getToolsForOrg(toOrgId(orgId), enabledToolNames);
 
     let calendarCtx: import("@/domain/ports").CalendarContext | undefined;

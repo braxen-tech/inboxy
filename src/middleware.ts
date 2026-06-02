@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import { needsBillingSetup } from "@/lib/billing-setup";
+
+const RESERVED_SLUGS = new Set(["login", "auth", "api"]);
+const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings"]);
 
 const PUBLIC_PATHS = [
   "/login",
@@ -54,6 +59,34 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length >= 1 && !RESERVED_SLUGS.has(segments[0])) {
+    const orgSlug = segments[0];
+    const section = segments[1];
+    const needsRedirect =
+      !section ||
+      (section && DASHBOARD_SECTIONS.has(section));
+
+    if (needsRedirect && section !== "billing") {
+      try {
+        const db = getAdminClient();
+        const { data: org } = await db
+          .from("organizations")
+          .select("id, subscription_id, owner_user_id")
+          .eq("slug", orgSlug)
+          .maybeSingle();
+
+        if (org && org.owner_user_id === user.id && needsBillingSetup(org)) {
+          const billingUrl = new URL(`/${orgSlug}/billing`, request.url);
+          billingUrl.searchParams.set("setup", "required");
+          return NextResponse.redirect(billingUrl);
+        }
+      } catch {
+        // Allow request through if billing check fails (e.g. missing env in edge)
+      }
+    }
   }
 
   return response;

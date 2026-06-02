@@ -9,6 +9,7 @@ import {
   Inbox,
   LogOut,
   Menu,
+  CreditCard,
   Plug,
   Settings,
   X,
@@ -28,6 +29,7 @@ const navItems = [
   { href: "kb", label: "Base de conhecimento", icon: BookOpen },
   { href: "agent", label: "Agente", icon: Bot },
   { href: "integrations", label: "Integrações", icon: Plug },
+  { href: "billing", label: "Assinatura", icon: CreditCard },
   { href: "settings", label: "Configurações", icon: Settings },
 ] as const;
 

@@ -39,6 +39,24 @@ vercel --prod
 supabase db push
 ```
 
+### Stripe Billing (assinatura Inboxy)
+
+Variáveis em Vercel (separadas da integração Stripe por org para vendas no chat):
+
+- `STRIPE_BILLING_SECRET_KEY` — secret key da conta Stripe da plataforma
+- `STRIPE_BILLING_WEBHOOK_SECRET` — signing secret do endpoint de billing
+- `STRIPE_PRICE_STARTER` / `STRIPE_PRICE_PROFESSIONAL` / `STRIPE_PRICE_BUSINESS` (opcional)
+
+No Stripe Dashboard → Webhooks, crie um endpoint apontando para:
+
+`https://inboxy.braxentech.com/api/webhooks/stripe-billing`
+
+Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`.
+
+Owners gerenciam plano em **Assinatura** (`/{orgSlug}/billing`). Quota de mensagens de saída/mês; ao estourar, conversas vão para `human` e o cliente recebe mensagem de transferência.
+
+**Onboarding:** após criar conta, o usuário é redirecionado para `/billing?setup=required` até concluir o Stripe Checkout (cartão obrigatório). Todos os planos usam `STRIPE_TRIAL_DAYS` (padrão 14) de trial antes da primeira cobrança.
+
 ## Creating a New Organization
 
 Self-service signup now auto-provisions an organization for each new auth user (migration `00006_auto_create_organization.sql`).
