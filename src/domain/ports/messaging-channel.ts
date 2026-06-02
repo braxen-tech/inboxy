@@ -23,11 +23,14 @@ export interface SendParams {
   conversationId: number;
   content: string;
   attachments?: Attachment[];
+  /** When set, message is sent as Chatwoot AgentBot (requires bot access token). */
+  agentBotId?: number;
 }
 
 export type SendError = {
-  code: "RATE_LIMITED" | "API_ERROR" | "NETWORK_ERROR";
+  code: "RATE_LIMITED" | "API_ERROR" | "NETWORK_ERROR" | "UNAUTHORIZED";
   message: string;
+  httpStatus?: number;
 };
 
 export type WebhookError = {

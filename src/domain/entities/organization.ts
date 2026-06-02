@@ -19,6 +19,8 @@ export interface Organization {
   chatwootApiToken: string | null;
   chatwootAccountId: string | null;
   chatwootWebhookSecret: string | null;
+  chatwootAgentBotId: string | null;
+  chatwootAgentBotWebhookSecret: string | null;
   chatwootStatus: ChatwootStatus;
 
   calApiKey: string | null;

@@ -14,15 +14,15 @@ import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
 
 // --- Chatwoot ---
 
-const chatwootSchema = z.object({
+const chatwootConnectSchema = z.object({
   orgSlug: z.string().min(1),
   apiUrl: z.string().min(1).max(512),
   accountId: z.string().min(1).max(32),
   apiToken: z.string().min(5).max(8000),
 });
 
-export async function saveChatwootCredentials(raw: z.infer<typeof chatwootSchema>) {
-  const parsed = chatwootSchema.safeParse(raw);
+export async function saveChatwootCredentials(raw: z.infer<typeof chatwootConnectSchema>) {
+  const parsed = chatwootConnectSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
   }
@@ -37,7 +37,7 @@ export async function saveChatwootCredentials(raw: z.infer<typeof chatwootSchema
 
   const { data: org, error: orgErr } = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("slug", orgSlug)
     .maybeSingle();
 
@@ -51,14 +51,13 @@ export async function saveChatwootCredentials(raw: z.infer<typeof chatwootSchema
   }
 
   const secretStore = new AesSecretStore(key);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   const result = await connectChatwoot(supabase, secretStore, {
     orgId: org.id,
+    orgName: (org.name as string) ?? orgSlug,
     apiUrl,
     apiToken,
     accountId,
-    appUrl,
   });
 
   if (!result.ok) {
@@ -66,7 +65,14 @@ export async function saveChatwootCredentials(raw: z.infer<typeof chatwootSchema
   }
 
   revalidatePath(`/${orgSlug}/integrations`);
-  return { success: true as const };
+  return {
+    success: true as const,
+    agentBotWebhookUrl: result.value.agentBotWebhookUrl,
+    botId: result.value.botId,
+    hasBotAccessToken: result.value.hasBotAccessToken,
+    linkedInboxes: result.value.linkedInboxes,
+    failedInboxes: result.value.failedInboxes,
+  };
 }
 
 export async function disconnectChatwootAction(orgSlug: string) {

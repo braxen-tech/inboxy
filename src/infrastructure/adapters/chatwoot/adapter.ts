@@ -57,6 +57,10 @@ export class ChatwootAdapter implements MessagingChannel {
       return Err({ code: "IGNORED_EVENT", message: "Ignored: not an incoming message" });
     }
 
+    if (payload.sender?.type === "user") {
+      return Err({ code: "IGNORED_EVENT", message: "Ignored: agent message" });
+    }
+
     if (payload.private) {
       return Err({ code: "IGNORED_EVENT", message: "Ignored: private note" });
     }
@@ -111,7 +115,12 @@ export class ChatwootAdapter implements MessagingChannel {
     let lastError = "";
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const result = await client.sendMessage(params.accountId, params.conversationId, params.content);
+      const result = await client.sendMessage(
+        params.accountId,
+        params.conversationId,
+        params.content,
+        params.agentBotId != null ? { agentBotId: params.agentBotId } : undefined,
+      );
 
       if (result.ok) {
         return Ok(String(result.data.id));
@@ -120,11 +129,15 @@ export class ChatwootAdapter implements MessagingChannel {
       lastError = result.error;
 
       if (result.status === 429) {
-        return Err({ code: "RATE_LIMITED", message: lastError });
+        return Err({ code: "RATE_LIMITED", message: lastError, httpStatus: 429 });
+      }
+
+      if (result.status === 401) {
+        return Err({ code: "UNAUTHORIZED", message: lastError, httpStatus: 401 });
       }
 
       if (result.status >= 400 && result.status < 500 && result.status !== 429) {
-        return Err({ code: "API_ERROR", message: lastError });
+        return Err({ code: "API_ERROR", message: lastError, httpStatus: result.status });
       }
 
       const delay = RETRY_BASE_MS * Math.pow(2, attempt);

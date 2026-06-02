@@ -8,10 +8,14 @@ import { getMonthlyUsage } from "../services/monthly-usage";
 import { notifyQuotaExceeded } from "../services/quota-notification";
 import { incrementUsage } from "../services/usage-tracker";
 import { needsBillingSetup } from "@/lib/billing-setup";
+import { isBotQueueStatus } from "@/lib/conversation-status";
 import {
   QUOTA_HANDOFF_MESSAGE,
   resolveEnabledToolsForOrg,
 } from "@/lib/plans";
+import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
+import { handoffConversationToHuman } from "@/application/services/conversation-handoff";
+import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
 import { logger } from "@/lib/logger";
 
 const BILLING_ACTIVE_STATUSES = new Set(["active", "trialing"]);
@@ -70,8 +74,11 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
-    if (conversation.status === "human") {
-      logger.info("Conversation in human mode, bot skipping", ctx);
+    if (!isBotQueueStatus(conversation.status)) {
+      logger.info("Conversation not in bot queue, skipping", {
+        ...ctx,
+        status: conversation.status,
+      });
       return;
     }
 
@@ -85,11 +92,6 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     const monthlyUsage = await getMonthlyUsage(db, orgId);
 
     if (monthlyUsage.messagesOut >= messageQuota) {
-      await db
-        .from("conversations")
-        .update({ status: "human" })
-        .eq("id", conversationId);
-
       let handoffToken: string | undefined;
       try {
         handoffToken = secretStore.decrypt(org.chatwoot_api_token);
@@ -97,11 +99,29 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
         logger.error("Quota handoff: cannot decrypt Chatwoot token", ctx);
       }
 
-      if (
-        handoffToken &&
-        org.chatwoot_account_id &&
-        conversation.chatwoot_conversation_id
-      ) {
+      if (handoffToken && org.chatwoot_account_id && conversation.chatwoot_conversation_id) {
+        let botHandoffToken: string | null = null;
+        if (org.chatwoot_agent_bot_access_token) {
+          try {
+            botHandoffToken = secretStore.decrypt(org.chatwoot_agent_bot_access_token);
+          } catch {
+            /* use admin toggle only */
+          }
+        }
+        await handoffConversationToHuman({
+          db,
+          orgId,
+          conversationId,
+          chatwoot: {
+            apiUrl: org.chatwoot_api_url,
+            adminToken: handoffToken,
+            botToken: botHandoffToken,
+            accountId: org.chatwoot_account_id,
+            conversationId: conversation.chatwoot_conversation_id,
+          },
+          logContext: { ...ctx, trigger: "quota" },
+        });
+
         await messagingChannel.send({
           apiUrl: org.chatwoot_api_url,
           apiToken: handoffToken,
@@ -109,6 +129,8 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
           conversationId: conversation.chatwoot_conversation_id,
           content: QUOTA_HANDOFF_MESSAGE,
         });
+      } else {
+        await db.from("conversations").update({ status: "open" }).eq("id", conversationId);
       }
 
       await notifyQuotaExceeded(db, orgId, org.owner_user_id, {
@@ -116,7 +138,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
         quota: messageQuota,
       });
 
-      logger.warn("Quota exceeded, switching to human", {
+      logger.warn("Quota exceeded, switching to open (human)", {
         ...ctx,
         messagesOut: monthlyUsage.messagesOut,
         quota: messageQuota,
@@ -164,9 +186,18 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
     if (org.chatwoot_status === "active" && org.chatwoot_api_token && org.chatwoot_account_id) {
+      let botAccessToken: string | null = null;
+      if (org.chatwoot_agent_bot_access_token) {
+        try {
+          botAccessToken = secretStore.decrypt(org.chatwoot_agent_bot_access_token);
+        } catch {
+          logger.warn("Cannot decrypt bot token for handoff tool", ctx);
+        }
+      }
       chatwootCtx = {
         apiUrl: org.chatwoot_api_url,
         apiToken: secretStore.decrypt(org.chatwoot_api_token),
+        botAccessToken,
         accountId: org.chatwoot_account_id,
         conversationId: conversation.chatwoot_conversation_id,
       };
@@ -219,28 +250,110 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
-    let apiToken: string;
-    try {
-      apiToken = secretStore.decrypt(org.chatwoot_api_token);
-    } catch {
+    const agentBotConfigured = !!org.chatwoot_agent_bot_id;
+    let sendToken: string | null = null;
+    if (org.chatwoot_agent_bot_access_token) {
+      try {
+        sendToken = secretStore.decrypt(org.chatwoot_agent_bot_access_token);
+      } catch {
+        logger.warn("Cannot decrypt agent bot token", ctx);
+      }
+    }
+
+    if (agentBotConfigured && !sendToken) {
       logger.error(
-        "Cannot decrypt Chatwoot API token — reconnect in Integrações (ENCRYPTION_KEY may have changed)",
+        "Agent Bot configurado sem access_token — reconecte Chatwoot em Integrações",
         ctx,
       );
-      await db
-        .from("messages")
-        .update({ status: "failed" })
-        .eq("id", messageId);
+      await db.from("messages").update({ status: "failed" }).eq("id", messageId);
       return;
     }
 
-    const sendResult = await messagingChannel.send({
+    const usedBotToken = !!sendToken;
+    if (!sendToken && org.chatwoot_api_token) {
+      try {
+        sendToken = secretStore.decrypt(org.chatwoot_api_token);
+      } catch {
+        logger.error(
+          "Cannot decrypt Chatwoot API token — reconnect in Integrações (ENCRYPTION_KEY may have changed)",
+          ctx,
+        );
+        await db
+          .from("messages")
+          .update({ status: "failed" })
+          .eq("id", messageId);
+        return;
+      }
+    }
+    if (!sendToken) {
+      logger.error("No Chatwoot token available for send", ctx);
+      await db.from("messages").update({ status: "failed" }).eq("id", messageId);
+      return;
+    }
+
+    const { data: statusRow } = await db
+      .from("conversations")
+      .select("status")
+      .eq("id", conversationId)
+      .single();
+
+    if (
+      usedBotToken &&
+      isBotQueueStatus(statusRow?.status ?? conversation.status) &&
+      org.chatwoot_api_url &&
+      org.chatwoot_api_token
+    ) {
+      try {
+        const adminToken = secretStore.decrypt(org.chatwoot_api_token);
+        const cw = new ChatwootClient(org.chatwoot_api_url, adminToken);
+        await cw.toggleConversationStatus(
+          org.chatwoot_account_id,
+          conversation.chatwoot_conversation_id,
+          "pending",
+        );
+      } catch (err) {
+        logger.warn("Could not set Chatwoot conversation to pending before bot reply", {
+          ...ctx,
+          error: String(err),
+        });
+      }
+    }
+
+    const agentBotId =
+      usedBotToken && org.chatwoot_agent_bot_id
+        ? Number(org.chatwoot_agent_bot_id)
+        : undefined;
+
+    logger.info("Sending Chatwoot reply", { ...ctx, usedBotToken, agentBotConfigured, agentBotId });
+
+    const sendParams = {
       apiUrl: org.chatwoot_api_url,
-      apiToken,
+      apiToken: sendToken,
       accountId: org.chatwoot_account_id,
       conversationId: conversation.chatwoot_conversation_id,
       content: reply,
-    });
+      agentBotId,
+    };
+
+    let sendResult = await messagingChannel.send(sendParams);
+
+    if (
+      !sendResult.ok &&
+      sendResult.error.code === "UNAUTHORIZED" &&
+      usedBotToken &&
+      org.chatwoot_agent_bot_id &&
+      org.chatwoot_api_token
+    ) {
+      const freshToken = await regenerateAndStoreBotToken(db, secretStore, orgId, {
+        chatwoot_api_url: org.chatwoot_api_url,
+        chatwoot_api_token: org.chatwoot_api_token,
+        chatwoot_account_id: org.chatwoot_account_id,
+        chatwoot_agent_bot_id: org.chatwoot_agent_bot_id,
+      }, ctx);
+      if (freshToken) {
+        sendResult = await messagingChannel.send({ ...sendParams, apiToken: freshToken });
+      }
+    }
 
     if (!sendResult.ok) {
       logger.error("Send failed", { ...ctx, error: sendResult.error });
@@ -263,6 +376,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
         outputTokens,
         cacheReadTokens: agentResult.value.cacheReadTokens,
         cacheCreationTokens: agentResult.value.cacheCreationTokens,
+        sentAsBot: usedBotToken,
       },
       correlation_id: correlationId,
     });

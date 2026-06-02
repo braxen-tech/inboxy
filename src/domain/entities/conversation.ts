@@ -1,6 +1,6 @@
 import type { ContactId, ConversationId, OrgId } from "../value-objects";
 
-export type ConversationStatus = "active" | "human" | "closed";
+export type ConversationStatus = "pending" | "open" | "closed";
 
 export interface Conversation {
   id: ConversationId;

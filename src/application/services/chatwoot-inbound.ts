@@ -1,0 +1,212 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { InboundMessage } from "@/domain/ports";
+import { after } from "next/server";
+import {
+  assertInngestEventKeyConfigured,
+  inngest,
+} from "@/infrastructure/events/inngest-client";
+import { runProcessIncomingMessageJobSafe } from "@/application/services/process-message-job";
+import { incrementUsage } from "@/application/services/usage-tracker";
+import { isBotQueueStatus, type ConversationStatus } from "@/lib/conversation-status";
+import { logger } from "@/lib/logger";
+import { randomUUID } from "node:crypto";
+
+function chatwootUsesInngestQueue(): boolean {
+  return process.env.CHATWOOT_USE_INNGEST === "true";
+}
+
+export async function syncConversationStatusByChatwootId(
+  db: SupabaseClient,
+  orgId: string,
+  chatwootConversationId: number,
+  status: ConversationStatus,
+): Promise<void> {
+  const { error } = await db
+    .from("conversations")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("organization_id", orgId)
+    .eq("chatwoot_conversation_id", chatwootConversationId);
+
+  if (error) {
+    logger.warn("Failed to sync conversation status", {
+      orgId,
+      chatwootConversationId,
+      status,
+      error: error.message,
+    });
+  }
+}
+
+export async function processChatwootInboundMessage(
+  db: SupabaseClient,
+  orgId: string,
+  msg: InboundMessage,
+  options: {
+    initialConversationStatus?: ConversationStatus | null;
+    requirePending?: boolean;
+    /** When true, enqueue if Supabase status is pending even if Chatwoot reports open (desync). */
+    trustDbBotQueue?: boolean;
+  } = {},
+): Promise<void> {
+  const correlationId = randomUUID();
+  const ctx = { correlationId, externalMessageId: msg.externalMessageId, orgId };
+
+  const { data: existing } = await db
+    .from("processed_webhook_events")
+    .select("event_id")
+    .eq("event_id", `cw:${msg.externalMessageId}`)
+    .maybeSingle();
+
+  if (existing) {
+    logger.info("Duplicate chatwoot webhook event, skipping", ctx);
+    return;
+  }
+
+  const contactIdentifier = msg.senderPhone ?? msg.senderEmail ?? `cw:${msg.externalMessageId}`;
+  const { data: contact } = await db
+    .from("contacts")
+    .upsert(
+      {
+        organization_id: orgId,
+        phone: contactIdentifier,
+        profile_name: msg.senderName,
+        name: msg.senderName,
+      },
+      { onConflict: "organization_id,phone" },
+    )
+    .select("id")
+    .single();
+
+  if (!contact) {
+    logger.error("Contact upsert failed", ctx);
+    return;
+  }
+
+  const defaultStatus: ConversationStatus =
+    options.initialConversationStatus && isBotQueueStatus(options.initialConversationStatus)
+      ? "pending"
+      : options.initialConversationStatus ?? "pending";
+
+  let { data: conversation } = await db
+    .from("conversations")
+    .select("id, status")
+    .eq("organization_id", orgId)
+    .eq("chatwoot_conversation_id", msg.chatwootConversationId)
+    .neq("status", "closed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!conversation) {
+    const { data: newConv } = await db
+      .from("conversations")
+      .insert({
+        organization_id: orgId,
+        contact_id: contact.id,
+        chatwoot_conversation_id: msg.chatwootConversationId,
+        status: defaultStatus,
+        last_message_at: new Date().toISOString(),
+        last_inbound_at: new Date().toISOString(),
+      })
+      .select("id, status")
+      .single();
+    conversation = newConv;
+  } else {
+    await db
+      .from("conversations")
+      .update({
+        last_message_at: new Date().toISOString(),
+        last_inbound_at: new Date().toISOString(),
+      })
+      .eq("id", conversation.id);
+
+    if (
+      options.initialConversationStatus &&
+      conversation.status !== options.initialConversationStatus
+    ) {
+      await db
+        .from("conversations")
+        .update({ status: options.initialConversationStatus })
+        .eq("id", conversation.id);
+      conversation = { ...conversation, status: options.initialConversationStatus };
+    }
+  }
+
+  if (!conversation) {
+    logger.error("Conversation upsert failed", ctx);
+    return;
+  }
+
+  const { data: insertedMsg, error: msgError } = await db
+    .from("messages")
+    .insert({
+      organization_id: orgId,
+      conversation_id: conversation.id,
+      direction: "inbound",
+      content: msg.content,
+      external_message_id: `cw:${msg.externalMessageId}`,
+      status: "received",
+      correlation_id: correlationId,
+    })
+    .select("id")
+    .single();
+
+  if (msgError?.code === "23505") {
+    logger.info("Duplicate message, skipping", ctx);
+    return;
+  }
+
+  if (!insertedMsg) {
+    logger.error("Message insert failed", { ...ctx, error: msgError });
+    return;
+  }
+
+  await db.from("processed_webhook_events").insert({
+    event_id: `cw:${msg.externalMessageId}`,
+    source: "chatwoot",
+  });
+
+  await incrementUsage(db, orgId, { messagesIn: 1 });
+
+  const cwAllowsBot =
+    !options.initialConversationStatus || isBotQueueStatus(options.initialConversationStatus);
+
+  const dbAllowsBot = isBotQueueStatus(conversation.status);
+  const skipForCwPending =
+    options.requirePending && !cwAllowsBot && !options.trustDbBotQueue;
+
+  if (!dbAllowsBot || skipForCwPending) {
+    logger.info("Conversation not in bot queue, skipping agent", {
+      ...ctx,
+      conversationId: conversation.id,
+      status: conversation.status,
+    });
+    return;
+  }
+
+  const job = {
+    orgId,
+    conversationId: conversation.id,
+    messageId: insertedMsg.id,
+    correlationId,
+  };
+
+  if (chatwootUsesInngestQueue()) {
+    assertInngestEventKeyConfigured();
+    await inngest.send({ name: "message.received", data: job });
+    logger.info("Chatwoot inbound enqueued (Inngest)", {
+      ...ctx,
+      conversationId: conversation.id,
+    });
+    return;
+  }
+
+  after(async () => {
+    await runProcessIncomingMessageJobSafe(job);
+  });
+
+  logger.info("Chatwoot inbound scheduled (inline after webhook)", {
+    ...ctx,
+    conversationId: conversation.id,
+  });
+}

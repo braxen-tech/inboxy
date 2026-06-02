@@ -35,7 +35,7 @@ describe("ChatwootAdapter.send with attachments", () => {
     const result = await adapter.send(baseParams);
 
     expect(result.ok).toBe(true);
-    expect(mockSendMessage).toHaveBeenCalledWith("1", 42, "Here is the product");
+    expect(mockSendMessage).toHaveBeenCalledWith("1", 42, "Here is the product", undefined);
     expect(mockSendMessageWithAttachment).not.toHaveBeenCalled();
   });
 
@@ -54,7 +54,7 @@ describe("ChatwootAdapter.send with attachments", () => {
     expect(mockSendMessageWithAttachment).toHaveBeenCalledTimes(2);
     expect(mockSendMessageWithAttachment).toHaveBeenCalledWith("1", 42, "", "https://img.stripe.com/a.jpg", undefined);
     expect(mockSendMessageWithAttachment).toHaveBeenCalledWith("1", 42, "", "https://img.stripe.com/b.jpg", "product-b.jpg");
-    expect(mockSendMessage).toHaveBeenCalledWith("1", 42, "Here is the product");
+    expect(mockSendMessage).toHaveBeenCalledWith("1", 42, "Here is the product", undefined);
   });
 
   it("sends only attachments when content is empty", async () => {

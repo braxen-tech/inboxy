@@ -1,13 +1,5 @@
 import { inngest } from "@/infrastructure/events/inngest-client";
-import { processIncomingMessage } from "@/application/use-cases/process-incoming-message";
-import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
-import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
-import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
-import { StripeCatalogAdapter, StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
-import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
-import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
-import { logger } from "@/lib/logger";
+import { runProcessIncomingMessageJobSafe } from "@/application/services/process-message-job";
 
 export const processMessage = inngest.createFunction(
   {
@@ -24,38 +16,11 @@ export const processMessage = inngest.createFunction(
       correlationId: string;
     };
 
-    try {
-      const db = getAdminClient();
-      const messagingChannel = new ChatwootAdapter();
-      const agentRunner = new ClaudeAdapter();
-      const toolRegistry = createToolRegistry({
-        calendarProvider: new CalComAdapter(),
-        productCatalog: new StripeCatalogAdapter(),
-        paymentGateway: new StripePaymentAdapter(),
-        db,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      });
-      const secretStore = new AesSecretStore(process.env.ENCRYPTION_KEY!);
-
-      await processIncomingMessage(
-        { db, agentRunner, messagingChannel, toolRegistry, secretStore },
-        { orgId, conversationId, messageId, correlationId },
-      );
-    } catch (error) {
-      logger.error("Inngest process-incoming-message failed", {
-        error: String(error),
-        orgId,
-        conversationId,
-        correlationId,
-      });
-
-      const db = getAdminClient();
-      await db.from("webhook_failures").insert({
-        payload: { orgId, conversationId, messageId, correlationId },
-        error: String(error),
-      });
-
-      throw error;
-    }
+    await runProcessIncomingMessageJobSafe({
+      orgId,
+      conversationId,
+      messageId,
+      correlationId,
+    });
   },
 );

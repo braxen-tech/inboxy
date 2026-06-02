@@ -1,4 +1,5 @@
 import { getOrgBySlug } from "@/lib/get-org";
+import { buildAgentBotWebhookUrl } from "@/lib/chatwoot-agent-bot";
 import { notFound } from "next/navigation";
 import { IntegrationCard } from "./integration-card";
 import { ChatwootCredentialsForm } from "./chatwoot-credentials-form";
@@ -54,6 +55,10 @@ export default async function IntegrationsPage({ params }: Props) {
   if (!org) notFound();
 
   const isChatwootActive = org.chatwoot_status === "active";
+  const agentBotWebhookUrl =
+    org.chatwoot_agent_bot_webhook_secret != null
+      ? buildAgentBotWebhookUrl(org.chatwoot_agent_bot_webhook_secret)
+      : null;
   const isCalActive = org.cal_status === "active";
   const isStripeActive = org.stripe_status === "active";
 
@@ -72,7 +77,9 @@ export default async function IntegrationsPage({ params }: Props) {
           description="Receba e responda mensagens de qualquer canal via Chatwoot"
           summary={
             isChatwootActive
-              ? `Account: ${org.chatwoot_account_id} · ${org.chatwoot_api_url}`
+              ? org.chatwoot_agent_bot_id
+                ? `Bot ${org.chatwoot_agent_bot_id} · Account ${org.chatwoot_account_id}`
+                : `Account ${org.chatwoot_account_id}`
               : "Pendente de configuração"
           }
           icon={<ChatwootIcon />}
@@ -83,6 +90,9 @@ export default async function IntegrationsPage({ params }: Props) {
             isConnected={isChatwootActive}
             savedApiUrl={org.chatwoot_api_url ?? ""}
             savedAccountId={org.chatwoot_account_id ?? ""}
+            savedAgentBotId={org.chatwoot_agent_bot_id ?? ""}
+            agentBotWebhookUrl={agentBotWebhookUrl}
+            hasBotAccessToken={!!org.chatwoot_agent_bot_access_token}
           />
         </IntegrationCard>
 

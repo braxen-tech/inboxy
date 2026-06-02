@@ -8,15 +8,52 @@
 3. Chatwoot instance available (Cloud or self-hosted)
 4. Environment variables set in Vercel
 
-### Chatwoot (conexão via dashboard)
+### Chatwoot + Agent Bot (handoff IA ↔ humano)
 
-1. No Chatwoot, vá em **Settings > Profile** e copie seu **Access Token**.
-2. Identifique o **Account ID** na URL do Chatwoot (ex: `/app/accounts/1/...` → ID = 1).
-3. No dashboard da nossa app, abra **Integrações** → card Chatwoot → cole a URL, Account ID e Access Token.
-4. Ao salvar, o sistema valida o token, cria o webhook automaticamente no Chatwoot e habilita o processamento de mensagens.
-5. O Chatwoot funciona com qualquer canal configurado (WhatsApp, Email, Instagram, Telegram, Web widget, etc).
+**Status unificados** (Chatwoot e Supabase `conversations.status`):
+
+| Status | Quem responde |
+|--------|----------------|
+| `pending` | IA (Inboxy / fila do bot) |
+| `open` | Atendente humano |
+| `closed` | Encerrada (sem bot) |
+
+Handoff no Chatwoot: altere a conversa entre **pending** e **open**; o webhook `conversation_updated` sincroniza no Supabase.
+
+#### Setup (cliente) — um passo na UI
+
+1. **Integrações → Chatwoot:** URL da instância, Account ID e **API Access Token de administrador** → **Conectar Chatwoot**.
+2. O Inboxy automaticamente:
+   - Cria o Agent Bot (`{nome da org} - Inboxy`) com Outgoing URL gerada
+   - Vincula o bot a **todos** os inboxes existentes (`set_agent_bot`)
+   - Registra webhook de conta só com `inbox_created` (novos canais são vinculados automaticamente)
+   - Remove webhooks de conta antigos com `message_created` (evita duplicar processamento)
+
+Documentação Chatwoot: [How to use Agent bots](https://www.chatwoot.com/hc/user-guide/articles/1677497472-how-to-use-agent-bots).
+
+Endpoints:
+
+- Mensagens (Agent Bot): `POST /api/webhooks/chatwoot/agent-bot?secret=<agent_bot_secret>`
+- Novos inboxes: `POST /api/webhooks/chatwoot/account-events?secret=<account_webhook_secret>`
 
 O token é criptografado com `ENCRYPTION_KEY` (64 caracteres hex). Se rotacionar a chave, será necessário reconectar.
+
+#### Migrar org já conectada (fluxo manual antigo)
+
+1. Aplicar migration `00008_agent_bot.sql` (`supabase db push`).
+2. No Inboxy: **desconectar** e **reconectar** Chatwoot (cria bot novo e re-vincula inboxes).
+3. Bots criados manualmente no Chatwoot podem ser removidos (órfãos).
+4. Teste E2E:
+   - Conversa em **pending** → mensagem do cliente → IA responde.
+   - Mudar para **open** no Chatwoot → nova mensagem → IA **não** responde.
+   - Voltar para **pending** → IA responde de novo.
+   - Estourar quota de mensagens → conversa vai para **open** nos dois lados + mensagem de transferência.
+   - Cliente pede humano → IA chama tool `transfer_to_human` → conversa **open** + sem assignee (humano no Chatwoot).
+   - No painel: filtro **Open** → aba **Unassigned** ou **All** (não só Mine). Conversas atribuídas a você aparecem em **Mine**.
+
+#### Legado (sem Agent Bot automático)
+
+Orgs antigas com `chatwoot_agent_bot_id` vazio ainda podem usar `POST /api/webhooks/chatwoot?secret=...` até reconectar.
 
 ### Cal.com (agendamento pela IA)
 
@@ -53,7 +90,7 @@ No Stripe Dashboard → Webhooks, crie um endpoint apontando para:
 
 Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`.
 
-Owners gerenciam plano em **Assinatura** (`/{orgSlug}/billing`). Quota de mensagens de saída/mês; ao estourar, conversas vão para `human` e o cliente recebe mensagem de transferência.
+Owners gerenciam plano em **Assinatura** (`/{orgSlug}/billing`). Quota de mensagens de saída/mês; ao estourar, conversas vão para `open` (humano) no Chatwoot e no Supabase, e o cliente recebe mensagem de transferência.
 
 **Onboarding:** após criar conta, o usuário é redirecionado para `/billing?setup=required` até concluir o Stripe Checkout (cartão obrigatório). Todos os planos usam `STRIPE_TRIAL_DAYS` (padrão 14) de trial antes da primeira cobrança.
 
@@ -102,7 +139,12 @@ curl https://your-domain.vercel.app/api/health
 3. Check `webhook_failures` table for DLQ entries
 4. Verify org has `chatwoot_status = 'active'`
 5. Check `conversations` table — is the conversation locked? (stale locks expire after 60s)
-6. Verify the Chatwoot webhook is registered (Chatwoot > Settings > Integrations > Webhooks)
+6. Verify Agent Bot exists in Chatwoot (Settings → Bots) with Outgoing URL from Integrações
+7. New inbox: should auto-link via `inbox_created` webhook (check logs)
+8. Check `conversations.status` — only `pending` enqueues the agent; `open` = human handoff
+9. **Painel vazio com widget funcionando:** no Chatwoot, troque o filtro de status de **Open** para **Pending** — conversas do Agent Bot começam como `pending`
+10. **IA responde mas não como Agent Bot:** reconecte em Integrações (regenera `access_token` via API). Sem esse token, o Inboxy envia com o token de usuário e o painel não lista as conversas corretamente
+11. **Respostas ainda como “Braxen” (user):** por padrão o Chatwoot processa **inline** no Next.js (`CHATWOOT_USE_INNGEST` não definido). Se `CHATWOOT_USE_INNGEST=true`, o deploy/Inngest precisa estar na mesma versão do código. Reinicie `npm run dev` após mudanças
 
 ### Duplicate messages
 - System has triple idempotency: `external_message_id` UNIQUE, `processed_webhook_events`, Inngest event key

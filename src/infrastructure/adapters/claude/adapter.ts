@@ -60,6 +60,20 @@ export class ClaudeAdapter implements AgentRunner {
       }
     }
 
+    if (toolContext.chatwoot) {
+      systemParts.push("");
+      systemParts.push(`## Transferência para atendente humano`);
+      systemParts.push(
+        `- Se o cliente pedir para falar com uma pessoa, atendente humano, ou demonstrar frustração e quiser sair do assistente virtual, CHAME IMEDIATAMENTE a tool transfer_to_human.`,
+      );
+      systemParts.push(
+        `- Após transfer_to_human retornar sucesso, confirme ao cliente que um atendente assumirá em breve e NÃO continue tentando resolver o problema como bot.`,
+      );
+      systemParts.push(
+        `- Não use transfer_to_human para dúvidas simples que você pode responder com a base de conhecimento.`,
+      );
+    }
+
     if (toolContext.stripe) {
       systemParts.push("");
       systemParts.push(`## Instruções de vendas e catálogo`);

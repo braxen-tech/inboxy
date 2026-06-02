@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   PLANS,
+  CHATWOOT_HANDOFF_TOOL,
   resolveAllowedTools,
   resolveEnabledToolsForOrg,
   planFromStripePriceId,
@@ -40,6 +41,16 @@ describe("plans", () => {
     });
     expect(proConnected).toContain("create_checkout");
     expect(proConnected).toContain("book_calendar_appointment");
+  });
+
+  it("includes transfer_to_human when Chatwoot is active", () => {
+    const tools = resolveEnabledToolsForOrg({
+      subscription_plan: "starter",
+      chatwoot_status: "active",
+      chatwoot_api_token: "tok",
+      chatwoot_account_id: "1",
+    });
+    expect(tools).toContain(CHATWOOT_HANDOFF_TOOL);
   });
 
   it("maps stripe price id to plan", () => {

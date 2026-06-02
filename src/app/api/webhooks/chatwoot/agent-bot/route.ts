@@ -7,7 +7,6 @@ import {
 } from "@/application/services/chatwoot-inbound";
 import { logger } from "@/lib/logger";
 
-/** Legacy account webhook — used only when org has no Agent Bot configured */
 export async function POST(request: Request) {
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret") ?? "";
@@ -29,23 +28,17 @@ export async function POST(request: Request) {
 
   const { data: org } = await db
     .from("organizations")
-    .select("id, chatwoot_webhook_secret, chatwoot_agent_bot_id")
+    .select("id, chatwoot_agent_bot_webhook_secret")
     .eq("chatwoot_account_id", accountId)
     .eq("chatwoot_status", "active")
     .single();
 
-  if (!org) {
-    return NextResponse.json({ status: "ignored", reason: "unknown account" });
+  if (!org?.chatwoot_agent_bot_webhook_secret) {
+    return NextResponse.json({ status: "ignored", reason: "agent bot webhook not configured" });
   }
 
-  if (org.chatwoot_agent_bot_id) {
-    return NextResponse.json({
-      status: "ignored",
-      reason: "use agent bot webhook",
-    });
-  }
-
-  if (!org.chatwoot_webhook_secret || querySecret !== org.chatwoot_webhook_secret) {
+  if (querySecret !== org.chatwoot_agent_bot_webhook_secret) {
+    logger.warn("Agent bot webhook secret mismatch", { accountId });
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
 
@@ -70,12 +63,17 @@ export async function POST(request: Request) {
 
     await processChatwootInboundMessage(db, org.id, event.message, {
       initialConversationStatus: event.conversationStatus,
+      requirePending: true,
+      trustDbBotQueue: true,
     });
 
     return NextResponse.json({ status: "ok" });
   } catch (err) {
-    logger.error("Chatwoot account webhook error", { accountId, error: String(err) });
-    await db.from("webhook_failures").insert({ payload, error: String(err) });
+    logger.error("Agent bot webhook error", { accountId, error: String(err) });
+    await db.from("webhook_failures").insert({
+      payload,
+      error: String(err),
+    });
     return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 }

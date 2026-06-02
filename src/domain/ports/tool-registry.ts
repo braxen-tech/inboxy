@@ -15,7 +15,9 @@ export interface StripeContext {
 
 export interface ChatwootContext {
   apiUrl: string;
+  /** Admin API token */
   apiToken: string;
+  botAccessToken?: string | null;
   accountId: string;
   conversationId: number;
 }

@@ -77,6 +77,9 @@ export function planFromStripePriceId(priceId: string | null | undefined): PlanI
   return PRICE_TO_PLAN[priceId] ?? null;
 }
 
+/** Always available when Chatwoot is connected (not plan-gated). */
+export const CHATWOOT_HANDOFF_TOOL = "transfer_to_human";
+
 export const INTEGRATION_TOOLS: Record<PlanIntegration, string[]> = {
   cal: ["check_calendar_availability", "book_calendar_appointment"],
   stripe: [
@@ -101,6 +104,9 @@ export function resolveEnabledToolsForOrg(org: {
   cal_event_type_id?: string | null;
   stripe_status?: string | null;
   stripe_secret_key?: string | null;
+  chatwoot_status?: string | null;
+  chatwoot_api_token?: string | null;
+  chatwoot_account_id?: string | null;
   tools_enabled?: string[] | null;
 }): string[] {
   const planId = (org.subscription_plan ?? "starter") as PlanId;
@@ -121,6 +127,16 @@ export function resolveEnabledToolsForOrg(org: {
   for (const name of fromPlan) {
     if (!base.includes(name)) base.push(name);
   }
+
+  if (
+    org.chatwoot_status === "active" &&
+    org.chatwoot_api_token &&
+    org.chatwoot_account_id &&
+    !base.includes(CHATWOOT_HANDOFF_TOOL)
+  ) {
+    base.push(CHATWOOT_HANDOFF_TOOL);
+  }
+
   return base;
 }
 
