@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/sign-out-button";
 import { cn } from "@/lib/utils";
 
 interface DashboardShellProps {
@@ -117,16 +118,13 @@ function SidebarContent({
       <NavLinks orgSlug={orgSlug} pathname={pathname} onNavigate={onNavigate} />
 
       <div className="mt-auto border-t border-sidebar-border p-3">
-        <form action="/api/auth/signout" method="post">
-          <Button
-            type="submit"
-            variant="ghost"
-            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-          >
-            <LogOut className="size-4" aria-hidden />
-            Sair
-          </Button>
-        </form>
+        <SignOutButton
+          variant="ghost"
+          className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+        >
+          <LogOut className="size-4" aria-hidden />
+          Sair
+        </SignOutButton>
       </div>
     </>
   );

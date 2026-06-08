@@ -7,6 +7,11 @@ import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
+import {
+  captureServerEvent,
+  captureServerException,
+  shutdownPostHog,
+} from "@/lib/posthog-server";
 
 export interface ProcessMessageJobInput {
   orgId: string;
@@ -52,11 +57,14 @@ export async function runProcessIncomingMessageJobSafe(
       error: String(error),
       ...input,
     });
+    captureServerEvent("message_processing_failed", { ...input });
+    captureServerException(error, { ...input });
     const db = getAdminClient();
     await db.from("webhook_failures").insert({
       payload: input,
       error: String(error),
     });
+    await shutdownPostHog();
     throw error;
   }
 }

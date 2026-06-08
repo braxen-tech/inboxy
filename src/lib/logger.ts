@@ -1,3 +1,5 @@
+import { emitOtelLog } from "@/lib/otel-logger";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogContext {
@@ -22,6 +24,8 @@ function log(level: LogLevel, message: string, context?: LogContext) {
   } else {
     console.log(JSON.stringify(entry));
   }
+
+  emitOtelLog(level, message, context as Record<string, unknown> | undefined);
 }
 
 export const logger = {

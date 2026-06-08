@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,18 +47,31 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: Log
 
       if (signUpError) {
         setError(signUpError.message);
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(signUpError, { mode: "signup" });
+        }
       } else {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.capture("user_signed_up", { mode: "signup" });
+        }
         setConfirmMsg("Conta criada! Verifique seu email para confirmar o cadastro.");
       }
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
         setError(signInError.message);
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(signInError, { mode: "login" });
+        }
       } else {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY && data.user) {
+          posthog.identify(data.user.id, data.user.email ? { email: data.user.email } : undefined);
+          posthog.capture("user_signed_in", { mode: "login" });
+        }
         router.push("/");
         router.refresh();
       }
@@ -117,6 +131,7 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: Log
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
                   required
+                  data-sensitive
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}

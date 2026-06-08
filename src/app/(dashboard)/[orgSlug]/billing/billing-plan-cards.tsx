@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createCheckoutSessionAction, createPortalSessionAction } from "./actions";
@@ -37,10 +38,16 @@ export function BillingPlanCards({
 
   function subscribe(planId: PlanId) {
     setMessage(null);
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.capture("billing_checkout_started", { org_slug: orgSlug, plan_id: planId });
+    }
     startTransition(async () => {
       const r = await createCheckoutSessionAction(orgSlug, planId);
       if ("error" in r && r.error) {
         setMessage({ type: "err", text: r.error });
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(new Error(r.error), { org_slug: orgSlug, plan_id: planId });
+        }
         return;
       }
       if ("url" in r && r.url) {
@@ -52,10 +59,16 @@ export function BillingPlanCards({
   async function openPortal() {
     setMessage(null);
     setPortalPending(true);
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.capture("billing_portal_opened", { org_slug: orgSlug });
+    }
     const r = await createPortalSessionAction(orgSlug);
     setPortalPending(false);
     if ("error" in r && r.error) {
       setMessage({ type: "err", text: r.error });
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.captureException(new Error(r.error), { org_slug: orgSlug });
+      }
       return;
     }
     if ("url" in r && r.url) {

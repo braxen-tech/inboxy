@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,13 @@ export function CalComCredentialsForm({
       });
       if ("error" in r && r.error) {
         setMessage({ type: "err", text: r.error });
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(new Error(r.error), { org_slug: orgSlug, integration: "cal_com" });
+        }
       } else if ("success" in r && r.success) {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.capture("integration_connected", { org_slug: orgSlug, integration: "cal_com" });
+        }
         setMessage({ type: "ok", text: "Cal.com conectado com sucesso! A IA pode agora agendar consultas." });
         setApiKey("");
         router.refresh();
@@ -58,7 +65,13 @@ export function CalComCredentialsForm({
     const r = await disconnectCalComAction(orgSlug);
     if ("error" in r && r.error) {
       setMessage({ type: "err", text: r.error });
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.captureException(new Error(r.error), { org_slug: orgSlug, integration: "cal_com" });
+      }
     } else {
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.capture("integration_disconnected", { org_slug: orgSlug, integration: "cal_com" });
+      }
       setMessage({ type: "ok", text: "Cal.com desconectado." });
       setApiKey("");
       setEventTypeId("");
@@ -128,6 +141,7 @@ export function CalComCredentialsForm({
                 id="cal-api-key"
                 type="password"
                 value={apiKey}
+                data-sensitive
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="cal_live_..."
                 autoComplete="new-password"

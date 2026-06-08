@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateKnowledgeBase } from "./actions";
@@ -24,7 +25,13 @@ export function KbEditor({ orgId, orgSlug, initialValue }: Props) {
       const result = await updateKnowledgeBase(orgId, orgSlug, value);
       if (result.error) {
         setMessage({ type: "error", text: result.error });
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(new Error(result.error), { org_slug: orgSlug });
+        }
       } else {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.capture("kb_saved", { org_slug: orgSlug, content_length: value.length });
+        }
         setMessage({ type: "success", text: "Knowledge base salva com sucesso." });
       }
       setTimeout(() => setMessage(null), 3000);

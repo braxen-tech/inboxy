@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/sign-out-button";
 import { LandingPage } from "@/components/marketing/landing-page";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { ensureUserOrganization } from "@/lib/ensure-user-organization";
@@ -32,9 +32,7 @@ export default async function HomePage() {
         Sua conta está ativa (<code className="text-xs">{user.email}</code>), mas não conseguimos criar sua organização.
         Tente entrar novamente em alguns instantes ou entre em contato com o suporte.
       </p>
-      <form action="/api/auth/signout" method="post">
-        <Button variant="outline" type="submit">Sair</Button>
-      </form>
+      <SignOutButton variant="outline" />
     </div>
   );
 }

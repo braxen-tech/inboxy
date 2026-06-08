@@ -6,6 +6,7 @@ import {
   syncConversationStatusByChatwootId,
 } from "@/application/services/chatwoot-inbound";
 import { logger } from "@/lib/logger";
+import { captureServerException } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
   const url = new URL(request.url);
@@ -69,7 +70,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ status: "ok" });
   } catch (err) {
-    logger.error("Agent bot webhook error", { accountId, error: String(err) });
+    logger.error("Agent bot webhook error", { accountId, orgId: org.id, error: String(err) });
+    captureServerException(err, { orgId: org.id });
     await db.from("webhook_failures").insert({
       payload,
       error: String(err),

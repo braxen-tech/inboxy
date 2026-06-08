@@ -127,9 +127,10 @@ curl https://your-domain.vercel.app/api/health
 - View function runs, failures, and retry status at https://app.inngest.com
 - Failed messages go to `webhook_failures` table for manual replay
 
-### Sentry
-- Error tracking and performance monitoring
-- Set `SENTRY_DSN` env var to enable
+### PostHog
+- Product analytics, error tracking, session replay, logs, and AI observability
+- Set `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` in Vercel
+- Dashboard: https://us.posthog.com/project/458321/
 
 ## Troubleshooting
 

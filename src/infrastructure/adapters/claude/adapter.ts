@@ -134,6 +134,17 @@ export class ClaudeAdapter implements AgentRunner {
           messages,
           ...(hasTools ? { tools: aiTools, stopWhen: stepCountIs(MAX_STEPS_WITH_TOOLS) } : {}),
           maxOutputTokens: 1024,
+          experimental_telemetry: {
+            isEnabled: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY),
+            functionId: "inboxy-agent-reply",
+            metadata: {
+              posthog_distinct_id: `org:${params.orgId}`,
+              org_id: params.orgId,
+              conversation_id: toolContext.conversationId,
+              has_tools: String(hasTools),
+              model,
+            },
+          },
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("AGENT_TIMEOUT")), timeoutMs),

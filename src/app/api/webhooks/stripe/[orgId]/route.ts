@@ -4,6 +4,7 @@ import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe/payment-a
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 const paymentAdapter = new StripePaymentAdapter();
 const messagingAdapter = new ChatwootAdapter();
@@ -111,6 +112,7 @@ async function handleCheckoutCompleted(
   }
 
   logger.info("Order marked as paid", { ...ctx, orderId });
+  captureServerEvent("stripe_payment_received", { ...ctx, order_id: orderId });
 
   if (conversationId && org.chatwoot_status === "active" && org.chatwoot_api_token) {
     try {

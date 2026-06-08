@@ -17,6 +17,7 @@ import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { handoffConversationToHuman } from "@/application/services/conversation-handoff";
 import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
 import { logger } from "@/lib/logger";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 const BILLING_ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
@@ -141,6 +142,11 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       logger.warn("Quota exceeded, switching to open (human)", {
         ...ctx,
         messagesOut: monthlyUsage.messagesOut,
+        quota: messageQuota,
+      });
+      captureServerEvent("quota_exceeded_handoff", {
+        ...ctx,
+        messages_out: monthlyUsage.messagesOut,
         quota: messageQuota,
       });
       return;
@@ -398,6 +404,11 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     });
 
     logger.info("Message processed successfully", { ...ctx, tokens: inputTokens + outputTokens });
+    captureServerEvent("message_processed", {
+      ...ctx,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    });
   } finally {
     await releaseConversationLock(db, conversationId);
   }

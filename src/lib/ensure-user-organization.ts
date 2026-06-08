@@ -1,5 +1,6 @@
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 type AuthUser = {
   id: string;
@@ -84,5 +85,10 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
   });
 
   logger.info("Organization auto-provisioned", { userId: user.id, slug });
+  captureServerEvent(
+    "organization_provisioned",
+    { slug, user_id: user.id },
+    user.id,
+  );
   return created;
 }

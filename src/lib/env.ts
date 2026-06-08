@@ -19,7 +19,8 @@ const envSchema = z.object({
   }),
   ADMIN_SECRET: z.string().min(16),
 
-  SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.url().optional().default("https://us.i.posthog.com"),
 
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
 });

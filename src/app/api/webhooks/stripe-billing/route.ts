@@ -6,6 +6,7 @@ import {
 } from "@/infrastructure/adapters/stripe/billing-adapter";
 import { createPlatformStripeClient, getBillingWebhookSecret } from "@/infrastructure/adapters/stripe/platform-client";
 import { logger } from "@/lib/logger";
+import { captureServerEvent, captureServerException } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
   const webhookSecret = getBillingWebhookSecret();
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
       ...ctx,
       error: err instanceof Error ? err.message : String(err),
     });
+    captureServerException(err, ctx);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
 
@@ -169,6 +171,11 @@ async function handleSubscriptionUpdated(
   if (error) throw new Error(error.message);
 
   logger.info("Subscription updated", { orgId, plan: fields.subscription_plan, status: fields.subscription_status });
+  captureServerEvent("stripe_subscription_updated", {
+    orgId,
+    plan: fields.subscription_plan,
+    status: fields.subscription_status,
+  });
 }
 
 async function handleSubscriptionDeleted(

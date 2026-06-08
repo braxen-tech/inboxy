@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { logger } from "@/lib/logger";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export interface HandoffToHumanParams {
   db: SupabaseClient;
@@ -87,5 +88,10 @@ export async function handoffConversationToHuman(
   }
 
   logger.info("Conversation handed off to human", logContext);
+  captureServerEvent("human_handoff", {
+    orgId,
+    conversationId,
+    trigger: logContext.trigger,
+  });
   return { ok: true };
 }

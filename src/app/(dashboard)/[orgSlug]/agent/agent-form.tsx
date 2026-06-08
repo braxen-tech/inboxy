@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,13 @@ export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel }: Props
       });
       if (result.error) {
         setMessage({ type: "error", text: result.error });
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(new Error(result.error), { org_slug: orgSlug, model });
+        }
       } else {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.capture("agent_config_saved", { org_slug: orgSlug, model });
+        }
         setMessage({ type: "success", text: "Configurações salvas." });
       }
       setTimeout(() => setMessage(null), 3000);

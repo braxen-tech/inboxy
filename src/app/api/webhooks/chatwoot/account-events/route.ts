@@ -4,6 +4,7 @@ import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 interface InboxCreatedPayload {
   event: string;
@@ -85,6 +86,12 @@ export async function POST(request: Request) {
     inboxId,
     inboxName: payload.inbox?.name,
     botId,
+  });
+
+  captureServerEvent("chatwoot_inbox_created", {
+    orgId: org.id,
+    inbox_id: inboxId,
+    inbox_name: payload.inbox?.name,
   });
 
   return NextResponse.json({ status: "ok", inboxId, botId });

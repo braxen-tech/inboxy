@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,9 @@ export function ChatwootCredentialsForm({
   function copyWebhookUrl() {
     if (!webhookUrl) return;
     void navigator.clipboard.writeText(webhookUrl);
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.capture("chatwoot_webhook_copied", { org_slug: orgSlug });
+    }
     setMessage({ type: "ok", text: "URL copiada." });
   }
 
@@ -63,7 +67,13 @@ export function ChatwootCredentialsForm({
       const r = await saveChatwootCredentials({ orgSlug, apiUrl, accountId, apiToken });
       if ("error" in r && r.error) {
         setMessage({ type: "err", text: r.error });
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.captureException(new Error(r.error), { org_slug: orgSlug, integration: "chatwoot" });
+        }
       } else if ("success" in r && r.success) {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+          posthog.capture("integration_connected", { org_slug: orgSlug, integration: "chatwoot" });
+        }
         if (r.agentBotWebhookUrl) setWebhookUrl(r.agentBotWebhookUrl);
         if (r.botId != null) setBotId(String(r.botId));
         if (r.linkedInboxes) setLinkedInboxes(r.linkedInboxes);
@@ -94,7 +104,13 @@ export function ChatwootCredentialsForm({
     const r = await disconnectChatwootAction(orgSlug);
     if ("error" in r && r.error) {
       setMessage({ type: "err", text: r.error });
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.captureException(new Error(r.error), { org_slug: orgSlug, integration: "chatwoot" });
+      }
     } else {
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.capture("integration_disconnected", { org_slug: orgSlug, integration: "chatwoot" });
+      }
       setMessage({ type: "ok", text: "Chatwoot desconectado." });
       setApiUrl("");
       setAccountId("");
@@ -164,6 +180,7 @@ export function ChatwootCredentialsForm({
               onChange={(e) => setApiToken(e.target.value)}
               placeholder="Settings → Profile → Access Token"
               autoComplete="new-password"
+              data-sensitive
             />
           </div>
           <Button type="submit" disabled={pending}>
