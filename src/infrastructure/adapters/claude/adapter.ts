@@ -4,6 +4,7 @@ import type { AgentRunner, AgentRunParams, AgentOutput, AgentError } from "@/dom
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
+import { buildHandoffSystemInstructions } from "@/lib/handoff";
 
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_TIMEOUT_WITH_TOOLS_MS = 60_000;
@@ -63,15 +64,9 @@ export class ClaudeAdapter implements AgentRunner {
     if (toolContext.chatwoot) {
       systemParts.push("");
       systemParts.push(`## Transferência para atendente humano`);
-      systemParts.push(
-        `- Se o cliente pedir para falar com uma pessoa, atendente humano, ou demonstrar frustração e quiser sair do assistente virtual, CHAME IMEDIATAMENTE a tool transfer_to_human.`,
-      );
-      systemParts.push(
-        `- Após transfer_to_human retornar sucesso, confirme ao cliente que um atendente assumirá em breve e NÃO continue tentando resolver o problema como bot.`,
-      );
-      systemParts.push(
-        `- Não use transfer_to_human para dúvidas simples que você pode responder com a base de conhecimento.`,
-      );
+      for (const line of buildHandoffSystemInstructions()) {
+        systemParts.push(line);
+      }
     }
 
     if (toolContext.stripe) {

@@ -15,7 +15,7 @@ const inputSchema = z.object({
 export class TransferToHumanTool implements AgentTool {
   name = "transfer_to_human";
   description =
-    "Transfere a conversa para um atendente humano no Chatwoot. Use quando o cliente pedir explicitamente para falar com uma pessoa, atendente, humano, ou recusar continuar com o assistente virtual.";
+    "Transfere a conversa para um atendente humano no Chatwoot. Obrigatório quando o cliente pedir explicitamente por uma pessoa/atendente. Também use quando o prompt da organização definir outras situações de handoff.";
   inputSchema = inputSchema;
 
   constructor(private db: SupabaseClient) {}

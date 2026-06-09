@@ -24,6 +24,7 @@ export default async function AgentPage({ params }: Props) {
         orgSlug={orgSlug}
         initialPrompt={org.system_prompt ?? ""}
         initialModel={org.model ?? "claude-sonnet-4-20250514"}
+        chatwootActive={org.chatwoot_status === "active"}
       />
     </div>
   );

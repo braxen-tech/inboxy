@@ -12,14 +12,23 @@ const MODELS = [
   { value: "claude-haiku-3-5-20241022", label: "Claude Haiku 3.5 (mais rápido/barato)" },
 ];
 
+const PROMPT_PLACEHOLDER = `Você é o assistente virtual da Clínica Exemplo.
+Seja cordial, profissional e direto.
+
+## Handoff para humano (opcional)
+Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
+- o cliente mencionar cancelamento ou reembolso;
+- a reclamação for sobre entrega atrasada há mais de 7 dias.`;
+
 interface Props {
   orgId: string;
   orgSlug: string;
   initialPrompt: string;
   initialModel: string;
+  chatwootActive: boolean;
 }
 
-export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel }: Props) {
+export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel, chatwootActive }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [model, setModel] = useState(initialModel);
   const [isPending, startTransition] = useTransition();
@@ -51,7 +60,16 @@ export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel }: Props
       <div className="space-y-2">
         <Label htmlFor="system-prompt">System Prompt</Label>
         <p className="text-xs text-muted-foreground">
-          Define a personalidade, tom de voz e regras do agente. A base de conhecimento é adicionada separadamente.
+          Define a personalidade, tom de voz e regras do agente. A base de conhecimento é adicionada
+          separadamente.
+          {chatwootActive && (
+            <>
+              {" "}
+              Com Chatwoot conectado, a transferência para humano acontece automaticamente quando o
+              cliente pedir — e você pode definir <strong>outros gatilhos</strong> aqui no prompt (ex.:
+              cancelamento, reclamações graves).
+            </>
+          )}
         </p>
         <Textarea
           id="system-prompt"
@@ -59,7 +77,7 @@ export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel }: Props
           onChange={(e) => setPrompt(e.target.value)}
           rows={12}
           className="font-mono text-sm"
-          placeholder={"Você é o assistente virtual da Clínica Exemplo.\nSeja cordial, profissional e direto.\nSe não souber a resposta, diga que vai verificar e peça para ligar no (11) 99999-0000."}
+          placeholder={PROMPT_PLACEHOLDER}
         />
       </div>
 
