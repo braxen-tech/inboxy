@@ -180,3 +180,31 @@ curl https://your-domain.vercel.app/api/health
 ### Conversation lock stuck
 - Locks auto-expire after 60 seconds
 - If needed, manually clear: `UPDATE conversations SET processing_lock_until = NULL WHERE id = '...'`
+
+## Knowledge Base — upload + RAG
+
+### Prerequisites
+1. Migration `00013_kb_rag.sql` applied (`supabase db push`)
+2. `VOYAGE_API_KEY` set in Vercel (embeddings via `voyage-3`, 1024 dims)
+3. Storage bucket `kb-documents` created by migration (private, 10 MB limit)
+4. Inngest function `ingest-kb-document` registered (`/api/inngest`)
+
+### Supported file types
+PDF, DOCX, TXT, MD, CSV — no images.
+
+### Ingest stuck in `processing`
+1. Check Inngest dashboard for `ingest-kb-document` failures
+2. Verify `VOYAGE_API_KEY` and Supabase service role can read Storage
+3. User can click **Retry** on failed documents in `/[orgSlug]/kb`
+
+### Agent not using document content
+1. Confirm document status is `ready` (not `pending`/`failed`)
+2. Tool `lookup_knowledge` is auto-enabled only when ≥1 doc is `ready`
+3. Check PostHog events `kb_document_ingested` / `kb_document_ingest_failed`
+
+### Plan limits
+| Plan | Max files | Max storage |
+|------|-----------|-------------|
+| starter | 5 | 25 MB |
+| professional | 20 | 100 MB |
+| business | 50 | 500 MB |

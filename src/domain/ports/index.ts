@@ -49,6 +49,16 @@ export type {
 } from "./knowledge-retriever";
 
 export type {
+  EmbeddingProvider,
+  EmbeddingError,
+} from "./embedding-provider";
+
+export type {
+  DocumentTextExtractor,
+  ExtractError,
+} from "./document-text-extractor";
+
+export type {
   ProductCatalog,
   Product,
   Price,

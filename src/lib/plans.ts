@@ -80,6 +80,9 @@ export function planFromStripePriceId(priceId: string | null | undefined): PlanI
 /** Always available when Chatwoot is connected (not plan-gated). */
 export const CHATWOOT_HANDOFF_TOOL = "transfer_to_human";
 
+/** Enabled when org has at least one indexed KB document. */
+export const LOOKUP_KNOWLEDGE_TOOL = "lookup_knowledge";
+
 export const INTEGRATION_TOOLS: Record<PlanIntegration, string[]> = {
   cal: ["check_calendar_availability", "book_calendar_appointment"],
   stripe: [
@@ -108,6 +111,7 @@ export function resolveEnabledToolsForOrg(org: {
   chatwoot_api_token?: string | null;
   chatwoot_account_id?: string | null;
   tools_enabled?: string[] | null;
+  hasKbDocuments?: boolean;
 }): string[] {
   const planId = (org.subscription_plan ?? "starter") as PlanId;
   const plan = PLANS[planId] ?? PLANS.starter;
@@ -135,6 +139,10 @@ export function resolveEnabledToolsForOrg(org: {
     !base.includes(CHATWOOT_HANDOFF_TOOL)
   ) {
     base.push(CHATWOOT_HANDOFF_TOOL);
+  }
+
+  if (org.hasKbDocuments && !base.includes(LOOKUP_KNOWLEDGE_TOOL)) {
+    base.push(LOOKUP_KNOWLEDGE_TOOL);
   }
 
   return base;

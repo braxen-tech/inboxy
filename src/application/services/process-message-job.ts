@@ -3,6 +3,8 @@ import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
 import { StripeCatalogAdapter, StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
+import { createVoyageEmbeddingAdapter } from "@/infrastructure/adapters/voyage/embedding-adapter";
+import { PgVectorKnowledgeRetriever } from "@/infrastructure/adapters/pgvector/knowledge-retriever";
 import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
@@ -32,10 +34,13 @@ export async function runProcessIncomingMessageJob(
   const db = getAdminClient();
   const messagingChannel = new ChatwootAdapter();
   const agentRunner = new ClaudeAdapter();
+  const voyage = createVoyageEmbeddingAdapter();
+  const knowledgeRetriever = voyage ? new PgVectorKnowledgeRetriever(db, voyage) : undefined;
   const toolRegistry = createToolRegistry({
     calendarProvider: new CalComAdapter(),
     productCatalog: new StripeCatalogAdapter(),
     paymentGateway: new StripePaymentAdapter(),
+    knowledgeRetriever,
     db,
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   });

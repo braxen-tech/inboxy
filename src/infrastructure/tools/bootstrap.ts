@@ -1,4 +1,4 @@
-import type { CalendarProvider, ProductCatalog, PaymentGateway } from "@/domain/ports";
+import type { CalendarProvider, ProductCatalog, PaymentGateway, KnowledgeRetriever } from "@/domain/ports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { InMemoryToolRegistry } from "./registry";
 import { CheckCalendarAvailabilityTool } from "./check-calendar-availability";
@@ -11,11 +11,13 @@ import { RemoveFromCartTool } from "./stripe/remove-from-cart";
 import { CreateCheckoutTool } from "./stripe/create-checkout";
 import { ShowProductImagesTool } from "./stripe/show-product-images";
 import { TransferToHumanTool } from "./transfer-to-human";
+import { LookupKnowledgeTool } from "./lookup-knowledge";
 
 interface ToolRegistryDeps {
   calendarProvider: CalendarProvider;
   productCatalog: ProductCatalog;
   paymentGateway: PaymentGateway;
+  knowledgeRetriever?: KnowledgeRetriever;
   db: SupabaseClient;
   appUrl: string;
 }
@@ -34,6 +36,10 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway, deps.appUrl));
   registry.register(new ShowProductImagesTool(deps.productCatalog));
   registry.register(new TransferToHumanTool(deps.db));
+
+  if (deps.knowledgeRetriever) {
+    registry.register(new LookupKnowledgeTool(deps.knowledgeRetriever));
+  }
 
   return registry;
 }

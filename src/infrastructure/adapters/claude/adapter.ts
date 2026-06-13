@@ -86,6 +86,15 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push(`- No checkout o cliente pode pagar com cartão ou PIX (se a loja tiver PIX ativo no Stripe). Para PIX, explique que ele verá o QR code na página do link.`);
     }
 
+    const hasKnowledgeLookup = tools.some((t) => t.name === "lookup_knowledge");
+    if (hasKnowledgeLookup) {
+      systemParts.push("");
+      systemParts.push(`## Base de conhecimento em documentos`);
+      systemParts.push(`- Existem documentos indexados além do texto acima. Para perguntas factuais (serviços, preços, políticas, procedimentos, detalhes operacionais), SEMPRE chame lookup_knowledge antes de responder.`);
+      systemParts.push(`- Use a query com os termos principais da pergunta do cliente.`);
+      systemParts.push(`- Baseie respostas factuais nos trechos retornados ou no texto inline da base de conhecimento. Nunca invente informações.`);
+    }
+
     const systemContent = systemParts.join("\n");
 
     const messages = history.map((msg, i) => ({

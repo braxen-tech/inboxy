@@ -1,6 +1,5 @@
 /**
- * KnowledgeRetriever port — reserved for v1.4 (RAG with pgvector).
- * Not implemented in MVP. KB is inline in the system prompt.
+ * KnowledgeRetriever port — RAG with pgvector + Voyage embeddings.
  */
 
 import type { Result } from "../errors";

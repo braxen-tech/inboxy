@@ -21,6 +21,21 @@ import { captureServerEvent } from "@/lib/posthog-server";
 
 const BILLING_ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
+async function orgHasReadyKbDocuments(db: SupabaseClient, orgId: string): Promise<boolean> {
+  const { count, error } = await db
+    .from("kb_documents")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("status", "ready");
+
+  if (error) {
+    logger.warn("Failed to check KB documents", { orgId, error: error.message });
+    return false;
+  }
+
+  return (count ?? 0) > 0;
+}
+
 interface Deps {
   db: SupabaseClient;
   agentRunner: AgentRunner;
@@ -172,7 +187,10 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       createdAt: new Date(m.created_at as string),
     }));
 
-    const enabledToolNames = resolveEnabledToolsForOrg(org);
+    const enabledToolNames = resolveEnabledToolsForOrg({
+      ...org,
+      hasKbDocuments: await orgHasReadyKbDocuments(db, orgId),
+    });
     const tools = toolRegistry.getToolsForOrg(toOrgId(orgId), enabledToolNames);
 
     let calendarCtx: import("@/domain/ports").CalendarContext | undefined;

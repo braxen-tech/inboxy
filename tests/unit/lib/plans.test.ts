@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   PLANS,
   CHATWOOT_HANDOFF_TOOL,
+  LOOKUP_KNOWLEDGE_TOOL,
   resolveAllowedTools,
   resolveEnabledToolsForOrg,
   planFromStripePriceId,
@@ -51,6 +52,14 @@ describe("plans", () => {
       chatwoot_account_id: "1",
     });
     expect(tools).toContain(CHATWOOT_HANDOFF_TOOL);
+  });
+
+  it("includes lookup_knowledge when org has indexed documents", () => {
+    const tools = resolveEnabledToolsForOrg({
+      subscription_plan: "starter",
+      hasKbDocuments: true,
+    });
+    expect(tools).toContain(LOOKUP_KNOWLEDGE_TOOL);
   });
 
   it("maps stripe price id to plan", () => {
