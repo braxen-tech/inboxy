@@ -92,7 +92,7 @@ export class StripeBillingAdapter implements BillingProvider {
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: "subscription",
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${appUrl}/${org.slug}/billing?checkout=success`,
+        success_url: `${appUrl}/${org.slug}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/${org.slug}/billing?checkout=canceled`,
         client_reference_id: orgId,
         metadata: { org_id: orgId, plan },

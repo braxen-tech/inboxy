@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { StripeBillingAdapter } from "@/infrastructure/adapters/stripe/billing-adapter";
+import { syncOrgFromCheckoutSessionId } from "@/application/services/sync-billing-from-checkout";
 import { toOrgId } from "@/domain/value-objects";
 import type { PlanId } from "@/lib/plans";
 
@@ -78,4 +79,35 @@ export async function createPortalSessionAction(orgSlug: string) {
 
   revalidatePath(`/${orgSlug}/billing`);
   return { url: result.value };
+}
+
+export async function syncCheckoutSessionAction(orgSlug: string, sessionId: string) {
+  const trimmed = sessionId.trim();
+  if (!trimmed.startsWith("cs_")) {
+    return { error: "Sessão de checkout inválida." };
+  }
+
+  const supabase = await getServerClientFromCookies();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Não autenticado." };
+  }
+
+  const org = await getOwnedOrg(orgSlug, user.id);
+  if (!org) {
+    return { error: "Organização não encontrada ou sem permissão." };
+  }
+
+  try {
+    const synced = await syncOrgFromCheckoutSessionId(getAdminClient(), trimmed, org.id);
+    revalidatePath(`/${orgSlug}/billing`);
+    revalidatePath(`/${orgSlug}`);
+    return synced ? { ok: true as const } : { error: "Checkout ainda não concluído no Stripe." };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Falha ao sincronizar assinatura.",
+    };
+  }
 }

@@ -4,11 +4,12 @@ import { needsBillingSetup, getTrialPeriodDays } from "@/lib/billing-setup";
 import { PLANS, QUOTA_WARNING_RATIO, type PlanId } from "@/lib/plans";
 import { getMonthlyUsage } from "@/application/services/monthly-usage";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import { syncOrgFromCheckoutSessionId, syncOrgBillingFromStripe } from "@/application/services/sync-billing-from-checkout";
 import { BillingPlanCards } from "./billing-plan-cards";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ checkout?: string; setup?: string }>;
+  searchParams: Promise<{ checkout?: string; setup?: string; session_id?: string }>;
 }
 
 const PLAN_LABELS: Record<PlanId, string> = {
@@ -27,9 +28,33 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default async function BillingPage({ params, searchParams }: Props) {
   const { orgSlug } = await params;
-  const { checkout, setup } = await searchParams;
-  const org = await getOrgBySlug(orgSlug);
+  const { checkout, setup, session_id: sessionId } = await searchParams;
+  let org = await getOrgBySlug(orgSlug);
   if (!org) notFound();
+
+  if (
+    checkout === "success" &&
+    sessionId?.startsWith("cs_") &&
+    needsBillingSetup(org)
+  ) {
+    try {
+      await syncOrgFromCheckoutSessionId(getAdminClient(), sessionId, org.id);
+      org = (await getOrgBySlug(orgSlug)) ?? org;
+    } catch {
+      // Webhook or Stripe search fallback may still apply.
+    }
+  }
+
+  if (needsBillingSetup(org) && (checkout === "success" || org.stripe_customer_id)) {
+    try {
+      const synced = await syncOrgBillingFromStripe(getAdminClient(), org.id);
+      if (synced) {
+        org = (await getOrgBySlug(orgSlug)) ?? org;
+      }
+    } catch {
+      // Keep showing setup UI; user can refresh after Stripe confirms.
+    }
+  }
 
   const billingSetupRequired = needsBillingSetup(org);
   const trialDays = getTrialPeriodDays();

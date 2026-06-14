@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import {
-  subscriptionFieldsFromStripe,
-} from "@/infrastructure/adapters/stripe/billing-adapter";
+import { subscriptionFieldsFromStripe } from "@/infrastructure/adapters/stripe/billing-adapter";
+import { activateOrgFromCheckoutSession } from "@/application/services/sync-billing-from-checkout";
 import { createPlatformStripeClient, getBillingWebhookSecret } from "@/infrastructure/adapters/stripe/platform-client";
 import { logger } from "@/lib/logger";
 import { captureServerEvent, captureServerException } from "@/lib/posthog-server";
@@ -126,34 +125,10 @@ async function handleCheckoutCompleted(
   db: ReturnType<typeof getAdminClient>,
   session: Stripe.Checkout.Session,
 ) {
-  const orgId = await resolveOrgId(db, session.metadata, session.customer, session.subscription as string);
-  if (!orgId) {
-    logger.warn("checkout.session.completed: org not found", { sessionId: session.id });
-    return;
+  const synced = await activateOrgFromCheckoutSession(db, session);
+  if (!synced) {
+    logger.warn("checkout.session.completed: sync skipped", { sessionId: session.id });
   }
-
-  const subscriptionId =
-    typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-
-  if (!subscriptionId) {
-    logger.warn("checkout.session.completed: no subscription", { orgId, sessionId: session.id });
-    return;
-  }
-
-  const stripe = createPlatformStripeClient();
-  const sub = await stripe.subscriptions.retrieve(subscriptionId);
-  const fields = subscriptionFieldsFromStripe(sub);
-
-  const { error } = await db
-    .from("organizations")
-    .update(fields)
-    .eq("id", orgId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  logger.info("Subscription activated from checkout", { orgId, subscriptionId });
 }
 
 async function handleSubscriptionUpdated(
