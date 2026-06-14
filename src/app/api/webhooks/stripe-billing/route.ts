@@ -6,8 +6,10 @@ import { activateOrgFromCheckoutSession } from "@/application/services/sync-bill
 import { createPlatformStripeClient, getBillingWebhookSecret } from "@/infrastructure/adapters/stripe/platform-client";
 import { logger } from "@/lib/logger";
 import { captureServerEvent, captureServerException } from "@/lib/posthog-server";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 export async function POST(request: Request) {
+  scheduleTelemetryFlush();
   const webhookSecret = getBillingWebhookSecret();
   if (!webhookSecret) {
     logger.error("STRIPE_BILLING_WEBHOOK_SECRET not configured");

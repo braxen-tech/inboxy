@@ -3,6 +3,7 @@ import { ingestKbDocument } from "@/application/services/ingest-kb-document";
 import { createVoyageEmbeddingAdapter } from "@/infrastructure/adapters/voyage/embedding-adapter";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
+import { flushPostHogTelemetry } from "@/lib/posthog-telemetry";
 
 export const ingestKbDocumentJob = inngest.createFunction(
   {
@@ -25,6 +26,10 @@ export const ingestKbDocumentJob = inngest.createFunction(
     const db = getAdminClient();
     logger.info("Starting KB document ingest", { orgId, documentId });
 
-    await ingestKbDocument(db, embeddingProvider, { orgId, documentId });
+    try {
+      await ingestKbDocument(db, embeddingProvider, { orgId, documentId });
+    } finally {
+      await flushPostHogTelemetry();
+    }
   },
 );

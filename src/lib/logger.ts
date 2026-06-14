@@ -1,4 +1,5 @@
 import { emitOtelLog } from "@/lib/otel-logger";
+import { getPostHogTelemetryProperties } from "@/lib/deployment-environment";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -25,7 +26,10 @@ function log(level: LogLevel, message: string, context?: LogContext) {
     console.log(JSON.stringify(entry));
   }
 
-  emitOtelLog(level, message, context as Record<string, unknown> | undefined);
+  emitOtelLog(level, message, {
+    ...getPostHogTelemetryProperties(),
+    ...context,
+  });
 }
 
 export const logger = {

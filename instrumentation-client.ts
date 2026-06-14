@@ -1,6 +1,8 @@
 import posthog from "posthog-js";
+import { getClientDeploymentEnvironment } from "@/lib/deployment-environment";
 
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const deploymentEnvironment = getClientDeploymentEnvironment();
 
 if (key) {
   posthog.init(key, {
@@ -15,5 +17,9 @@ if (key) {
       maskAllInputs: true,
       maskTextSelector: "[data-sensitive]",
     },
+  });
+  posthog.register({
+    deployment_environment: deploymentEnvironment,
+    $environment: deploymentEnvironment,
   });
 }

@@ -12,8 +12,8 @@ import { logger } from "@/lib/logger";
 import {
   captureServerEvent,
   captureServerException,
-  shutdownPostHog,
 } from "@/lib/posthog-server";
+import { flushPostHogTelemetry } from "@/lib/posthog-telemetry";
 
 export interface ProcessMessageJobInput {
   orgId: string;
@@ -69,7 +69,8 @@ export async function runProcessIncomingMessageJobSafe(
       payload: input,
       error: String(error),
     });
-    await shutdownPostHog();
     throw error;
+  } finally {
+    await flushPostHogTelemetry();
   }
 }

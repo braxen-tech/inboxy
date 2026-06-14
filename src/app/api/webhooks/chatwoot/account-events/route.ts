@@ -5,6 +5,7 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 interface InboxCreatedPayload {
   event: string;
@@ -13,6 +14,7 @@ interface InboxCreatedPayload {
 }
 
 export async function POST(request: Request) {
+  scheduleTelemetryFlush();
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret") ?? "";
 

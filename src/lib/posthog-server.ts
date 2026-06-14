@@ -1,4 +1,5 @@
 import { PostHog } from "posthog-node";
+import { getPostHogTelemetryProperties } from "@/lib/deployment-environment";
 
 let posthogClient: PostHog | null = null;
 
@@ -53,6 +54,7 @@ export function captureServerEvent(
     distinctId: distinctId ?? propDistinctId ?? (orgId ? orgDistinctId(orgId) : "server"),
     event,
     properties: {
+      ...getPostHogTelemetryProperties(),
       ...rest,
       ...(orgId ? { org_id: orgId } : {}),
       ...(conversationId ? { conversation_id: conversationId } : {}),
@@ -72,6 +74,7 @@ export function captureServerException(
   const { distinctId, orgId, conversationId, correlationId, ...rest } = context ?? {};
 
   client.captureException(err, distinctId ?? (orgId ? orgDistinctId(orgId) : "server"), {
+    ...getPostHogTelemetryProperties(),
     ...rest,
     ...(orgId ? { org_id: orgId } : {}),
     ...(conversationId ? { conversation_id: conversationId } : {}),

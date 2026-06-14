@@ -7,8 +7,10 @@ import {
 } from "@/application/services/chatwoot-inbound";
 import { logger } from "@/lib/logger";
 import { captureServerException } from "@/lib/posthog-server";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 export async function POST(request: Request) {
+  scheduleTelemetryFlush();
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret") ?? "";
 

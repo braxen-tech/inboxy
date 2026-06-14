@@ -5,6 +5,7 @@ import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const paymentAdapter = new StripePaymentAdapter();
 const messagingAdapter = new ChatwootAdapter();
@@ -13,6 +14,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ orgId: string }> },
 ) {
+  scheduleTelemetryFlush();
   const { orgId } = await params;
   const db = getAdminClient();
 

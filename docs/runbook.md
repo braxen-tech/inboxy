@@ -128,9 +128,14 @@ curl https://your-domain.vercel.app/api/health
 - Failed messages go to `webhook_failures` table for manual replay
 
 ### PostHog
-- Product analytics, error tracking, session replay, logs, and AI observability
-- Set `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` in Vercel
+- Product analytics, error tracking, session replay, **logs (OTLP)**, and AI observability
+- Set `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` in Vercel (Preview + Production)
+- Set `NEXT_PUBLIC_DEPLOYMENT_ENV` + `DEPLOYMENT_ENV`:
+  - **Production:** `production`
+  - **Preview (branch `staging`):** `staging`
 - Dashboard: https://us.posthog.com/project/458321/
+- **Logs:** filter by service `inboxy` (prod) or `inboxy-staging`, or attribute `deployment.environment`
+- **Events/exceptions:** filter by property `deployment_environment`
 
 ## Troubleshooting
 
@@ -208,3 +213,43 @@ PDF, DOCX, TXT, MD, CSV — no images.
 | starter | 5 | 25 MB |
 | professional | 20 | 100 MB |
 | business | 50 | 500 MB |
+
+## Staging environment
+
+| Layer | Production | Staging |
+|-------|------------|---------|
+| GitHub | `braxen-tech/inboxy` → `main` | `braxen-tech/inboxy` → `staging` |
+| Vercel | `inboxy.braxentech.com` | `https://whatsapp-ai-agent-git-staging-tiago-rochas-projects-16ddf7f9.vercel.app` |
+| Supabase | `zazrslirxeogfdwlbzwz` (ai-agent) | `cwlgroaygsiaumnfaqrn` (inboxy-staging) |
+| Inngest | Production env | Branch env `staging` (after sync) |
+
+### Vercel env vars (Preview → branch `staging` only)
+- Supabase staging keys, separate `ENCRYPTION_KEY`, `VOYAGE_API_KEY`, `NEXT_PUBLIC_APP_URL` (git-staging URL)
+- `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` (same as prod — branch envs share keys)
+- `INNGEST_ENV=staging`
+
+### Supabase staging auth
+Redirect URLs configured on `inboxy-staging`: staging git URL, Vercel preview wildcard, `localhost:3000`.
+
+### Inngest staging sync (required once)
+Preview deploys use Vercel Deployment Protection. Inngest cannot sync until bypass is configured:
+
+1. **Vercel** → `whatsapp-ai-agent` → Settings → Deployment Protection → copy **Protection Bypass for Automation** secret
+2. **Inngest** → Settings → Vercel Integration → paste secret in **Deployment protection key**
+3. Redeploy `staging` or Inngest → Apps → **Sync a branch** with URL:
+   `https://whatsapp-ai-agent-git-staging-tiago-rochas-projects-16ddf7f9.vercel.app/api/inngest`
+
+After sync, branch environment **`staging`** appears under Branch Environments in Inngest.
+
+### Local dev with Inngest MCP
+```bash
+npm run dev:inngest    # terminal 1 — INNGEST_DEV=1
+npm run inngest:dev    # terminal 2 — dev server :8288, MCP at /mcp
+```
+
+Do not use production `INNGEST_SIGNING_KEY` locally without `INNGEST_DEV=1` (sync/auth will fail).
+
+### Health check (staging)
+```bash
+curl https://whatsapp-ai-agent-git-staging-tiago-rochas-projects-16ddf7f9.vercel.app/api/health
+```

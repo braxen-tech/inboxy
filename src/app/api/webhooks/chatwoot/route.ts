@@ -6,9 +6,11 @@ import {
   syncConversationStatusByChatwootId,
 } from "@/application/services/chatwoot-inbound";
 import { logger } from "@/lib/logger";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 /** Legacy account webhook — used only when org has no Agent Bot configured */
 export async function POST(request: Request) {
+  scheduleTelemetryFlush();
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret") ?? "";
 

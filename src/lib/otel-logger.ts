@@ -1,9 +1,21 @@
 import { logs, SeverityNumber, type Logger } from "@opentelemetry/api-logs";
+import type { LoggerProvider } from "@opentelemetry/sdk-logs";
 
 let otelLogger: Logger | null = null;
+let loggerProvider: LoggerProvider | null = null;
 
 export function setOtelLogger(logger: Logger): void {
   otelLogger = logger;
+}
+
+export function setOtelLoggerProvider(provider: LoggerProvider): void {
+  loggerProvider = provider;
+}
+
+export async function flushOtelLogs(): Promise<void> {
+  if (loggerProvider) {
+    await loggerProvider.forceFlush();
+  }
 }
 
 export function getOtelLogger(): Logger | null {
