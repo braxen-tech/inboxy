@@ -75,14 +75,16 @@ export async function syncOrgBillingFromStripe(
   const stripe = createPlatformStripeClient();
   const result = await stripe.subscriptions.search({
     query: `metadata["org_id"]:"${orgId}"`,
-    limit: 1,
+    limit: 10,
   });
 
-  const sub = result.data[0];
-  if (!sub || (sub.status !== "active" && sub.status !== "trialing")) {
+  const sub = result.data
+    .filter((s) => s.status === "active" || s.status === "trialing")
+    .sort((a, b) => b.created - a.created)[0];
+
+  if (!sub) {
     return false;
   }
-
   const fields = subscriptionFieldsFromStripe(sub);
   const { error } = await db.from("organizations").update(fields).eq("id", orgId);
   if (error) {

@@ -5,7 +5,9 @@ import { PLANS, QUOTA_WARNING_RATIO, type PlanId } from "@/lib/plans";
 import { getMonthlyUsage } from "@/application/services/monthly-usage";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { syncOrgFromCheckoutSessionId, syncOrgBillingFromStripe } from "@/application/services/sync-billing-from-checkout";
+import { logger } from "@/lib/logger";
 import { BillingPlanCards } from "./billing-plan-cards";
+import { BillingAutoSync } from "./billing-auto-sync";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -32,27 +34,20 @@ export default async function BillingPage({ params, searchParams }: Props) {
   let org = await getOrgBySlug(orgSlug);
   if (!org) notFound();
 
-  if (
-    checkout === "success" &&
-    sessionId?.startsWith("cs_") &&
-    needsBillingSetup(org)
-  ) {
+  if (needsBillingSetup(org)) {
     try {
-      await syncOrgFromCheckoutSessionId(getAdminClient(), sessionId, org.id);
-      org = (await getOrgBySlug(orgSlug)) ?? org;
-    } catch {
-      // Webhook or Stripe search fallback may still apply.
-    }
-  }
-
-  if (needsBillingSetup(org) && (checkout === "success" || org.stripe_customer_id)) {
-    try {
-      const synced = await syncOrgBillingFromStripe(getAdminClient(), org.id);
-      if (synced) {
-        org = (await getOrgBySlug(orgSlug)) ?? org;
+      if (sessionId?.startsWith("cs_")) {
+        await syncOrgFromCheckoutSessionId(getAdminClient(), sessionId, org.id);
+      } else {
+        await syncOrgBillingFromStripe(getAdminClient(), org.id);
       }
-    } catch {
-      // Keep showing setup UI; user can refresh after Stripe confirms.
+      org = (await getOrgBySlug(orgSlug)) ?? org;
+    } catch (error) {
+      logger.warn("Billing sync from Stripe failed", {
+        orgId: org.id,
+        orgSlug,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -78,6 +73,11 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-8">
+      <BillingAutoSync
+        orgSlug={orgSlug}
+        needsBillingSetup={billingSetupRequired}
+        sessionId={sessionId}
+      />
       <div>
         <h1 className="text-2xl font-semibold">
           {billingSetupRequired ? "Ative sua conta" : "Assinatura"}

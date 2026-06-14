@@ -127,6 +127,13 @@ curl https://your-domain.vercel.app/api/health
 - View function runs, failures, and retry status at https://app.inngest.com
 - Failed messages go to `webhook_failures` table for manual replay
 
+### Stripe Billing (staging)
+- Webhook de prod aponta para `inboxy.braxentech.com/api/webhooks/stripe-billing` — **staging não recebe eventos**
+- A página `/billing` sincroniza assinatura direto do Stripe ao carregar (fallback)
+- Para sync automático no staging, adicione um segundo endpoint no Stripe Dashboard:
+  `https://whatsapp-ai-agent-git-staging-tiago-rochas-projects-16ddf7f9.vercel.app/api/webhooks/stripe-billing`
+- Use um `STRIPE_BILLING_WEBHOOK_SECRET` separado na branch `staging` (Preview)
+
 ### PostHog
 - Product analytics, error tracking, session replay, **logs (OTLP)**, and AI observability
 - Set `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` in Vercel (Preview + Production)
