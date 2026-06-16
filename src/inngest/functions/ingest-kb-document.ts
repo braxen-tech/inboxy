@@ -9,7 +9,7 @@ export const ingestKbDocumentJob = inngest.createFunction(
   {
     id: "ingest-kb-document",
     concurrency: [{ key: "event.data.orgId", limit: 2 }],
-    retries: 2,
+    retries: 4,
     triggers: [{ event: "kb.document.uploaded" }],
   },
   async ({ event }) => {

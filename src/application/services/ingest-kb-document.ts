@@ -12,6 +12,13 @@ export interface IngestKbDocumentInput {
   documentId: string;
 }
 
+class KbIngestRateLimitedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "KbIngestRateLimitedError";
+  }
+}
+
 export async function ingestKbDocument(
   db: SupabaseClient,
   embeddingProvider: EmbeddingProvider,
@@ -80,6 +87,9 @@ export async function ingestKbDocument(
 
     const embedResult = await embeddingProvider.embed(chunks);
     if (!embedResult.ok) {
+      if (embedResult.error.code === "RATE_LIMITED") {
+        throw new KbIngestRateLimitedError(embedResult.error.message);
+      }
       await markFailed(db, documentId, embedResult.error.message);
       captureServerEvent("kb_document_ingest_failed", {
         org_id: orgId,
@@ -131,6 +141,19 @@ export async function ingestKbDocument(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("KB ingest failed", { orgId, documentId, error: message });
+
+    if (err instanceof KbIngestRateLimitedError) {
+      await db
+        .from("kb_documents")
+        .update({
+          status: "processing",
+          error_message: message,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", documentId);
+      throw err;
+    }
+
     await markFailed(db, documentId, message);
     captureServerEvent("kb_document_ingest_failed", {
       org_id: orgId,

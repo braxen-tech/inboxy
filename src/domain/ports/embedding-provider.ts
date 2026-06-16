@@ -1,6 +1,8 @@
 import type { Result } from "../errors";
 
-export type EmbeddingError = { code: "EMBEDDING_FAILED"; message: string };
+export type EmbeddingError =
+  | { code: "EMBEDDING_FAILED"; message: string }
+  | { code: "RATE_LIMITED"; message: string };
 
 export interface EmbeddingProvider {
   embed(

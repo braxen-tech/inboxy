@@ -5,7 +5,115 @@ import { logger } from "@/lib/logger";
 
 const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 const VOYAGE_MODEL = "voyage-3";
-const MAX_BATCH_SIZE = 128;
+const MAX_BATCH_SIZE = 32;
+const INTER_BATCH_DELAY_MS = 400;
+const MAX_RETRIES = 6;
+const INITIAL_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+export function isRetryableVoyageStatus(status: number): boolean {
+  return status === 429 || status === 502 || status === 503;
+}
+
+export function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+
+  const seconds = Number(header);
+  if (!Number.isNaN(seconds)) {
+    return Math.max(0, seconds * 1_000);
+  }
+
+  const dateMs = Date.parse(header);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+
+  return null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(attempt: number, retryAfterHeader: string | null): number {
+  const retryAfter = parseRetryAfterMs(retryAfterHeader);
+  if (retryAfter != null) return retryAfter;
+  return Math.min(INITIAL_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
+}
+
+async function postEmbeddings(
+  apiKey: string,
+  batch: string[],
+  inputType: "document" | "query",
+): Promise<Result<number[][], EmbeddingError>> {
+  let lastStatus = 0;
+  let lastBody = "";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetch(VOYAGE_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input: batch,
+        model: VOYAGE_MODEL,
+        input_type: inputType,
+      }),
+    });
+
+    if (response.ok) {
+      const json = (await response.json()) as {
+        data?: Array<{ embedding: number[] }>;
+      };
+
+      const embeddings = json.data?.map((row) => row.embedding) ?? [];
+      if (embeddings.length !== batch.length) {
+        return Err({
+          code: "EMBEDDING_FAILED",
+          message: "Voyage returned unexpected embedding count",
+        });
+      }
+
+      return Ok(embeddings);
+    }
+
+    lastStatus = response.status;
+    lastBody = await response.text();
+
+    if (isRetryableVoyageStatus(response.status) && attempt < MAX_RETRIES) {
+      const delayMs = retryDelayMs(attempt, response.headers.get("retry-after"));
+      logger.warn("Voyage embedding rate limited, retrying", {
+        status: response.status,
+        attempt: attempt + 1,
+        delayMs,
+        batchSize: batch.length,
+      });
+      await sleep(delayMs);
+      continue;
+    }
+
+    logger.error("Voyage embedding failed", { status: response.status, body: lastBody });
+    if (response.status === 429) {
+      return Err({
+        code: "RATE_LIMITED",
+        message: "Limite de requisições da Voyage atingido. Tente novamente em alguns minutos.",
+      });
+    }
+
+    return Err({
+      code: "EMBEDDING_FAILED",
+      message: `Voyage API error (${response.status})`,
+    });
+  }
+
+  logger.error("Voyage embedding exhausted retries", { status: lastStatus, body: lastBody });
+  return Err({
+    code: "RATE_LIMITED",
+    message: "Limite de requisições da Voyage atingido. Tente novamente em alguns minutos.",
+  });
+}
 
 export class VoyageEmbeddingAdapter implements EmbeddingProvider {
   constructor(private apiKey: string) {}
@@ -19,45 +127,23 @@ export class VoyageEmbeddingAdapter implements EmbeddingProvider {
     }
 
     try {
+      const inputType = options?.inputType ?? "document";
       const allEmbeddings: number[][] = [];
+      const batchCount = Math.ceil(texts.length / MAX_BATCH_SIZE);
 
       for (let i = 0; i < texts.length; i += MAX_BATCH_SIZE) {
         const batch = texts.slice(i, i + MAX_BATCH_SIZE);
-        const response = await fetch(VOYAGE_API_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            input: batch,
-            model: VOYAGE_MODEL,
-            input_type: options?.inputType ?? "document",
-          }),
-        });
-
-        if (!response.ok) {
-          const body = await response.text();
-          logger.error("Voyage embedding failed", { status: response.status, body });
-          return Err({
-            code: "EMBEDDING_FAILED",
-            message: `Voyage API error (${response.status})`,
-          });
+        const batchResult = await postEmbeddings(this.apiKey, batch, inputType);
+        if (!batchResult.ok) {
+          return batchResult;
         }
 
-        const json = (await response.json()) as {
-          data?: Array<{ embedding: number[] }>;
-        };
+        allEmbeddings.push(...batchResult.value);
 
-        const embeddings = json.data?.map((row) => row.embedding) ?? [];
-        if (embeddings.length !== batch.length) {
-          return Err({
-            code: "EMBEDDING_FAILED",
-            message: "Voyage returned unexpected embedding count",
-          });
+        const batchIndex = i / MAX_BATCH_SIZE;
+        if (batchIndex + 1 < batchCount) {
+          await sleep(INTER_BATCH_DELAY_MS);
         }
-
-        allEmbeddings.push(...embeddings);
       }
 
       return Ok(allEmbeddings);
