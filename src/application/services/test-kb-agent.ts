@@ -156,7 +156,7 @@ export async function runKbAgentTest(
       conversationId: "kb-preview",
     },
     orgId: toOrgId(orgId),
-    model: org.model ?? "claude-sonnet-4-20250514",
+    model: org.model,
     language: org.language ?? "português",
   });
 

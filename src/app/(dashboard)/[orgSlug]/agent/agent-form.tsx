@@ -6,11 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateAgentSettings } from "./actions";
+import { AGENT_MODEL_OPTIONS } from "@/lib/agent-models";
 
-const MODELS = [
-  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4 (recomendado)" },
-  { value: "claude-haiku-3-5-20241022", label: "Claude Haiku 3.5 (mais rápido/barato)" },
-];
+const MODELS = [...AGENT_MODEL_OPTIONS];
 
 const PROMPT_PLACEHOLDER = `Você é o assistente virtual da Clínica Exemplo.
 Seja cordial, profissional e direto.

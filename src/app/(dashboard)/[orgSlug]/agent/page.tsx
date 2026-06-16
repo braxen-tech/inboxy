@@ -1,4 +1,5 @@
 import { getOrgBySlug } from "@/lib/get-org";
+import { resolveAgentModel } from "@/lib/agent-models";
 import { notFound } from "next/navigation";
 import { AgentForm } from "./agent-form";
 
@@ -23,7 +24,7 @@ export default async function AgentPage({ params }: Props) {
         orgId={org.id}
         orgSlug={orgSlug}
         initialPrompt={org.system_prompt ?? ""}
-        initialModel={org.model ?? "claude-sonnet-4-20250514"}
+        initialModel={resolveAgentModel(org.model)}
         chatwootActive={org.chatwoot_status === "active"}
       />
     </div>

@@ -5,6 +5,7 @@ import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
+import { resolveAgentModel } from "@/lib/agent-models";
 
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_TIMEOUT_WITH_TOOLS_MS = 60_000;
@@ -13,6 +14,7 @@ const MAX_STEPS_WITH_TOOLS = 5;
 export class ClaudeAdapter implements AgentRunner {
   async run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>> {
     const { systemPrompt, knowledgeBase, history, tools, toolContext, model, language } = params;
+    const resolvedModel = resolveAgentModel(model);
 
     const hasTools = tools.length > 0;
     const timeoutMs = hasTools ? AGENT_TIMEOUT_WITH_TOOLS_MS : AGENT_TIMEOUT_MS;
@@ -127,7 +129,7 @@ export class ClaudeAdapter implements AgentRunner {
     try {
       const result = await Promise.race([
         generateText({
-          model: anthropic(model),
+          model: anthropic(resolvedModel),
           system: {
             role: "system" as const,
             content: systemContent,
@@ -146,7 +148,7 @@ export class ClaudeAdapter implements AgentRunner {
               org_id: params.orgId,
               conversation_id: toolContext.conversationId,
               has_tools: String(hasTools),
-              model,
+              model: resolvedModel,
             },
           },
         }),
