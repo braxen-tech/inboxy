@@ -8,9 +8,28 @@ import { flushPostHogTelemetry } from "@/lib/posthog-telemetry";
 export const ingestKbDocumentJob = inngest.createFunction(
   {
     id: "ingest-kb-document",
-    concurrency: [{ key: "event.data.orgId", limit: 2 }],
-    retries: 4,
+    concurrency: [{ key: "event.data.orgId", limit: 1 }],
+    retries: 5,
+    timeouts: { finish: "10m" },
     triggers: [{ event: "kb.document.uploaded" }],
+    onFailure: async ({ event, error }) => {
+      const original = event.data.event?.data as { documentId?: string } | undefined;
+      const documentId = original?.documentId;
+      if (!documentId) return;
+
+      const db = getAdminClient();
+      const message =
+        error instanceof Error ? error.message : "Falha ao processar documento após várias tentativas.";
+
+      await db
+        .from("kb_documents")
+        .update({
+          status: "failed",
+          error_message: message,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", documentId);
+    },
   },
   async ({ event }) => {
     const { orgId, documentId } = event.data as {

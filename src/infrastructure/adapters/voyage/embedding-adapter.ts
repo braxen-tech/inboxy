@@ -2,14 +2,14 @@ import type { EmbeddingProvider, EmbeddingError } from "@/domain/ports/embedding
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
+import { buildEmbeddingBatches } from "./embedding-batches";
 
 const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 const VOYAGE_MODEL = "voyage-3";
-const MAX_BATCH_SIZE = 32;
-const INTER_BATCH_DELAY_MS = 400;
-const MAX_RETRIES = 6;
-const INITIAL_RETRY_DELAY_MS = 1_000;
-const MAX_RETRY_DELAY_MS = 30_000;
+const INTER_BATCH_DELAY_MS = 1_200;
+const MAX_RETRIES = 8;
+const INITIAL_RETRY_DELAY_MS = 2_000;
+const MAX_RETRY_DELAY_MS = 60_000;
 
 export function isRetryableVoyageStatus(status: number): boolean {
   return status === 429 || status === 502 || status === 503;
@@ -41,6 +41,28 @@ function retryDelayMs(attempt: number, retryAfterHeader: string | null): number 
   return Math.min(INITIAL_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
 }
 
+function mapVoyageError(status: number, body: string): EmbeddingError {
+  if (status === 429) {
+    return {
+      code: "RATE_LIMITED",
+      message: "Limite de requisições da Voyage atingido. Tente novamente em alguns minutos.",
+    };
+  }
+
+  const lower = body.toLowerCase();
+  if (status === 413 || lower.includes("token") || lower.includes("too large")) {
+    return {
+      code: "EMBEDDING_FAILED",
+      message: "Documento grande demais para indexar de uma vez. Divida em arquivos menores.",
+    };
+  }
+
+  return {
+    code: "EMBEDDING_FAILED",
+    message: `Voyage API error (${status})`,
+  };
+}
+
 async function postEmbeddings(
   apiKey: string,
   batch: string[],
@@ -60,6 +82,7 @@ async function postEmbeddings(
         input: batch,
         model: VOYAGE_MODEL,
         input_type: inputType,
+        truncation: true,
       }),
     });
 
@@ -95,24 +118,11 @@ async function postEmbeddings(
     }
 
     logger.error("Voyage embedding failed", { status: response.status, body: lastBody });
-    if (response.status === 429) {
-      return Err({
-        code: "RATE_LIMITED",
-        message: "Limite de requisições da Voyage atingido. Tente novamente em alguns minutos.",
-      });
-    }
-
-    return Err({
-      code: "EMBEDDING_FAILED",
-      message: `Voyage API error (${response.status})`,
-    });
+    return Err(mapVoyageError(response.status, lastBody));
   }
 
   logger.error("Voyage embedding exhausted retries", { status: lastStatus, body: lastBody });
-  return Err({
-    code: "RATE_LIMITED",
-    message: "Limite de requisições da Voyage atingido. Tente novamente em alguns minutos.",
-  });
+  return Err(mapVoyageError(lastStatus || 429, lastBody));
 }
 
 export class VoyageEmbeddingAdapter implements EmbeddingProvider {
@@ -129,10 +139,13 @@ export class VoyageEmbeddingAdapter implements EmbeddingProvider {
     try {
       const inputType = options?.inputType ?? "document";
       const allEmbeddings: number[][] = [];
-      const batchCount = Math.ceil(texts.length / MAX_BATCH_SIZE);
+      const batches =
+        inputType === "query" && texts.length === 1
+          ? [texts]
+          : buildEmbeddingBatches(texts);
 
-      for (let i = 0; i < texts.length; i += MAX_BATCH_SIZE) {
-        const batch = texts.slice(i, i + MAX_BATCH_SIZE);
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex]!;
         const batchResult = await postEmbeddings(this.apiKey, batch, inputType);
         if (!batchResult.ok) {
           return batchResult;
@@ -140,8 +153,7 @@ export class VoyageEmbeddingAdapter implements EmbeddingProvider {
 
         allEmbeddings.push(...batchResult.value);
 
-        const batchIndex = i / MAX_BATCH_SIZE;
-        if (batchIndex + 1 < batchCount) {
+        if (batchIndex + 1 < batches.length) {
           await sleep(INTER_BATCH_DELAY_MS);
         }
       }

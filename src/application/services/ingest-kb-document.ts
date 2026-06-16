@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EmbeddingProvider } from "@/domain/ports/embedding-provider";
 import { documentTextExtractor } from "@/infrastructure/kb/extractors";
 import { chunkText } from "@/infrastructure/kb/chunker";
+import { MAX_KB_EXTRACT_CHARS, insertKbChunksInBatches } from "@/infrastructure/kb/chunk-storage";
+import { buildEmbeddingBatches } from "@/infrastructure/adapters/voyage/embedding-batches";
 import { sanitizeKnowledgeBase } from "@/infrastructure/security/sanitize";
 import { KB_BUCKET } from "@/lib/kb-mime";
 import { logger } from "@/lib/logger";
@@ -69,6 +71,21 @@ export async function ingestKbDocument(
     }
 
     const sanitized = sanitizeKnowledgeBase(extractResult.value);
+
+    if (sanitized.length > MAX_KB_EXTRACT_CHARS) {
+      await markFailed(
+        db,
+        documentId,
+        `Documento extraiu ${sanitized.length.toLocaleString()} caracteres (máx. ${MAX_KB_EXTRACT_CHARS.toLocaleString()}). Divida em arquivos menores.`,
+      );
+      captureServerEvent("kb_document_ingest_failed", {
+        org_id: orgId,
+        document_id: documentId,
+        reason: "extract_too_large",
+      });
+      return;
+    }
+
     const chunks = chunkText(sanitized);
 
     if (chunks.length === 0) {
@@ -85,33 +102,43 @@ export async function ingestKbDocument(
       return;
     }
 
-    const embedResult = await embeddingProvider.embed(chunks);
-    if (!embedResult.ok) {
-      if (embedResult.error.code === "RATE_LIMITED") {
-        throw new KbIngestRateLimitedError(embedResult.error.message);
-      }
-      await markFailed(db, documentId, embedResult.error.message);
-      captureServerEvent("kb_document_ingest_failed", {
-        org_id: orgId,
-        document_id: documentId,
-        reason: "embedding_failed",
-      });
-      return;
-    }
-
     await db.from("kb_chunks").delete().eq("document_id", documentId);
 
-    const rows = chunks.map((content, index) => ({
-      organization_id: orgId,
-      document_id: documentId,
-      chunk_index: index,
-      content,
-      embedding: embedResult.value[index],
-    }));
+    const embeddingBatches = buildEmbeddingBatches(chunks);
+    let chunkOffset = 0;
 
-    const { error: insertError } = await db.from("kb_chunks").insert(rows);
-    if (insertError) {
-      throw new Error(insertError.message);
+    logger.info("KB embedding batches", {
+      orgId,
+      documentId,
+      chunkCount: chunks.length,
+      batchCount: embeddingBatches.length,
+    });
+
+    for (const batch of embeddingBatches) {
+      const embedResult = await embeddingProvider.embed(batch);
+      if (!embedResult.ok) {
+        if (embedResult.error.code === "RATE_LIMITED") {
+          throw new KbIngestRateLimitedError(embedResult.error.message);
+        }
+        await markFailed(db, documentId, embedResult.error.message);
+        captureServerEvent("kb_document_ingest_failed", {
+          org_id: orgId,
+          document_id: documentId,
+          reason: "embedding_failed",
+        });
+        return;
+      }
+
+      const rows = batch.map((content, index) => ({
+        organization_id: orgId,
+        document_id: documentId,
+        chunk_index: chunkOffset + index,
+        content,
+        embedding: embedResult.value[index]!,
+      }));
+
+      await insertKbChunksInBatches(db, rows);
+      chunkOffset += batch.length;
     }
 
     await db
