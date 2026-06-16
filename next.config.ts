@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas", "@thednp/dommatrix"],
 };
 
 export default nextConfig;

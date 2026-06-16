@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { extractPlainText } from "@/infrastructure/kb/extractors/plain";
 import { extractCsvText } from "@/infrastructure/kb/extractors/csv";
+import { extractPdfText } from "@/infrastructure/kb/extractors/pdf";
 import { CompositeDocumentTextExtractor } from "@/infrastructure/kb/extractors";
 
 describe("document extractors", () => {
@@ -19,6 +22,16 @@ describe("document extractors", () => {
     if (result.ok) {
       expect(result.value).toContain("Produto A");
       expect(result.value).toContain("preco: 10");
+    }
+  });
+
+  it("extracts text from pdf fixture", async () => {
+    const fixturePath = join(process.cwd(), "fixtures/clinica-vida-plena-manual.pdf");
+    const buffer = readFileSync(fixturePath);
+    const result = await extractPdfText(buffer);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toContain("Clinica Vida Plena");
     }
   });
 

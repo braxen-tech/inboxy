@@ -1,9 +1,11 @@
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import type { ExtractError } from "@/domain/ports/document-text-extractor";
+import { ensurePdfServerPolyfills } from "./pdf-polyfill";
 
 export async function extractPdfText(buffer: Buffer): Promise<Result<string, ExtractError>> {
   try {
+    await ensurePdfServerPolyfills();
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     try {
