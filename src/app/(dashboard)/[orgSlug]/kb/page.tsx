@@ -2,6 +2,7 @@ import { getOrgBySlug } from "@/lib/get-org";
 import { notFound } from "next/navigation";
 import { KbEditor } from "./kb-editor";
 import { KbDocuments } from "./kb-documents";
+import { KbAgentTest } from "./kb-agent-test";
 import { listKbDocuments } from "./actions";
 
 interface Props {
@@ -15,6 +16,8 @@ export default async function KbPage({ params }: Props) {
 
   const docsResult = await listKbDocuments(orgSlug);
   const documents = docsResult.documents ?? [];
+  const hasReadyDocuments = documents.some((doc) => doc.status === "ready");
+  const hasManualKb = Boolean(org.knowledge_base?.trim());
   const usage = docsResult.usage ?? {
     fileCount: 0,
     totalBytes: 0,
@@ -33,6 +36,12 @@ export default async function KbPage({ params }: Props) {
       </div>
 
       <KbDocuments orgSlug={orgSlug} initialDocuments={documents} initialUsage={usage} />
+
+      <KbAgentTest
+        orgSlug={orgSlug}
+        hasReadyDocuments={hasReadyDocuments}
+        hasManualKb={hasManualKb}
+      />
 
       <div className="space-y-3">
         <h2 className="text-lg font-medium">Texto manual</h2>

@@ -14,6 +14,11 @@ import {
 import { sanitizeKnowledgeBase } from "@/infrastructure/security/sanitize";
 import { inngest } from "@/infrastructure/events/inngest-client";
 import { assertInngestEventKeyConfigured } from "@/infrastructure/events/inngest-client";
+import {
+  runKbAgentTest,
+  type KbAgentTestOutput,
+} from "@/application/services/test-kb-agent";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 const MAX_KB_CHARS = 200_000;
 
@@ -274,4 +279,28 @@ export async function retryKbDocument(orgSlug: string, documentId: string) {
 
   revalidatePath(`/${orgSlug}/kb`);
   return { success: true };
+}
+
+export type { KbAgentTestOutput };
+
+export async function testKbAgent(orgSlug: string, question: string) {
+  const auth = await requireOwnedOrg(orgSlug);
+  if (auth.error) return { error: auth.error };
+
+  const db = getAdminClient();
+  const outcome = await runKbAgentTest(db, auth.org!.id, question);
+
+  if (outcome.error) {
+    return { error: outcome.error };
+  }
+
+  captureServerEvent("kb_agent_test_run", {
+    org_id: auth.org!.id,
+    org_slug: orgSlug,
+    used_lookup_knowledge: outcome.result!.usedLookupKnowledge,
+    lookup_call_count: outcome.result!.lookupCalls.length,
+    direct_chunk_count: outcome.result!.directChunks.length,
+  });
+
+  return { result: outcome.result };
 }
