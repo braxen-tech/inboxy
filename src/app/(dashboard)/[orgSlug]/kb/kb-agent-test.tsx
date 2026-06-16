@@ -5,7 +5,8 @@ import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { testKbAgent, type KbAgentTestOutput } from "./actions";
+import type { KbAgentTestOutput } from "@/application/services/test-kb-agent";
+import { testKbAgent } from "./actions";
 
 interface Props {
   orgSlug: string;
