@@ -7,8 +7,8 @@ export async function POST(request: Request) {
 
   const cookieStore = await cookies();
 
-  /** Response placeholder so Supabase SSR can flush Set-Cookie for signOut */
-  let response = NextResponse.redirect(new URL("/login", url.origin));
+  /** 303 so the browser follows with GET; default 307 would POST to /login and return 405 */
+  let response = NextResponse.redirect(new URL("/login", url.origin), 303);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

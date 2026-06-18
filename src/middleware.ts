@@ -10,6 +10,7 @@ const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings"]);
 const PUBLIC_PATHS = [
   "/login",
   "/auth/callback",
+  "/api/auth",
   "/api/webhooks",
   "/api/health",
   "/api/inngest",
