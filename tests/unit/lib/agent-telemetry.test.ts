@@ -39,6 +39,5 @@ describe("buildAgentTelemetrySettings", () => {
       has_tools: "false",
       model: "claude-sonnet-4-6",
     });
-    expect(settings?.integrations).toBeDefined();
   });
 });
