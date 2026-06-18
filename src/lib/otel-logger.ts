@@ -1,25 +1,14 @@
-import { logs, SeverityNumber, type Logger } from "@opentelemetry/api-logs";
-import type { LoggerProvider } from "@opentelemetry/sdk-logs";
-
-let otelLogger: Logger | null = null;
-let loggerProvider: LoggerProvider | null = null;
-
-export function setOtelLogger(logger: Logger): void {
-  otelLogger = logger;
-}
-
-export function setOtelLoggerProvider(provider: LoggerProvider): void {
-  loggerProvider = provider;
-}
+import { SeverityNumber } from "@opentelemetry/api-logs";
+import { loggerProvider } from "@/lib/posthog-logs";
+import {
+  getPostHogServiceName,
+  getServerDeploymentEnvironment,
+} from "@/lib/deployment-environment";
 
 export async function flushOtelLogs(): Promise<void> {
   if (loggerProvider) {
     await loggerProvider.forceFlush();
   }
-}
-
-export function getOtelLogger(): Logger | null {
-  return otelLogger;
 }
 
 const SEVERITY: Record<string, { number: SeverityNumber; text: string }> = {
@@ -34,10 +23,11 @@ export function emitOtelLog(
   message: string,
   attributes?: Record<string, unknown>,
 ): void {
-  if (!otelLogger) return;
+  if (!loggerProvider) return;
 
+  const logger = loggerProvider.getLogger(getPostHogServiceName(getServerDeploymentEnvironment()));
   const severity = SEVERITY[level];
-  otelLogger.emit({
+  logger.emit({
     body: message,
     severityNumber: severity.number,
     severityText: severity.text,

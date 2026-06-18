@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import { logger } from "@/lib/logger";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 export async function GET() {
+  scheduleTelemetryFlush();
   const checks: Record<string, "ok" | "error"> = {};
 
   try {
@@ -15,6 +18,8 @@ export async function GET() {
   checks.env = process.env.ANTHROPIC_API_KEY ? "ok" : "error";
 
   const allOk = Object.values(checks).every((v) => v === "ok");
+
+  logger.info("Health check", { status: allOk ? "healthy" : "degraded", checks });
 
   return NextResponse.json(
     { status: allOk ? "healthy" : "degraded", checks },
