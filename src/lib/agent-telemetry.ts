@@ -1,24 +1,30 @@
-import type { TelemetrySettings } from "ai";
-import { isPostHogConfigured, orgDistinctId } from "@/lib/posthog-server";
+import { withTracing } from "@posthog/ai/vercel";
+import { getPostHogClient, isPostHogConfigured, orgDistinctId } from "@/lib/posthog-server";
 
-export function buildAgentTelemetrySettings(input: {
-  orgId: string;
-  conversationId: string;
-  hasTools: boolean;
-  model: string;
-  functionId?: string;
-}): TelemetrySettings | undefined {
-  if (!isPostHogConfigured()) return undefined;
+/** Wraps a Vercel AI model so PostHog captures $ai_generation events directly. */
+export function wrapAgentModelForPostHog<T extends Parameters<typeof withTracing>[0]>(
+  model: T,
+  input: {
+    orgId: string;
+    conversationId: string;
+    hasTools: boolean;
+    modelName: string;
+  },
+): T {
+  if (!isPostHogConfigured()) return model;
 
-  return {
-    isEnabled: true,
-    functionId: input.functionId ?? "inboxy-agent-reply",
-    metadata: {
-      posthog_distinct_id: orgDistinctId(input.orgId),
+  const client = getPostHogClient();
+  if (!client) return model;
+
+  return withTracing(model, client, {
+    posthogDistinctId: orgDistinctId(input.orgId),
+    posthogTraceId: input.conversationId,
+    posthogProperties: {
       org_id: input.orgId,
       conversation_id: input.conversationId,
-      has_tools: String(input.hasTools),
-      model: input.model,
+      has_tools: input.hasTools,
+      model: input.modelName,
     },
-  };
+    posthogCaptureImmediate: true,
+  });
 }
