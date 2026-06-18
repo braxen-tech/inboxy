@@ -1,12 +1,13 @@
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { PostHogTraceExporter } from "@posthog/ai/otel";
+import { PostHogSpanProcessor } from "@posthog/ai/otel";
 import { logs } from "@opentelemetry/api-logs";
 import { loggerProvider } from "@/lib/posthog-logs";
 import {
   getPostHogServiceName,
   getServerDeploymentEnvironment,
 } from "@/lib/deployment-environment";
+import { registerPostHogAiSpanProcessor } from "@/lib/posthog-ai-traces";
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
@@ -25,14 +26,15 @@ export async function register(): Promise<void> {
       "deployment.environment": environment,
     });
 
-    const traceExporter = new PostHogTraceExporter({
-      projectToken: posthogKey,
+    const spanProcessor = new PostHogSpanProcessor({
+      apiKey: posthogKey,
       host: posthogHost,
     });
+    registerPostHogAiSpanProcessor(spanProcessor);
 
     const sdk = new NodeSDK({
       resource,
-      traceExporter,
+      spanProcessors: [spanProcessor],
     });
     sdk.start();
   }

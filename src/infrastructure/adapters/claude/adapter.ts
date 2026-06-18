@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { logAgentToolCall } from "@/lib/operational-telemetry";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
 import { resolveAgentModel } from "@/lib/agent-models";
+import { buildAgentTelemetrySettings } from "@/lib/agent-telemetry";
 
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_TIMEOUT_WITH_TOOLS_MS = 60_000;
@@ -137,6 +138,13 @@ export class ClaudeAdapter implements AgentRunner {
 
     logger.info("ClaudeAdapter run", { orgId: params.orgId, hasTools, toolNames: tools.map((t) => t.name) });
 
+    const telemetry = buildAgentTelemetrySettings({
+      orgId: params.orgId,
+      conversationId: toolContext.conversationId,
+      hasTools,
+      model: resolvedModel,
+    });
+
     try {
       const result = await Promise.race([
         generateText({
@@ -151,17 +159,7 @@ export class ClaudeAdapter implements AgentRunner {
           messages,
           ...(hasTools ? { tools: aiTools, stopWhen: stepCountIs(MAX_STEPS_WITH_TOOLS) } : {}),
           maxOutputTokens: 1024,
-          experimental_telemetry: {
-            isEnabled: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY),
-            functionId: "inboxy-agent-reply",
-            metadata: {
-              posthog_distinct_id: `org:${params.orgId}`,
-              org_id: params.orgId,
-              conversation_id: toolContext.conversationId,
-              has_tools: String(hasTools),
-              model: resolvedModel,
-            },
-          },
+          ...(telemetry ? { experimental_telemetry: telemetry } : {}),
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("AGENT_TIMEOUT")), timeoutMs),
