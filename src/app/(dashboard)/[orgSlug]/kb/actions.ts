@@ -16,6 +16,7 @@ import { inngest } from "@/infrastructure/events/inngest-client";
 import { assertInngestEventKeyConfigured } from "@/infrastructure/events/inngest-client";
 import { runKbAgentTest } from "@/application/services/test-kb-agent";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const MAX_KB_CHARS = 200_000;
 
@@ -33,6 +34,7 @@ async function requireOwnedOrg(orgSlug: string) {
 }
 
 export async function updateKnowledgeBase(orgId: string, orgSlug: string, knowledgeBase: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
   if (auth.org!.id !== orgId) return { error: "Organização inválida." };
@@ -67,6 +69,7 @@ export interface KbDocumentRow {
 }
 
 export async function listKbDocuments(orgSlug: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 
@@ -99,6 +102,7 @@ export async function createKbUpload(
   orgSlug: string,
   input: { filename: string; mimeType: string; size: number },
 ) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 
@@ -175,6 +179,7 @@ export async function createKbUpload(
 }
 
 export async function confirmKbUpload(orgSlug: string, documentId: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 
@@ -215,6 +220,7 @@ export async function confirmKbUpload(orgSlug: string, documentId: string) {
 }
 
 export async function deleteKbDocument(orgSlug: string, documentId: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 
@@ -238,6 +244,7 @@ export async function deleteKbDocument(orgSlug: string, documentId: string) {
 }
 
 export async function retryKbDocument(orgSlug: string, documentId: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 
@@ -279,6 +286,7 @@ export async function retryKbDocument(orgSlug: string, documentId: string) {
 }
 
 export async function testKbAgent(orgSlug: string, question: string) {
+  scheduleTelemetryFlush();
   const auth = await requireOwnedOrg(orgSlug);
   if (auth.error) return { error: auth.error };
 

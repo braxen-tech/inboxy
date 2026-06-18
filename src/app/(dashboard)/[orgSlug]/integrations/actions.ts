@@ -11,6 +11,7 @@ import { connectChatwoot, disconnectChatwoot } from "@/application/use-cases/con
 import { connectCalCom, disconnectCalCom } from "@/application/use-cases/connect-cal-com";
 import { connectStripe, disconnectStripe } from "@/application/use-cases/connect-stripe";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 // --- Chatwoot ---
 
@@ -22,6 +23,7 @@ const chatwootConnectSchema = z.object({
 });
 
 export async function saveChatwootCredentials(raw: z.infer<typeof chatwootConnectSchema>) {
+  scheduleTelemetryFlush();
   const parsed = chatwootConnectSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
@@ -76,6 +78,7 @@ export async function saveChatwootCredentials(raw: z.infer<typeof chatwootConnec
 }
 
 export async function disconnectChatwootAction(orgSlug: string) {
+  scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -112,6 +115,7 @@ const calSchema = z.object({
 });
 
 export async function saveCalComCredentials(raw: z.infer<typeof calSchema>) {
+  scheduleTelemetryFlush();
   const parsed = calSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
@@ -160,6 +164,7 @@ export async function saveCalComCredentials(raw: z.infer<typeof calSchema>) {
 }
 
 export async function disconnectCalComAction(orgSlug: string) {
+  scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -193,6 +198,7 @@ const stripeSchema = z.object({
 });
 
 export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
+  scheduleTelemetryFlush();
   const parsed = stripeSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
@@ -239,6 +245,7 @@ export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
 }
 
 export async function disconnectStripeAction(orgSlug: string) {
+  scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

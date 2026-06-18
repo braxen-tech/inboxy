@@ -3,6 +3,7 @@ import type { AgentTool, ToolContext, ToolError, ProductCatalog } from "@/domain
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 const inputSchema = z.object({
   productId: z.string().describe("ID do produto no Stripe (prod_xxx)"),
@@ -31,25 +32,26 @@ export class AddToCartTool implements AgentTool {
     }
 
     const { productId, quantity } = parsed.data;
+    const logCtx = { orgId: ctx.orgId, conversationId: ctx.conversationId };
 
-    console.log(`[add_to_cart] Looking up product: ${productId}`);
+    logger.info("add_to_cart: looking up product", { ...logCtx, productId });
 
     const productResult = await this.catalog.getProduct(ctx.stripe.apiKey, productId);
     if (!productResult.ok) {
-      console.error(`[add_to_cart] Product lookup failed for ${productId}:`, productResult.error);
+      logger.error("add_to_cart: product lookup failed", { ...logCtx, productId, error: productResult.error });
       return Err({ code: "EXECUTION_FAILED", message: `Produto não encontrado: ${productResult.error.message}` });
     }
 
     const product = productResult.value;
     if (!product.defaultPrice) {
-      console.error(`[add_to_cart] Product ${productId} has no default price`);
+      logger.error("add_to_cart: product has no default price", { ...logCtx, productId });
       return Err({ code: "EXECUTION_FAILED", message: "Produto sem preço configurado." });
     }
 
     const priceId = product.defaultPrice.id;
     const unitAmount = product.defaultPrice.unitAmount;
     const productName = product.name;
-    console.log(`[add_to_cart] Resolved price: ${priceId}, amount: ${unitAmount}, name: ${productName}`);
+    logger.info("add_to_cart: resolved price", { ...logCtx, productId, priceId, unitAmount, productName });
 
     const { data: existingOrder } = await this.db
       .from("orders")
@@ -70,7 +72,7 @@ export class AddToCartTool implements AgentTool {
         .single();
 
       if (convErr || !conversation) {
-        console.error(`[add_to_cart] Conversation not found: ${ctx.conversationId}`, convErr);
+        logger.error("add_to_cart: conversation not found", { ...logCtx, error: convErr });
         return Err({ code: "EXECUTION_FAILED", message: "Conversa não encontrada." });
       }
 

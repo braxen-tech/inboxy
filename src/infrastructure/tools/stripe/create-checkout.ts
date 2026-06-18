@@ -3,6 +3,7 @@ import type { AgentTool, ToolContext, ToolError, PaymentGateway } from "@/domain
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 const inputSchema = z.object({
   customerEmail: z.string().email().optional().describe("E-mail do cliente (opcional, para recibo)"),
@@ -65,7 +66,11 @@ export class CreateCheckoutTool implements AgentTool {
     });
 
     if (!result.ok) {
-      console.error("[create_checkout] Stripe error:", JSON.stringify(result.error));
+      logger.error("create_checkout: Stripe error", {
+        orgId: ctx.orgId,
+        conversationId: ctx.conversationId,
+        error: result.error,
+      });
       if (result.error.code === "AUTH_FAILED") {
         return Err({ code: "EXECUTION_FAILED", message: "Credencial de pagamento expirada. Contate o suporte." });
       }

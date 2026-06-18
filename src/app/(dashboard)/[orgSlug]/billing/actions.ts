@@ -8,6 +8,7 @@ import { StripeBillingAdapter } from "@/infrastructure/adapters/stripe/billing-a
 import { syncOrgFromCheckoutSessionId, syncOrgBillingFromStripe } from "@/application/services/sync-billing-from-checkout";
 import { toOrgId } from "@/domain/value-objects";
 import type { PlanId } from "@/lib/plans";
+import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const planSchema = z.enum(["starter", "professional", "business"]);
 
@@ -24,6 +25,7 @@ async function getOwnedOrg(orgSlug: string, userId: string) {
 }
 
 export async function createCheckoutSessionAction(orgSlug: string, plan: string) {
+  scheduleTelemetryFlush();
   const parsed = planSchema.safeParse(plan);
   if (!parsed.success) {
     return { error: "Plano inválido." };
@@ -57,6 +59,7 @@ export async function createCheckoutSessionAction(orgSlug: string, plan: string)
 }
 
 export async function createPortalSessionAction(orgSlug: string) {
+  scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const {
     data: { user },
@@ -82,6 +85,7 @@ export async function createPortalSessionAction(orgSlug: string) {
 }
 
 export async function syncCheckoutSessionAction(orgSlug: string, sessionId: string) {
+  scheduleTelemetryFlush();
   const trimmed = sessionId.trim();
   if (!trimmed.startsWith("cs_")) {
     return { error: "Sessão de checkout inválida." };
@@ -113,6 +117,7 @@ export async function syncCheckoutSessionAction(orgSlug: string, sessionId: stri
 }
 
 export async function syncBillingFromStripeAction(orgSlug: string) {
+  scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const {
     data: { user },
