@@ -9,8 +9,16 @@ export function scheduleTelemetryFlush(): void {
   after(async () => {
     try {
       await flushPostHogTelemetry();
-    } catch {
+    } catch (err) {
       // Telemetry flush must not affect the response.
+      console.warn(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          message: "PostHog telemetry flush failed",
+          error: String(err),
+        }),
+      );
     }
   });
 }

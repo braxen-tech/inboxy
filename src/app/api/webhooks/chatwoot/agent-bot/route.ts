@@ -6,8 +6,14 @@ import {
   syncConversationStatusByChatwootId,
 } from "@/application/services/chatwoot-inbound";
 import { logger } from "@/lib/logger";
+import {
+  logWebhookHandled,
+  logWebhookIgnored,
+} from "@/lib/operational-telemetry";
 import { captureServerException } from "@/lib/posthog-server";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
+
+const WEBHOOK = "chatwoot/agent-bot";
 
 export async function POST(request: Request) {
   scheduleTelemetryFlush();
@@ -21,11 +27,13 @@ export async function POST(request: Request) {
   try {
     payload = JSON.parse(body);
   } catch {
+    logger.warn("Webhook invalid JSON", { webhook: WEBHOOK });
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const accountId = String((payload.account as Record<string, unknown>)?.id ?? "");
   if (!accountId) {
+    logWebhookIgnored(WEBHOOK, "no_account_id");
     return NextResponse.json({ status: "ignored", reason: "no account id" });
   }
 
@@ -37,11 +45,12 @@ export async function POST(request: Request) {
     .single();
 
   if (!org?.chatwoot_agent_bot_webhook_secret) {
+    logWebhookIgnored(WEBHOOK, "agent_bot_webhook_not_configured", { accountId });
     return NextResponse.json({ status: "ignored", reason: "agent bot webhook not configured" });
   }
 
   if (querySecret !== org.chatwoot_agent_bot_webhook_secret) {
-    logger.warn("Agent bot webhook secret mismatch", { accountId });
+    logger.warn("Agent bot webhook secret mismatch", { accountId, orgId: org.id });
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
 
@@ -51,6 +60,7 @@ export async function POST(request: Request) {
 
   try {
     if (event.type === "ignored") {
+      logWebhookIgnored(WEBHOOK, event.reason, { accountId, orgId: org.id });
       return NextResponse.json({ status: "ignored", reason: event.reason });
     }
 
@@ -61,6 +71,12 @@ export async function POST(request: Request) {
         event.chatwootConversationId,
         event.status,
       );
+      logWebhookHandled(WEBHOOK, "conversation_updated", {
+        accountId,
+        orgId: org.id,
+        chatwootConversationId: event.chatwootConversationId,
+        status: event.status,
+      });
       return NextResponse.json({ status: "ok" });
     }
 
@@ -70,6 +86,12 @@ export async function POST(request: Request) {
       trustDbBotQueue: true,
     });
 
+    logWebhookHandled(WEBHOOK, "message_received", {
+      accountId,
+      orgId: org.id,
+      externalMessageId: event.message.externalMessageId,
+      chatwootConversationId: event.message.chatwootConversationId,
+    });
     return NextResponse.json({ status: "ok" });
   } catch (err) {
     logger.error("Agent bot webhook error", { accountId, orgId: org.id, error: String(err) });

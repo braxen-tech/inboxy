@@ -18,6 +18,11 @@ import { handoffConversationToHuman } from "@/application/services/conversation-
 import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
+import {
+  reportAgentRunFailed,
+  reportMessageSendFailed,
+  reportPipelineAbort,
+} from "@/lib/operational-telemetry";
 
 const BILLING_ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
@@ -75,7 +80,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     if (needsBillingSetup(org)) {
-      logger.warn("Billing setup incomplete, bot skipping", ctx);
+      reportPipelineAbort("billing_setup_incomplete", ctx);
       return;
     }
 
@@ -100,7 +105,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     const subscriptionStatus = org.subscription_status ?? "trialing";
     if (!BILLING_ACTIVE_STATUSES.has(subscriptionStatus)) {
-      logger.warn("Subscription not active, bot skipping", { ...ctx, subscriptionStatus });
+      reportPipelineAbort("subscription_inactive", { ...ctx, subscriptionStatus });
       return;
     }
 
@@ -259,7 +264,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     });
 
     if (!agentResult.ok) {
-      logger.error("Agent run failed", { ...ctx, error: agentResult.error });
+      reportAgentRunFailed(ctx, agentResult.error, org.model);
       await db
         .from("messages")
         .update({ status: "failed" })
@@ -270,7 +275,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     const { reply, inputTokens, outputTokens } = agentResult.value;
 
     if (!reply || reply.trim().length === 0) {
-      logger.warn("Agent returned empty reply", ctx);
+      reportPipelineAbort("empty_reply", ctx);
       return;
     }
 
@@ -285,10 +290,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     if (agentBotConfigured && !sendToken) {
-      logger.error(
-        "Agent Bot configurado sem access_token — reconecte Chatwoot em Integrações",
-        ctx,
-      );
+      reportPipelineAbort("agent_bot_token_missing", ctx, "error");
       await db.from("messages").update({ status: "failed" }).eq("id", messageId);
       return;
     }
@@ -298,10 +300,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       try {
         sendToken = secretStore.decrypt(org.chatwoot_api_token);
       } catch {
-        logger.error(
-          "Cannot decrypt Chatwoot API token — reconnect in Integrações (ENCRYPTION_KEY may have changed)",
-          ctx,
-        );
+        reportPipelineAbort("chatwoot_token_decrypt_failed", ctx, "error");
         await db
           .from("messages")
           .update({ status: "failed" })
@@ -310,7 +309,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       }
     }
     if (!sendToken) {
-      logger.error("No Chatwoot token available for send", ctx);
+      reportPipelineAbort("no_chatwoot_send_token", ctx, "error");
       await db.from("messages").update({ status: "failed" }).eq("id", messageId);
       return;
     }
@@ -380,7 +379,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     if (!sendResult.ok) {
-      logger.error("Send failed", { ...ctx, error: sendResult.error });
+      reportMessageSendFailed(ctx, sendResult.error);
       await db
         .from("messages")
         .update({ status: "failed" })

@@ -62,7 +62,10 @@ export async function runProcessIncomingMessageJobSafe(
       error: String(error),
       ...input,
     });
-    captureServerEvent("message_processing_failed", { ...input });
+    captureServerEvent("message_processing_failed", {
+      ...input,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     captureServerException(error, { ...input });
     const db = getAdminClient();
     await db.from("webhook_failures").insert({

@@ -4,6 +4,7 @@ import type { AgentRunner, AgentRunParams, AgentOutput, AgentError } from "@/dom
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
+import { logAgentToolCall } from "@/lib/operational-telemetry";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
 import { resolveAgentModel } from "@/lib/agent-models";
 
@@ -117,7 +118,17 @@ export class ClaudeAdapter implements AgentRunner {
         description: t.description,
         inputSchema: t.inputSchema,
         execute: async (input: unknown) => {
+          const started = Date.now();
           const result = await agentTool.execute(toolContext, input);
+          const durationMs = Date.now() - started;
+          logAgentToolCall(t.name, {
+            orgId: params.orgId,
+            conversationId: toolContext.conversationId,
+            durationMs,
+            ok: result.ok,
+            errorCode: result.ok ? undefined : result.error.code,
+            errorMessage: result.ok ? undefined : result.error.message,
+          });
           if (result.ok) return result.value;
           return `[Erro]: ${result.error.message}`;
         },
