@@ -79,6 +79,7 @@ export function planFromStripePriceId(priceId: string | null | undefined): PlanI
 
 /** Always available when Chatwoot is connected (not plan-gated). */
 export const CHATWOOT_HANDOFF_TOOL = "transfer_to_human";
+export const CHATWOOT_LABEL_TOOL = "manage_conversation_labels";
 
 /** Enabled when org has at least one indexed KB document. */
 export const LOOKUP_KNOWLEDGE_TOOL = "lookup_knowledge";
@@ -139,6 +140,15 @@ export function resolveEnabledToolsForOrg(org: {
     !base.includes(CHATWOOT_HANDOFF_TOOL)
   ) {
     base.push(CHATWOOT_HANDOFF_TOOL);
+  }
+
+  if (
+    org.chatwoot_status === "active" &&
+    org.chatwoot_api_token &&
+    org.chatwoot_account_id &&
+    !base.includes(CHATWOOT_LABEL_TOOL)
+  ) {
+    base.push(CHATWOOT_LABEL_TOOL);
   }
 
   if (org.hasKbDocuments && !base.includes(LOOKUP_KNOWLEDGE_TOOL)) {

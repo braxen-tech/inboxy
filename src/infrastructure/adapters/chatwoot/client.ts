@@ -47,6 +47,22 @@ export interface ChatwootInboxSummary {
   name: string;
 }
 
+export interface ChatwootAccountLabel {
+  id: number;
+  title: string;
+  description?: string;
+  color?: string;
+  show_on_sidebar?: boolean;
+}
+
+/** Unwrap Chatwoot label list responses (string[] or label objects). */
+export function unwrapChatwootLabelTitles(raw: unknown): string[] {
+  const items = unwrapChatwootList<ChatwootAccountLabel | string>(raw);
+  return items
+    .map((item) => (typeof item === "string" ? item : item.title))
+    .filter((title): title is string => typeof title === "string" && title.length > 0);
+}
+
 /** Unwrap Chatwoot list responses (`payload` / `data` / raw array). */
 export function unwrapChatwootList<T>(raw: unknown): T[] {
   if (Array.isArray(raw)) return raw;
@@ -299,6 +315,55 @@ export class ChatwootClient {
         body: { status },
       },
     );
+  }
+
+  async listAccountLabels(accountId: string): Promise<ChatwootResult<ChatwootAccountLabel[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/labels`,
+      this.apiToken,
+    );
+    if (!result.ok) return result;
+
+    const items = unwrapChatwootList<ChatwootAccountLabel>(result.data);
+    return { ok: true, data: items };
+  }
+
+  async getConversationLabels(
+    accountId: string,
+    conversationId: number,
+  ): Promise<ChatwootResult<string[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/conversations/${conversationId}/labels`,
+      this.apiToken,
+    );
+    if (!result.ok) return result;
+
+    if (result.data && typeof result.data === "object" && "payload" in result.data) {
+      return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
+    }
+
+    return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
+  }
+
+  async setConversationLabels(
+    accountId: string,
+    conversationId: number,
+    labels: string[],
+  ): Promise<ChatwootResult<string[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/conversations/${conversationId}/labels`,
+      this.apiToken,
+      {
+        method: "POST",
+        body: { labels },
+      },
+    );
+    if (!result.ok) return result;
+
+    return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
   }
 
   async unassignConversation(

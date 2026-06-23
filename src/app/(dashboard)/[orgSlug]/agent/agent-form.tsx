@@ -16,7 +16,13 @@ Seja cordial, profissional e direto.
 ## Handoff para humano (opcional)
 Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 - o cliente mencionar cancelamento ou reembolso;
-- a reclamação for sobre entrega atrasada há mais de 7 dias.`;
+- a reclamação for sobre entrega atrasada há mais de 7 dias.
+
+## Labels de lead (Chatwoot)
+Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui:
+- Cliente pergunta preço → label "interessado"
+- Cliente pede proposta ou demo → label "quente"
+- Cliente diz que não tem interesse → label "frio" e remova "quente"`;
 
 interface Props {
   orgId: string;
@@ -24,9 +30,17 @@ interface Props {
   initialPrompt: string;
   initialModel: string;
   chatwootActive: boolean;
+  chatwootLabels?: string[];
 }
 
-export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel, chatwootActive }: Props) {
+export function AgentForm({
+  orgId,
+  orgSlug,
+  initialPrompt,
+  initialModel,
+  chatwootActive,
+  chatwootLabels = [],
+}: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [model, setModel] = useState(initialModel);
   const [isPending, startTransition] = useTransition();
@@ -65,7 +79,8 @@ export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel, chatwoo
               {" "}
               Com Chatwoot conectado, a transferência para humano acontece automaticamente quando o
               cliente pedir — e você pode definir <strong>outros gatilhos</strong> aqui no prompt (ex.:
-              cancelamento, reclamações graves).
+              cancelamento, reclamações graves). Também pode definir <strong>regras de labels</strong>{" "}
+              para classificar leads nas conversas (labels devem existir no Chatwoot).
             </>
           )}
         </p>
@@ -78,6 +93,27 @@ export function AgentForm({ orgId, orgSlug, initialPrompt, initialModel, chatwoo
           placeholder={PROMPT_PLACEHOLDER}
         />
       </div>
+
+      {chatwootActive && (
+        <div className="space-y-2">
+          <Label>Labels no Chatwoot</Label>
+          {chatwootLabels.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Labels disponíveis nesta conta:{" "}
+              {chatwootLabels.map((label) => (
+                <code key={label} className="mr-1 rounded bg-muted px-1 py-0.5">
+                  {label}
+                </code>
+              ))}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Nenhuma label encontrada. Crie em Chatwoot → Settings → Labels antes de referenciá-las
+              no prompt.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="model">Modelo de IA</Label>

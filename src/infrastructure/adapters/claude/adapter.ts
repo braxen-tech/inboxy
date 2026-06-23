@@ -6,6 +6,7 @@ import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
 import { logAgentToolCall } from "@/lib/operational-telemetry";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
+import { buildConversationLabelSystemInstructions } from "@/lib/conversation-labels";
 import { resolveAgentModel } from "@/lib/agent-models";
 import { wrapAgentModelForPostHog } from "@/lib/agent-telemetry";
 
@@ -15,7 +16,8 @@ const MAX_STEPS_WITH_TOOLS = 5;
 
 export class ClaudeAdapter implements AgentRunner {
   async run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>> {
-    const { systemPrompt, knowledgeBase, history, tools, toolContext, model, language } = params;
+    const { systemPrompt, knowledgeBase, history, tools, toolContext, model, language, availableLabels } =
+      params;
     const resolvedModel = resolveAgentModel(model);
 
     const hasTools = tools.length > 0;
@@ -69,6 +71,15 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push("");
       systemParts.push(`## Transferência para atendente humano`);
       for (const line of buildHandoffSystemInstructions()) {
+        systemParts.push(line);
+      }
+    }
+
+    const hasConversationLabels = tools.some((t) => t.name === "manage_conversation_labels");
+    if (toolContext.chatwoot && hasConversationLabels) {
+      systemParts.push("");
+      systemParts.push(`## Labels de conversa (Chatwoot)`);
+      for (const line of buildConversationLabelSystemInstructions(availableLabels ?? [])) {
         systemParts.push(line);
       }
     }

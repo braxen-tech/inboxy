@@ -51,6 +51,33 @@ O token é criptografado com `ENCRYPTION_KEY` (64 caracteres hex). Se rotacionar
    - Cliente pede humano → IA chama tool `transfer_to_human` → conversa **open** + sem assignee (humano no Chatwoot).
    - No painel: filtro **Open** → aba **Unassigned** ou **All** (não só Mine). Conversas atribuídas a você aparecem em **Mine**.
 
+#### Labels de conversa (classificação de leads)
+
+A IA pode aplicar labels nas conversas do Chatwoot conforme regras definidas no **System Prompt** (página Agente).
+
+**Pré-requisito:** crie as labels manualmente em **Chatwoot → Settings → Labels** (ex.: `interessado`, `quente`, `frio`). A IA **não cria** labels — só aplica as que já existem na conta.
+
+**Como configurar no Inboxy:**
+
+1. Crie as labels no Chatwoot.
+2. Em **Agente → System Prompt**, adicione uma seção com regras, por exemplo:
+   - Cliente pergunta preço → label `interessado`
+   - Cliente pede proposta → label `quente`
+   - Cliente diz que não tem interesse → label `frio` e remova `quente`
+3. A página Agente lista as labels disponíveis na conta (sincronizadas do Chatwoot).
+
+**Tool:** `manage_conversation_labels` — habilitada automaticamente com Chatwoot conectado.
+
+- `action: "add"` — adiciona labels (faz merge com as existentes; não apaga labels manuais)
+- `action: "remove"` — remove labels específicas
+
+**Teste E2E:**
+
+1. Crie labels no Chatwoot.
+2. Configure regras no prompt.
+3. Envie mensagem que se encaixe (ex.: "quanto custa?") → conversa deve receber a label no Chatwoot.
+4. Label inexistente no prompt → tool retorna erro e a IA continua o atendimento.
+
 #### Legado (sem Agent Bot automático)
 
 Orgs antigas com `chatwoot_agent_bot_id` vazio ainda podem usar `POST /api/webhooks/chatwoot?secret=...` até reconectar.

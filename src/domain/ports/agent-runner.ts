@@ -12,6 +12,7 @@ export interface AgentRunParams {
   orgId: OrgId;
   model: string;
   language: string;
+  availableLabels?: string[];
 }
 
 export interface AgentOutput {

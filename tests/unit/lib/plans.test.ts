@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   PLANS,
   CHATWOOT_HANDOFF_TOOL,
+  CHATWOOT_LABEL_TOOL,
   LOOKUP_KNOWLEDGE_TOOL,
   resolveAllowedTools,
   resolveEnabledToolsForOrg,
@@ -52,6 +53,7 @@ describe("plans", () => {
       chatwoot_account_id: "1",
     });
     expect(tools).toContain(CHATWOOT_HANDOFF_TOOL);
+    expect(tools).toContain(CHATWOOT_LABEL_TOOL);
   });
 
   it("includes lookup_knowledge when org has indexed documents", () => {

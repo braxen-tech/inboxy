@@ -12,7 +12,9 @@ import { isBotQueueStatus } from "@/lib/conversation-status";
 import {
   QUOTA_HANDOFF_MESSAGE,
   resolveEnabledToolsForOrg,
+  CHATWOOT_LABEL_TOOL,
 } from "@/lib/plans";
+import { fetchAccountLabelTitles } from "@/application/services/conversation-labels";
 import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { handoffConversationToHuman } from "@/application/services/conversation-handoff";
 import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
@@ -198,6 +200,25 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     });
     const tools = toolRegistry.getToolsForOrg(toOrgId(orgId), enabledToolNames);
 
+    let availableLabels: string[] | undefined;
+    if (
+      enabledToolNames.includes(CHATWOOT_LABEL_TOOL) &&
+      org.chatwoot_status === "active" &&
+      org.chatwoot_api_token &&
+      org.chatwoot_api_url &&
+      org.chatwoot_account_id
+    ) {
+      try {
+        availableLabels = await fetchAccountLabelTitles({
+          apiUrl: org.chatwoot_api_url,
+          apiToken: secretStore.decrypt(org.chatwoot_api_token),
+          accountId: org.chatwoot_account_id,
+        });
+      } catch {
+        logger.warn("Failed to fetch Chatwoot account labels", ctx);
+      }
+    }
+
     let calendarCtx: import("@/domain/ports").CalendarContext | undefined;
     if (org.cal_status === "active" && org.cal_api_key && org.cal_event_type_id) {
       calendarCtx = {
@@ -261,6 +282,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       orgId: toOrgId(orgId),
       model: org.model,
       language: org.language,
+      availableLabels,
     });
 
     if (!agentResult.ok) {
