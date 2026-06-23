@@ -1,19 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { InboundMessage } from "@/domain/ports";
-import { after } from "next/server";
+import type { EventBus, InboundMessage } from "@/domain/ports";
 import {
-  assertInngestEventKeyConfigured,
-  inngest,
-} from "@/infrastructure/events/inngest-client";
-import { runProcessIncomingMessageJobSafe } from "@/application/services/process-message-job";
+  toConversationId,
+  toMessageId,
+  toOrgId,
+} from "@/domain/value-objects";
+import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { incrementUsage } from "@/application/services/usage-tracker";
 import { isBotQueueStatus, type ConversationStatus } from "@/lib/conversation-status";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
-
-function chatwootUsesInngestQueue(): boolean {
-  return process.env.CHATWOOT_USE_INNGEST === "true";
-}
 
 export async function syncConversationStatusByChatwootId(
   db: SupabaseClient,
@@ -47,7 +43,9 @@ export async function processChatwootInboundMessage(
     /** When true, enqueue if Supabase status is pending even if Chatwoot reports open (desync). */
     trustDbBotQueue?: boolean;
   } = {},
+  deps: { eventBus?: EventBus } = {},
 ): Promise<void> {
+  const eventBus = deps.eventBus ?? getEventBus();
   const correlationId = randomUUID();
   const ctx = { correlationId, externalMessageId: msg.externalMessageId, orgId };
 
@@ -184,28 +182,17 @@ export async function processChatwootInboundMessage(
     return;
   }
 
-  const job = {
-    orgId,
-    conversationId: conversation.id,
-    messageId: insertedMsg.id,
-    correlationId,
-  };
-
-  if (chatwootUsesInngestQueue()) {
-    assertInngestEventKeyConfigured();
-    await inngest.send({ name: "message.received", data: job });
-    logger.info("Chatwoot inbound enqueued (Inngest)", {
-      ...ctx,
-      conversationId: conversation.id,
-    });
-    return;
-  }
-
-  after(async () => {
-    await runProcessIncomingMessageJobSafe(job);
+  await eventBus.emit({
+    type: "message.received",
+    payload: {
+      orgId: toOrgId(orgId),
+      conversationId: toConversationId(conversation.id),
+      messageId: toMessageId(insertedMsg.id),
+      correlationId,
+    },
   });
 
-  logger.info("Chatwoot inbound scheduled (inline after webhook)", {
+  logger.info("Chatwoot inbound enqueued (Inngest)", {
     ...ctx,
     conversationId: conversation.id,
   });

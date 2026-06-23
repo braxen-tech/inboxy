@@ -4,12 +4,12 @@
 Accepted
 
 ## Context
-Meta's webhook has a strict timeout. If we don't respond with 200 within ~5 seconds, Meta will retry. But running Claude + tools can take 5-30 seconds.
+Chatwoot Agent Bot webhooks must respond quickly. Running Claude + tools can take 5–30 seconds, so processing cannot block the webhook response.
 
 ## Decision
-Use Inngest as a durable event queue:
-1. Webhook receives message → persists to DB → emits Inngest event → responds 200 immediately.
-2. Inngest worker picks up event → runs agent → sends reply via Graph API.
+Use Inngest as a durable event queue via the `EventBus` port (`InngestEventBus` adapter):
+1. Webhook receives message → persists to DB → `EventBus.emit(message.received)` → responds 200 immediately.
+2. Inngest worker picks up event → runs agent → sends reply via Chatwoot API.
 
 Key configurations:
 - `concurrency: 1 per conversationId` — prevents double replies when patient sends multiple messages quickly.

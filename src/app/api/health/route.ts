@@ -3,6 +3,14 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
+function isInngestEventKeyValid(): boolean {
+  const key = process.env.INNGEST_EVENT_KEY?.trim();
+  if (!key) return false;
+  if (key.startsWith("signkey")) return false;
+  if (key.startsWith("sk-inn-api")) return false;
+  return true;
+}
+
 export async function GET() {
   scheduleTelemetryFlush();
   const checks: Record<string, "ok" | "error"> = {};
@@ -16,6 +24,11 @@ export async function GET() {
   }
 
   checks.env = process.env.ANTHROPIC_API_KEY ? "ok" : "error";
+
+  if (process.env.NODE_ENV === "production") {
+    checks.inngest_event_key = isInngestEventKeyValid() ? "ok" : "error";
+    checks.inngest_signing_key = process.env.INNGEST_SIGNING_KEY?.trim() ? "ok" : "error";
+  }
 
   const allOk = Object.values(checks).every((v) => v === "ok");
 

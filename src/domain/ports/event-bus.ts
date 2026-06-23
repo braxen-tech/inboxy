@@ -1,4 +1,4 @@
-import type { OrgId, ConversationId, MessageId, ContactId } from "../value-objects";
+import type { OrgId, ConversationId, MessageId } from "../value-objects";
 
 export type DomainEvent =
   | {
@@ -7,7 +7,6 @@ export type DomainEvent =
         orgId: OrgId;
         conversationId: ConversationId;
         messageId: MessageId;
-        contactId: ContactId;
         correlationId: string;
       };
     }
@@ -23,6 +22,10 @@ export type DomainEvent =
   | {
       type: "chatwoot.connected";
       payload: { orgId: OrgId; accountId: string };
+    }
+  | {
+      type: "kb.document.uploaded";
+      payload: { orgId: OrgId; documentId: string };
     };
 
 export interface EventBus {

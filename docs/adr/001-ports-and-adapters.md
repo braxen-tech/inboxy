@@ -17,4 +17,5 @@ Adopt a ports & adapters (hexagonal) architecture with four layers:
 - Adding a new channel (e.g. Chatwoot, Twilio, voice) = new adapter implementing `MessagingChannel`.
 - Adding a new AI provider = new adapter implementing `AgentRunner`.
 - Adding a new tool = new file in `infrastructure/tools/` implementing `AgentTool`.
+- Async side effects (message processing, KB ingest) = emit on `EventBus` port; `InngestEventBus` enqueues to Inngest.
 - Slightly more boilerplate than a flat structure, but dramatically reduces coupling.

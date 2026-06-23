@@ -147,7 +147,22 @@ The owner will receive a magic link email to access the dashboard.
 ### Health Check
 ```bash
 curl https://your-domain.vercel.app/api/health
-# Returns: { "status": "healthy", "checks": { "supabase": "ok", "env": "ok" } }
+# Production also checks inngest_event_key and inngest_signing_key
+# Returns: { "status": "healthy", "checks": { "supabase": "ok", "env": "ok", ... } }
+```
+
+### Message processing (Inngest)
+All Chatwoot inbound messages and KB uploads are enqueued via `EventBus` → `InngestEventBus`:
+1. Webhook persists message → `message.received` event
+2. Inngest function `process-incoming-message` runs the agent (concurrency 1 per conversation)
+3. Failures after retries land in `webhook_failures` (DLQ)
+
+Production requires `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, and app sync at `/api/inngest`.
+
+Local dev (two terminals):
+```bash
+npm run dev:inngest    # terminal 1 — INNGEST_DEV=1
+npm run inngest:dev    # terminal 2 — dev server :8288
 ```
 
 ### Inngest Dashboard
@@ -184,7 +199,8 @@ curl https://your-domain.vercel.app/api/health
 8. Check `conversations.status` — only `pending` enqueues the agent; `open` = human handoff
 9. **Painel vazio com widget funcionando:** no Chatwoot, troque o filtro de status de **Open** para **Pending** — conversas do Agent Bot começam como `pending`
 10. **IA responde mas não como Agent Bot:** reconecte em Integrações (regenera `access_token` via API). Sem esse token, o Inboxy envia com o token de usuário e o painel não lista as conversas corretamente
-11. **Respostas ainda como “Braxen” (user):** por padrão o Chatwoot processa **inline** no Next.js (`CHATWOOT_USE_INNGEST` não definido). Se `CHATWOOT_USE_INNGEST=true`, o deploy/Inngest precisa estar na mesma versão do código. Reinicie `npm run dev` após mudanças
+11. **IA responde como usuário humano no Chatwoot:** reconecte em Integrações (regenera `access_token` via API). Sem token de Agent Bot, o Inboxy envia com token de admin e o painel não lista conversas corretamente
+12. **Mensagem persistida mas bot não responde:** verifique Inngest dashboard (`process-incoming-message`), `/api/health` (`inngest_*`), e `webhook_failures`
 
 ### Duplicate messages
 - System has triple idempotency: `external_message_id` UNIQUE, `processed_webhook_events`, Inngest event key

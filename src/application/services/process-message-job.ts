@@ -22,7 +22,7 @@ export interface ProcessMessageJobInput {
   correlationId: string;
 }
 
-/** Runs the AI reply pipeline (shared by Inngest and inline Chatwoot processing). */
+/** Runs the AI reply pipeline (Inngest worker). */
 export async function runProcessIncomingMessageJob(
   input: ProcessMessageJobInput,
 ): Promise<void> {
@@ -67,11 +67,6 @@ export async function runProcessIncomingMessageJobSafe(
       error_message: error instanceof Error ? error.message : String(error),
     });
     captureServerException(error, { ...input });
-    const db = getAdminClient();
-    await db.from("webhook_failures").insert({
-      payload: input,
-      error: String(error),
-    });
     throw error;
   } finally {
     await flushPostHogTelemetry();

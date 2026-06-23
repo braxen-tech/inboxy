@@ -12,8 +12,8 @@ import {
   resolveKbMimeType,
 } from "@/lib/kb-mime";
 import { sanitizeKnowledgeBase } from "@/infrastructure/security/sanitize";
-import { inngest } from "@/infrastructure/events/inngest-client";
-import { assertInngestEventKeyConfigured } from "@/infrastructure/events/inngest-client";
+import { getEventBus } from "@/infrastructure/events/get-event-bus";
+import { toOrgId } from "@/domain/value-objects";
 import { runKbAgentTest } from "@/application/services/test-kb-agent";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
@@ -204,10 +204,9 @@ export async function confirmKbUpload(orgSlug: string, documentId: string) {
   }
 
   try {
-    assertInngestEventKeyConfigured();
-    await inngest.send({
-      name: "kb.document.uploaded",
-      data: { orgId: auth.org!.id, documentId },
+    await getEventBus().emit({
+      type: "kb.document.uploaded",
+      payload: { orgId: toOrgId(auth.org!.id), documentId },
     });
   } catch (err) {
     return {
@@ -270,10 +269,9 @@ export async function retryKbDocument(orgSlug: string, documentId: string) {
     .eq("id", documentId);
 
   try {
-    assertInngestEventKeyConfigured();
-    await inngest.send({
-      name: "kb.document.uploaded",
-      data: { orgId: auth.org!.id, documentId },
+    await getEventBus().emit({
+      type: "kb.document.uploaded",
+      payload: { orgId: toOrgId(auth.org!.id), documentId },
     });
   } catch (err) {
     return {

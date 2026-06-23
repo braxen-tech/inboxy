@@ -6,6 +6,10 @@ export const inngest = new Inngest({
 
 /** Ensures INNGEST_EVENT_KEY is set before calling inngest.send() in production. */
 export function assertInngestEventKeyConfigured(): void {
+  if (process.env.INNGEST_DEV === "1" || process.env.NODE_ENV === "test") {
+    return;
+  }
+
   const key = process.env.INNGEST_EVENT_KEY?.trim();
   if (!key) {
     throw new Error(
