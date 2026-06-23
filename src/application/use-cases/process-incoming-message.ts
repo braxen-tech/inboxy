@@ -269,12 +269,31 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
           logger.warn("Cannot decrypt bot token for handoff tool", ctx);
         }
       }
+
+      const contactMetadata = conversation.contacts?.metadata;
+      const rawCwContactId =
+        contactMetadata &&
+        typeof contactMetadata === "object" &&
+        contactMetadata !== null &&
+        "chatwoot_contact_id" in contactMetadata
+          ? (contactMetadata as Record<string, unknown>).chatwoot_contact_id
+          : undefined;
+      const chatwootContactId =
+        typeof rawCwContactId === "number"
+          ? rawCwContactId
+          : typeof rawCwContactId === "string" && rawCwContactId.trim()
+            ? Number(rawCwContactId)
+            : undefined;
+
       chatwootCtx = {
         apiUrl: org.chatwoot_api_url,
         apiToken: secretStore.decrypt(org.chatwoot_api_token),
         botAccessToken,
         accountId: org.chatwoot_account_id,
         conversationId: conversation.chatwoot_conversation_id,
+        ...(chatwootContactId != null && !Number.isNaN(chatwootContactId)
+          ? { contactId: chatwootContactId }
+          : {}),
       };
       logger.info("Chatwoot context initialized", { accountId: org.chatwoot_account_id, conversationId: conversation.chatwoot_conversation_id });
     } else {
@@ -285,6 +304,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       orgId: toOrgId(orgId),
       contactPhone: conversation.contacts?.phone ?? "",
       conversationId,
+      localContactId: conversation.contacts?.id as string | undefined,
       calendar: calendarCtx,
       stripe: stripeCtx,
       chatwoot: chatwootCtx,

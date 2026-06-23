@@ -87,12 +87,31 @@ export async function processChatwootInboundMessage(
       },
       { onConflict: "organization_id,phone" },
     )
-    .select("id")
+    .select("id, metadata")
     .single();
 
   if (!contact) {
     logger.error("Contact upsert failed", ctx);
     return;
+  }
+
+  if (msg.senderChatwootId != null) {
+    const existingMetadata =
+      contact.metadata && typeof contact.metadata === "object"
+        ? (contact.metadata as Record<string, unknown>)
+        : {};
+    const currentCwId = existingMetadata.chatwoot_contact_id;
+    if (currentCwId !== msg.senderChatwootId) {
+      await db
+        .from("contacts")
+        .update({
+          metadata: {
+            ...existingMetadata,
+            chatwoot_contact_id: msg.senderChatwootId,
+          },
+        })
+        .eq("id", contact.id);
+    }
   }
 
   const defaultStatus: ConversationStatus =

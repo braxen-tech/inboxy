@@ -6,6 +6,8 @@ export interface InboundMessage {
   senderName: string | null;
   senderPhone: string | null;
   senderEmail: string | null;
+  /** Chatwoot contact ID from webhook sender.id */
+  senderChatwootId?: number | null;
   content: string;
   timestamp: Date;
   accountId: string;

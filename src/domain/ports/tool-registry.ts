@@ -20,12 +20,16 @@ export interface ChatwootContext {
   botAccessToken?: string | null;
   accountId: string;
   conversationId: number;
+  /** Chatwoot contact ID from local metadata or conversation API */
+  contactId?: number;
 }
 
 export interface ToolContext {
   orgId: OrgId;
   contactPhone: string;
   conversationId: string;
+  /** Local Supabase contact row ID */
+  localContactId?: string;
   calendar?: CalendarContext;
   stripe?: StripeContext;
   chatwoot?: ChatwootContext;

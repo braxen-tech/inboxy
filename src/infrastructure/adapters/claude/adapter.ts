@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { logAgentToolCall } from "@/lib/operational-telemetry";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
 import { buildConversationLabelSystemInstructions } from "@/lib/conversation-labels";
+import { buildChatwootContactSystemInstructions } from "@/lib/chatwoot-contact";
 import { resolveAgentModel } from "@/lib/agent-models";
 import { wrapAgentModelForPostHog } from "@/lib/agent-telemetry";
 
@@ -80,6 +81,15 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push("");
       systemParts.push(`## Labels de conversa (Chatwoot)`);
       for (const line of buildConversationLabelSystemInstructions(availableLabels ?? [])) {
+        systemParts.push(line);
+      }
+    }
+
+    const hasContactSync = tools.some((t) => t.name === "update_chatwoot_contact");
+    if (toolContext.chatwoot && hasContactSync) {
+      systemParts.push("");
+      systemParts.push(`## CRM / Contato (Chatwoot)`);
+      for (const line of buildChatwootContactSystemInstructions(availableLabels ?? [])) {
         systemParts.push(line);
       }
     }

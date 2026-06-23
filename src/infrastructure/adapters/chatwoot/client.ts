@@ -63,6 +63,22 @@ export interface ChatwootAccountAgent {
   availability_status?: string;
 }
 
+export interface ChatwootContactUpdatePayload {
+  name?: string;
+  email?: string;
+  phone_number?: string;
+  custom_attributes?: Record<string, string | number | boolean>;
+}
+
+export interface ChatwootConversationDetails {
+  id: number;
+  meta?: {
+    sender?: {
+      id?: number;
+    };
+  };
+}
+
 /** Unwrap Chatwoot label list responses (string[] or label objects). */
 export function unwrapChatwootLabelTitles(raw: unknown): string[] {
   const items = unwrapChatwootList<ChatwootAccountLabel | string>(raw);
@@ -409,16 +425,94 @@ export class ChatwootClient {
     return this.assignConversation(accountId, conversationId, null);
   }
 
+  async getConversation(
+    accountId: string,
+    conversationId: number,
+  ): Promise<ChatwootResult<ChatwootConversationDetails>> {
+    return chatwootFetch<ChatwootConversationDetails>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/conversations/${conversationId}`,
+      this.apiToken,
+    );
+  }
+
+  async updateContact(
+    accountId: string,
+    contactId: number,
+    payload: ChatwootContactUpdatePayload,
+  ): Promise<ChatwootResult<void>> {
+    const url = `${this.apiUrl.replace(/\/$/, "")}/api/v1/accounts/${accountId}/contacts/${contactId}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: {
+          api_access_token: this.apiToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 204 || res.ok) {
+        return { ok: true, data: undefined };
+      }
+
+      const json = await res.json().catch(() => ({}));
+      const errMsg =
+        (json as { error?: string; message?: string })?.error ??
+        (json as { message?: string })?.message ??
+        JSON.stringify(json);
+      logger.error("Chatwoot update contact error", { url, status: res.status, error: errMsg });
+      return { ok: false, status: res.status, error: errMsg };
+    } catch (err) {
+      logger.error("Chatwoot update contact network error", { url, error: String(err) });
+      return { ok: false, status: 0, error: String(err) };
+    }
+  }
+
+  async getContactLabels(
+    accountId: string,
+    contactId: number,
+  ): Promise<ChatwootResult<string[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/contacts/${contactId}/labels`,
+      this.apiToken,
+    );
+    if (!result.ok) return result;
+
+    return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
+  }
+
+  async setContactLabels(
+    accountId: string,
+    contactId: number,
+    labels: string[],
+  ): Promise<ChatwootResult<string[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/contacts/${contactId}/labels`,
+      this.apiToken,
+      {
+        method: "POST",
+        body: { labels },
+      },
+    );
+    if (!result.ok) return result;
+
+    return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
+  }
+
   async sendMessage(
     accountId: string,
     conversationId: number,
     content: string,
-    options?: { agentBotId?: number },
+    options?: { agentBotId?: number; private?: boolean },
   ): Promise<ChatwootResult<ChatwootMessageResponse>> {
     const body: Record<string, unknown> = {
       content,
       message_type: "outgoing",
-      private: false,
+      private: options?.private ?? false,
     };
     if (options?.agentBotId != null) {
       body.sender_type = "AgentBot";
@@ -433,6 +527,14 @@ export class ChatwootClient {
         body,
       },
     );
+  }
+
+  async sendPrivateNote(
+    accountId: string,
+    conversationId: number,
+    content: string,
+  ): Promise<ChatwootResult<ChatwootMessageResponse>> {
+    return this.sendMessage(accountId, conversationId, content, { private: true });
   }
 
   async sendMessageWithAttachment(

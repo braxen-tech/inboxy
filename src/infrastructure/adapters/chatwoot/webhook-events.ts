@@ -81,6 +81,7 @@ export function parseChatwootWebhookPayload(payload: RawPayload): ChatwootWebhoo
     senderName: payload.sender?.name ?? null,
     senderPhone: payload.sender?.phone_number ?? null,
     senderEmail: payload.sender?.email ?? null,
+    senderChatwootId: payload.sender?.id ?? null,
     content: payload.content,
     timestamp: new Date(payload.created_at ?? Date.now()),
     accountId: String(payload.account.id),

@@ -28,6 +28,12 @@ Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui:
 - Cliente pede proposta ou demo → label "quente"
 - Cliente diz que não tem interesse → label "frio" e remova "quente"
 
+## CRM / Contato (Chatwoot)
+Quando o cliente informar nome completo e e-mail:
+- Chame update_chatwoot_contact com name, email
+- Tag de contato "lead-qualificado"
+- Note resumindo interesse e próximo passo
+
 ## Roteamento de atendentes
 Use os nomes exatos dos atendentes cadastrados no Chatwoot:
 - Assuntos financeiros → transferir para "Ana Silva"

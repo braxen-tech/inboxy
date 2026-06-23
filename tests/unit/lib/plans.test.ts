@@ -3,6 +3,7 @@ import {
   PLANS,
   CHATWOOT_HANDOFF_TOOL,
   CHATWOOT_LABEL_TOOL,
+  CHATWOOT_CONTACT_TOOL,
   LOOKUP_KNOWLEDGE_TOOL,
   resolveAllowedTools,
   resolveEnabledToolsForOrg,
@@ -54,6 +55,7 @@ describe("plans", () => {
     });
     expect(tools).toContain(CHATWOOT_HANDOFF_TOOL);
     expect(tools).toContain(CHATWOOT_LABEL_TOOL);
+    expect(tools).toContain(CHATWOOT_CONTACT_TOOL);
   });
 
   it("includes lookup_knowledge when org has indexed documents", () => {
