@@ -7,6 +7,7 @@ import {
 } from "@/domain/value-objects";
 import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { incrementUsage } from "@/application/services/usage-tracker";
+import { cancelPendingFollowups } from "@/application/services/cancel-pending-followups";
 import { isBotQueueStatus, type ConversationStatus } from "@/lib/conversation-status";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
@@ -30,6 +31,20 @@ export async function syncConversationStatusByChatwootId(
       status,
       error: error.message,
     });
+    return;
+  }
+
+  if (!isBotQueueStatus(status)) {
+    const { data: conversation } = await db
+      .from("conversations")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("chatwoot_conversation_id", chatwootConversationId)
+      .maybeSingle();
+
+    if (conversation) {
+      await cancelPendingFollowups(db, conversation.id, `status_${status}`);
+    }
   }
 }
 
@@ -134,6 +149,8 @@ export async function processChatwootInboundMessage(
     logger.error("Conversation upsert failed", ctx);
     return;
   }
+
+  await cancelPendingFollowups(db, conversation.id, "inbound_message");
 
   const { data: insertedMsg, error: msgError } = await db
     .from("messages")

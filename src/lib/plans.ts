@@ -101,6 +101,9 @@ export function resolveAllowedTools(integrations: PlanIntegration[]): string[] {
   return integrations.flatMap((i) => INTEGRATION_TOOLS[i]);
 }
 
+/** Enabled when org has follow-up automático ativo. */
+export const SCHEDULE_FOLLOWUP_TOOL = "schedule_followup";
+
 export function resolveEnabledToolsForOrg(org: {
   subscription_plan?: string | null;
   cal_status?: string | null;
@@ -113,6 +116,7 @@ export function resolveEnabledToolsForOrg(org: {
   chatwoot_account_id?: string | null;
   tools_enabled?: string[] | null;
   hasKbDocuments?: boolean;
+  followup_enabled?: boolean | null;
 }): string[] {
   const planId = (org.subscription_plan ?? "starter") as PlanId;
   const plan = PLANS[planId] ?? PLANS.starter;
@@ -153,6 +157,16 @@ export function resolveEnabledToolsForOrg(org: {
 
   if (org.hasKbDocuments && !base.includes(LOOKUP_KNOWLEDGE_TOOL)) {
     base.push(LOOKUP_KNOWLEDGE_TOOL);
+  }
+
+  if (
+    org.followup_enabled &&
+    org.chatwoot_status === "active" &&
+    org.chatwoot_api_token &&
+    org.chatwoot_account_id &&
+    !base.includes(SCHEDULE_FOLLOWUP_TOOL)
+  ) {
+    base.push(SCHEDULE_FOLLOWUP_TOOL);
   }
 
   return base;

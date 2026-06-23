@@ -13,6 +13,7 @@ import { ShowProductImagesTool } from "./stripe/show-product-images";
 import { TransferToHumanTool } from "./transfer-to-human";
 import { ManageConversationLabelsTool } from "./manage-conversation-labels";
 import { LookupKnowledgeTool } from "./lookup-knowledge";
+import { ScheduleFollowupTool } from "./schedule-followup";
 
 interface ToolRegistryDeps {
   calendarProvider: CalendarProvider;
@@ -38,6 +39,7 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new ShowProductImagesTool(deps.productCatalog));
   registry.register(new TransferToHumanTool(deps.db));
   registry.register(new ManageConversationLabelsTool());
+  registry.register(new ScheduleFollowupTool(deps.db));
 
   if (deps.knowledgeRetriever) {
     registry.register(new LookupKnowledgeTool(deps.knowledgeRetriever));

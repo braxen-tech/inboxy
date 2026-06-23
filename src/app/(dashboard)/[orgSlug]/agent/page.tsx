@@ -1,5 +1,6 @@
 import { getOrgBySlug } from "@/lib/get-org";
 import { resolveAgentModel } from "@/lib/agent-models";
+import { normalizeFollowupIdleMinutes } from "@/lib/followup-idle-options";
 import { notFound } from "next/navigation";
 import { AgentForm } from "./agent-form";
 import { fetchAccountLabelTitles } from "@/application/services/conversation-labels";
@@ -93,6 +94,8 @@ export default async function AgentPage({ params }: Props) {
         orgSlug={orgSlug}
         initialPrompt={org.system_prompt ?? ""}
         initialModel={resolveAgentModel(org.model)}
+        initialFollowupEnabled={org.followup_enabled ?? false}
+        initialFollowupIdleMinutes={normalizeFollowupIdleMinutes(org.followup_idle_minutes ?? 60)}
         chatwootActive={org.chatwoot_status === "active"}
         chatwootLabels={chatwootLabels}
         chatwootAgents={chatwootAgents}

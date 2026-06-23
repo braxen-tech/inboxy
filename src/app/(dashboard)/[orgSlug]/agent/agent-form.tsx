@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateAgentSettings } from "./actions";
 import { AGENT_MODEL_OPTIONS } from "@/lib/agent-models";
+import {
+  FOLLOWUP_IDLE_OPTIONS,
+  normalizeFollowupIdleMinutes,
+} from "@/lib/followup-idle-options";
 
 const MODELS = [...AGENT_MODEL_OPTIONS];
 
@@ -35,6 +39,8 @@ interface Props {
   orgSlug: string;
   initialPrompt: string;
   initialModel: string;
+  initialFollowupEnabled: boolean;
+  initialFollowupIdleMinutes: number;
   chatwootActive: boolean;
   chatwootLabels?: string[];
   chatwootAgents?: { name: string; email: string }[];
@@ -45,12 +51,18 @@ export function AgentForm({
   orgSlug,
   initialPrompt,
   initialModel,
+  initialFollowupEnabled,
+  initialFollowupIdleMinutes,
   chatwootActive,
   chatwootLabels = [],
   chatwootAgents = [],
 }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [model, setModel] = useState(initialModel);
+  const [followupEnabled, setFollowupEnabled] = useState(initialFollowupEnabled);
+  const [followupIdleMinutes, setFollowupIdleMinutes] = useState(
+    normalizeFollowupIdleMinutes(initialFollowupIdleMinutes),
+  );
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -59,6 +71,8 @@ export function AgentForm({
       const result = await updateAgentSettings(orgId, orgSlug, {
         systemPrompt: prompt,
         model,
+        followupEnabled,
+        followupIdleMinutes,
       });
       if (result.error) {
         setMessage({ type: "error", text: result.error });
@@ -158,6 +172,55 @@ export function AgentForm({
           ))}
         </select>
       </div>
+
+      {chatwootActive && (
+        <div className="space-y-4 rounded-lg border p-4">
+          <div>
+            <h2 className="text-sm font-medium">Reengajamento automático</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Envia uma mensagem contextual quando o lead para de responder após o bot falar por
+              último. Funciona dentro da janela de 24h do WhatsApp. Máximo de 1 nudge por conversa.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="followup-enabled"
+              type="checkbox"
+              checked={followupEnabled}
+              onChange={(e) => setFollowupEnabled(e.target.checked)}
+              className="h-4 w-4 rounded border border-input"
+            />
+            <Label htmlFor="followup-enabled" className="font-normal">
+              Reengajar leads silenciosos
+            </Label>
+          </div>
+
+          {followupEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="followup-idle">Esperar antes de reengajar</Label>
+              <select
+                id="followup-idle"
+                value={followupIdleMinutes}
+                onChange={(e) =>
+                  setFollowupIdleMinutes(normalizeFollowupIdleMinutes(Number(e.target.value)))
+                }
+                className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                {FOLLOWUP_IDLE_OPTIONS.map((option) => (
+                  <option key={option.minutes} value={option.minutes}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Com follow-up ativo, o agente também pode agendar retornos manuais via tool{" "}
+                <code className="rounded bg-muted px-1 py-0.5">schedule_followup</code>.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={isPending}>

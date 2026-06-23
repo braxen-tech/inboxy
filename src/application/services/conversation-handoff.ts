@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { cancelPendingFollowups } from "@/application/services/cancel-pending-followups";
 
 export interface HandoffToHumanParams {
   db: SupabaseClient;
@@ -39,6 +40,8 @@ export async function handoffConversationToHuman(
     });
     return { ok: false, error: dbError.message };
   }
+
+  await cancelPendingFollowups(db, conversationId, "human_handoff");
 
   if (chatwoot) {
     const adminClient = new ChatwootClient(chatwoot.apiUrl, chatwoot.adminToken);

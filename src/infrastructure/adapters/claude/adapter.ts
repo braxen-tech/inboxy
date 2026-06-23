@@ -110,6 +110,16 @@ export class ClaudeAdapter implements AgentRunner {
       systemParts.push(`- Baseie respostas factuais nos trechos retornados ou no texto inline da base de conhecimento. Nunca invente informações.`);
     }
 
+    const hasScheduleFollowup = tools.some((t) => t.name === "schedule_followup");
+    if (hasScheduleFollowup) {
+      systemParts.push("");
+      systemParts.push(`## Follow-up agendado`);
+      systemParts.push(`- Quando o cliente pedir para voltar depois, disser que vai pensar, ou combinar um horário para retorno, use schedule_followup.`);
+      systemParts.push(`- Informe delay_minutes (30 a 720) ou scheduled_at (ISO) e um reason com o contexto.`);
+      systemParts.push(`- O follow-up deve ocorrer dentro de 24h da última mensagem do cliente (limite do WhatsApp).`);
+      systemParts.push(`- Após agendar, confirme ao cliente e encerre sua participação por ora.`);
+    }
+
     const systemContent = systemParts.join("\n");
 
     const messages = history.map((msg, i) => ({
