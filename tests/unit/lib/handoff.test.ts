@@ -15,4 +15,12 @@ describe("handoff", () => {
     expect(text).toContain("prompt da organização");
     expect(text).not.toContain("frustração");
   });
+
+  it("includes available agents when provided", () => {
+    const lines = buildHandoffSystemInstructions([
+      { name: "Ana Silva", email: "ana@example.com" },
+    ]);
+    expect(lines.some((line) => line.includes('"Ana Silva"'))).toBe(true);
+    expect(lines.some((line) => line.includes("assignee_name"))).toBe(true);
+  });
 });

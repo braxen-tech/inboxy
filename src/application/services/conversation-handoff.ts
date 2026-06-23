@@ -7,6 +7,8 @@ export interface HandoffToHumanParams {
   db: SupabaseClient;
   orgId: string;
   conversationId: string;
+  assigneeId?: number;
+  assigneeName?: string;
   chatwoot?: {
     apiUrl: string;
     /** Admin/user token — unassign + fallback toggle */
@@ -22,7 +24,7 @@ export interface HandoffToHumanParams {
 export async function handoffConversationToHuman(
   params: HandoffToHumanParams,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { db, orgId, conversationId, chatwoot, logContext = {} } = params;
+  const { db, orgId, conversationId, assigneeId, assigneeName, chatwoot, logContext = {} } = params;
 
   const { error: dbError } = await db
     .from("conversations")
@@ -75,15 +77,36 @@ export async function handoffConversationToHuman(
       }
     }
 
-    const unassign = await adminClient.unassignConversation(
-      chatwoot.accountId,
-      chatwoot.conversationId,
-    );
-    if (!unassign.ok) {
-      logger.warn("Handoff: failed to unassign conversation (may still show under Mine)", {
+    if (assigneeId != null) {
+      const assign = await adminClient.assignConversation(
+        chatwoot.accountId,
+        chatwoot.conversationId,
+        assigneeId,
+      );
+      if (!assign.ok) {
+        logger.warn("Handoff: failed to assign conversation to agent", {
+          ...logContext,
+          assigneeId: String(assigneeId),
+          error: assign.error,
+        });
+        return { ok: false, error: assign.error };
+      }
+      logger.info("Handoff: conversation assigned to agent", {
         ...logContext,
-        error: unassign.error,
+        assigneeId: String(assigneeId),
+        assigneeName,
       });
+    } else {
+      const unassign = await adminClient.unassignConversation(
+        chatwoot.accountId,
+        chatwoot.conversationId,
+      );
+      if (!unassign.ok) {
+        logger.warn("Handoff: failed to unassign conversation (may still show under Mine)", {
+          ...logContext,
+          error: unassign.error,
+        });
+      }
     }
   }
 
@@ -92,6 +115,8 @@ export async function handoffConversationToHuman(
     orgId,
     conversationId,
     trigger: logContext.trigger,
+    assignee_id: assigneeId != null ? String(assigneeId) : undefined,
+    assignee_name: assigneeName,
   });
   return { ok: true };
 }

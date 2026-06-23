@@ -13,8 +13,10 @@ import {
   QUOTA_HANDOFF_MESSAGE,
   resolveEnabledToolsForOrg,
   CHATWOOT_LABEL_TOOL,
+  CHATWOOT_HANDOFF_TOOL,
 } from "@/lib/plans";
 import { fetchAccountLabelTitles } from "@/application/services/conversation-labels";
+import { fetchAccountAgents } from "@/application/services/conversation-assignment";
 import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
 import { handoffConversationToHuman } from "@/application/services/conversation-handoff";
 import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
@@ -201,21 +203,44 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     const tools = toolRegistry.getToolsForOrg(toOrgId(orgId), enabledToolNames);
 
     let availableLabels: string[] | undefined;
+    let availableAgents: { name: string; email?: string }[] | undefined;
     if (
-      enabledToolNames.includes(CHATWOOT_LABEL_TOOL) &&
       org.chatwoot_status === "active" &&
       org.chatwoot_api_token &&
       org.chatwoot_api_url &&
       org.chatwoot_account_id
     ) {
+      let chatwootAdminToken: string | undefined;
       try {
-        availableLabels = await fetchAccountLabelTitles({
-          apiUrl: org.chatwoot_api_url,
-          apiToken: secretStore.decrypt(org.chatwoot_api_token),
-          accountId: org.chatwoot_account_id,
-        });
+        chatwootAdminToken = secretStore.decrypt(org.chatwoot_api_token);
       } catch {
-        logger.warn("Failed to fetch Chatwoot account labels", ctx);
+        logger.warn("Failed to decrypt Chatwoot token for account metadata", ctx);
+      }
+
+      if (chatwootAdminToken) {
+        if (enabledToolNames.includes(CHATWOOT_LABEL_TOOL)) {
+          try {
+            availableLabels = await fetchAccountLabelTitles({
+              apiUrl: org.chatwoot_api_url,
+              apiToken: chatwootAdminToken,
+              accountId: org.chatwoot_account_id,
+            });
+          } catch {
+            logger.warn("Failed to fetch Chatwoot account labels", ctx);
+          }
+        }
+
+        if (enabledToolNames.includes(CHATWOOT_HANDOFF_TOOL)) {
+          try {
+            availableAgents = await fetchAccountAgents({
+              apiUrl: org.chatwoot_api_url,
+              apiToken: chatwootAdminToken,
+              accountId: org.chatwoot_account_id,
+            });
+          } catch {
+            logger.warn("Failed to fetch Chatwoot account agents", ctx);
+          }
+        }
       }
     }
 
@@ -283,6 +308,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       model: org.model,
       language: org.language,
       availableLabels,
+      availableAgents,
     });
 
     if (!agentResult.ok) {

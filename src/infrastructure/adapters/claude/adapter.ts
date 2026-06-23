@@ -16,7 +16,7 @@ const MAX_STEPS_WITH_TOOLS = 5;
 
 export class ClaudeAdapter implements AgentRunner {
   async run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>> {
-    const { systemPrompt, knowledgeBase, history, tools, toolContext, model, language, availableLabels } =
+    const { systemPrompt, knowledgeBase, history, tools, toolContext, model, language, availableLabels, availableAgents } =
       params;
     const resolvedModel = resolveAgentModel(model);
 
@@ -70,7 +70,7 @@ export class ClaudeAdapter implements AgentRunner {
     if (toolContext.chatwoot) {
       systemParts.push("");
       systemParts.push(`## Transferência para atendente humano`);
-      for (const line of buildHandoffSystemInstructions()) {
+      for (const line of buildHandoffSystemInstructions(availableAgents ?? [])) {
         systemParts.push(line);
       }
     }

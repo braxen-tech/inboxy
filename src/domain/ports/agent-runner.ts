@@ -13,6 +13,7 @@ export interface AgentRunParams {
   model: string;
   language: string;
   availableLabels?: string[];
+  availableAgents?: { name: string; email?: string }[];
 }
 
 export interface AgentOutput {

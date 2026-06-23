@@ -55,6 +55,14 @@ export interface ChatwootAccountLabel {
   show_on_sidebar?: boolean;
 }
 
+export interface ChatwootAccountAgent {
+  id: number;
+  name: string;
+  email: string;
+  role?: string;
+  availability_status?: string;
+}
+
 /** Unwrap Chatwoot label list responses (string[] or label objects). */
 export function unwrapChatwootLabelTitles(raw: unknown): string[] {
   const items = unwrapChatwootList<ChatwootAccountLabel | string>(raw);
@@ -366,9 +374,22 @@ export class ChatwootClient {
     return { ok: true, data: unwrapChatwootLabelTitles(result.data) };
   }
 
-  async unassignConversation(
+  async listAccountAgents(accountId: string): Promise<ChatwootResult<ChatwootAccountAgent[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/agents`,
+      this.apiToken,
+    );
+    if (!result.ok) return result;
+
+    const items = unwrapChatwootList<ChatwootAccountAgent>(result.data);
+    return { ok: true, data: items };
+  }
+
+  async assignConversation(
     accountId: string,
     conversationId: number,
+    assigneeId: number | null,
   ): Promise<ChatwootResult<unknown>> {
     return chatwootFetch<unknown>(
       this.apiUrl,
@@ -376,9 +397,16 @@ export class ChatwootClient {
       this.apiToken,
       {
         method: "POST",
-        body: { assignee_id: null },
+        body: { assignee_id: assigneeId },
       },
     );
+  }
+
+  async unassignConversation(
+    accountId: string,
+    conversationId: number,
+  ): Promise<ChatwootResult<unknown>> {
+    return this.assignConversation(accountId, conversationId, null);
   }
 
   async sendMessage(

@@ -78,6 +78,32 @@ A IA pode aplicar labels nas conversas do Chatwoot conforme regras definidas no 
 3. Envie mensagem que se encaixe (ex.: "quanto custa?") → conversa deve receber a label no Chatwoot.
 4. Label inexistente no prompt → tool retorna erro e a IA continua o atendimento.
 
+#### Roteamento para atendente específico
+
+A IA pode atribuir a conversa a um atendente humano específico ao transferir, conforme regras no **System Prompt**.
+
+**Pré-requisito:** atendentes existem em **Chatwoot → Settings → Agents**.
+
+**Como configurar no Inboxy:**
+
+1. Adicione agentes no Chatwoot.
+2. Em **Agente → System Prompt**, defina roteamento, por exemplo:
+   - Assuntos financeiros → transferir para `"Ana Silva"`
+   - Suporte técnico → transferir para `"Carlos Mendes"`
+   - Cliente pede humano sem especificar → transferir **sem** `assignee_name` (fila Unassigned)
+3. A página Agente lista os atendentes disponíveis (sincronizados do Chatwoot).
+
+**Tool:** `transfer_to_human` com parâmetro opcional `assignee_name`.
+
+- Com `assignee_name` → conversa vai para **open** e aparece em **Mine** do atendente
+- Sem `assignee_name` → conversa vai para **open** em **Unassigned** (comportamento anterior)
+
+**Teste E2E:**
+
+1. Configure roteamento no prompt.
+2. Envie mensagem que acione o critério (ex.: "preciso falar sobre cobrança") → conversa atribuída ao atendente correto no Chatwoot.
+3. Nome inexistente → tool retorna erro listando atendentes válidos.
+
 #### Legado (sem Agent Bot automático)
 
 Orgs antigas com `chatwoot_agent_bot_id` vazio ainda podem usar `POST /api/webhooks/chatwoot?secret=...` até reconectar.

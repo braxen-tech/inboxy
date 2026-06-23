@@ -31,6 +31,14 @@ describe("TransferToHumanTool", () => {
             { status: 200 },
           );
         }
+        if (url.includes("/accounts/165655/agents") && init?.method === "GET") {
+          return new Response(
+            JSON.stringify({
+              payload: [{ id: 10, name: "Ana Silva", email: "ana@example.com", role: "agent" }],
+            }),
+            { status: 200 },
+          );
+        }
         if (url.includes("/assignments") && init?.method === "POST") {
           return new Response("null", { status: 200 });
         }
@@ -72,6 +80,53 @@ describe("TransferToHumanTool", () => {
     );
     if (result.ok) {
       expect(result.value).toContain("Transferência concluída");
+    }
+  });
+
+  it("assigns conversation to named agent", async () => {
+    const fetchMock = vi.mocked(fetch);
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+    const from = vi.fn().mockReturnValue({ update });
+    const db = { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
+
+    const tool = new TransferToHumanTool(db);
+    const result = await tool.execute(makeCtx(), {
+      reason: "Assunto financeiro",
+      assignee_name: "Ana Silva",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toContain("Ana Silva");
+    }
+    const assignmentCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/assignments"),
+    );
+    const body = JSON.parse(String((assignmentCall?.[1] as RequestInit)?.body));
+    expect(body.assignee_id).toBe(10);
+  });
+
+  it("returns error for unknown assignee_name", async () => {
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+    const from = vi.fn().mockReturnValue({ update });
+    const db = { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
+
+    const tool = new TransferToHumanTool(db);
+    const result = await tool.execute(makeCtx(), {
+      assignee_name: "Inexistente",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain("Inexistente");
     }
   });
 });

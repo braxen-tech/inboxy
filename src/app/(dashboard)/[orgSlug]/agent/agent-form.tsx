@@ -22,7 +22,13 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui:
 - Cliente pergunta preço → label "interessado"
 - Cliente pede proposta ou demo → label "quente"
-- Cliente diz que não tem interesse → label "frio" e remova "quente"`;
+- Cliente diz que não tem interesse → label "frio" e remova "quente"
+
+## Roteamento de atendentes
+Use os nomes exatos dos atendentes cadastrados no Chatwoot:
+- Assuntos financeiros → transferir para "Ana Silva"
+- Suporte técnico → transferir para "Carlos Mendes"
+- Cliente pede humano sem especificar → transferir sem assignee (fila geral)`;
 
 interface Props {
   orgId: string;
@@ -31,6 +37,7 @@ interface Props {
   initialModel: string;
   chatwootActive: boolean;
   chatwootLabels?: string[];
+  chatwootAgents?: { name: string; email: string }[];
 }
 
 export function AgentForm({
@@ -40,6 +47,7 @@ export function AgentForm({
   initialModel,
   chatwootActive,
   chatwootLabels = [],
+  chatwootAgents = [],
 }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [model, setModel] = useState(initialModel);
@@ -80,7 +88,8 @@ export function AgentForm({
               Com Chatwoot conectado, a transferência para humano acontece automaticamente quando o
               cliente pedir — e você pode definir <strong>outros gatilhos</strong> aqui no prompt (ex.:
               cancelamento, reclamações graves). Também pode definir <strong>regras de labels</strong>{" "}
-              para classificar leads nas conversas (labels devem existir no Chatwoot).
+              para classificar leads nas conversas (labels devem existir no Chatwoot) e{" "}
+              <strong>roteamento para atendentes</strong> específicos pelo nome.
             </>
           )}
         </p>
@@ -110,6 +119,27 @@ export function AgentForm({
             <p className="text-xs text-muted-foreground">
               Nenhuma label encontrada. Crie em Chatwoot → Settings → Labels antes de referenciá-las
               no prompt.
+            </p>
+          )}
+        </div>
+      )}
+
+      {chatwootActive && (
+        <div className="space-y-2">
+          <Label>Atendentes no Chatwoot</Label>
+          {chatwootAgents.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Atendentes disponíveis:{" "}
+              {chatwootAgents.map((agent) => (
+                <code key={agent.email} className="mr-1 rounded bg-muted px-1 py-0.5">
+                  {agent.name}
+                </code>
+              ))}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Nenhum atendente encontrado. Adicione agentes em Chatwoot → Settings → Agents antes de
+              referenciá-los no prompt.
             </p>
           )}
         </div>
