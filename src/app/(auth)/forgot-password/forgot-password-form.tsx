@@ -9,18 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/infrastructure/repositories/supabase-browser";
+import { buildPasswordResetRedirectUrl } from "@/lib/app-url";
 import { cn } from "@/lib/utils";
 
 interface ForgotPasswordFormProps {
   supabaseUrl: string;
   supabaseAnonKey: string;
-  passwordResetRedirectUrl: string;
 }
 
 export function ForgotPasswordForm({
   supabaseUrl,
   supabaseAnonKey,
-  passwordResetRedirectUrl,
 }: ForgotPasswordFormProps) {
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
@@ -37,8 +36,10 @@ export function ForgotPasswordForm({
     setLoading(true);
     setError(null);
 
+    const redirectTo = buildPasswordResetRedirectUrl(window.location.origin);
+
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: passwordResetRedirectUrl,
+      redirectTo,
     });
 
     if (resetError) {

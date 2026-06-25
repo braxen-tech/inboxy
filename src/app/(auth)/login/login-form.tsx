@@ -10,16 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/infrastructure/repositories/supabase-browser";
+import { buildAuthCallbackUrl } from "@/lib/app-url";
 
 type Mode = "login" | "signup";
 
 interface LoginFormProps {
   supabaseUrl: string;
   supabaseAnonKey: string;
-  authCallbackUrl: string;
 }
 
-export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: LoginFormProps) {
+export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
   const router = useRouter();
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
@@ -40,10 +40,11 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: Log
     setConfirmMsg(null);
 
     if (mode === "signup") {
+      const emailRedirectTo = buildAuthCallbackUrl(window.location.origin);
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: authCallbackUrl },
+        options: { emailRedirectTo },
       });
 
       if (signUpError) {

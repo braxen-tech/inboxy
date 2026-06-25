@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  buildAuthCallbackUrl,
+  buildPasswordResetRedirectUrl,
   getAppUrl,
   getAuthCallbackUrl,
   getPasswordResetRedirectUrl,
@@ -42,6 +44,18 @@ describe("app-url", () => {
   });
 
   it("builds password reset redirect through auth callback", () => {
+    expect(buildPasswordResetRedirectUrl("https://inboxy.braxentech.com")).toBe(
+      "https://inboxy.braxentech.com/auth/callback?next=%2Freset-password",
+    );
+  });
+
+  it("builds auth callback from browser origin", () => {
+    expect(buildAuthCallbackUrl("https://inboxy.braxentech.com/")).toBe(
+      "https://inboxy.braxentech.com/auth/callback",
+    );
+  });
+
+  it("builds password reset redirect through auth callback from env", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://inboxy.braxentech.com";
     expect(getPasswordResetRedirectUrl()).toBe(
       "https://inboxy.braxentech.com/auth/callback?next=%2Freset-password",

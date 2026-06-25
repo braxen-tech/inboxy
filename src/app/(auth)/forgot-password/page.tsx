@@ -1,11 +1,9 @@
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { getPasswordResetRedirectUrl } from "@/lib/app-url";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export default function ForgotPasswordPage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  const passwordResetRedirectUrl = getPasswordResetRedirectUrl();
 
   if (
     !supabaseUrl.trim() ||
@@ -31,7 +29,6 @@ export default function ForgotPasswordPage() {
     <ForgotPasswordForm
       supabaseUrl={supabaseUrl.trim()}
       supabaseAnonKey={supabaseAnonKey.trim()}
-      passwordResetRedirectUrl={passwordResetRedirectUrl}
     />
   );
 }

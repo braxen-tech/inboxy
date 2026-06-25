@@ -7,11 +7,23 @@ export function getAppUrl(): string {
   return configured || "http://localhost:3000";
 }
 
+function normalizeAppOrigin(appUrl: string): string {
+  return appUrl.replace(/\/$/, "");
+}
+
+export function buildAuthCallbackUrl(appOrigin: string): string {
+  return `${normalizeAppOrigin(appOrigin)}/auth/callback`;
+}
+
+export function buildPasswordResetRedirectUrl(appOrigin: string): string {
+  const next = encodeURIComponent("/reset-password");
+  return `${buildAuthCallbackUrl(appOrigin)}?next=${next}`;
+}
+
 export function getAuthCallbackUrl(): string {
-  return `${getAppUrl()}/auth/callback`;
+  return buildAuthCallbackUrl(getAppUrl());
 }
 
 export function getPasswordResetRedirectUrl(): string {
-  const next = encodeURIComponent("/reset-password");
-  return `${getAuthCallbackUrl()}?next=${next}`;
+  return buildPasswordResetRedirectUrl(getAppUrl());
 }
