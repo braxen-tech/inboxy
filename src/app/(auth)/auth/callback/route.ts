@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getAuthCallbackRedirectTarget } from "@/lib/auth-routes";
 import { ensureUserOrganization } from "@/lib/ensure-user-organization";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/";
+  const next = getAuthCallbackRedirectTarget(url.searchParams.get("next"));
 
   const redirectTo = new URL(next, request.url);
   const response = NextResponse.redirect(redirectTo);

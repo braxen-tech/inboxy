@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
@@ -122,7 +123,17 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey, authCallbackUrl }: Log
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  {mode === "login" && (
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Esqueci minha senha
+                    </Link>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"

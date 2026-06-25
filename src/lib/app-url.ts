@@ -6,3 +6,8 @@ export function getAppUrl(): string {
 export function getAuthCallbackUrl(): string {
   return `${getAppUrl()}/auth/callback`;
 }
+
+export function getPasswordResetRedirectUrl(): string {
+  const next = encodeURIComponent("/reset-password");
+  return `${getAuthCallbackUrl()}?next=${next}`;
+}

@@ -307,6 +307,20 @@ PDF, DOCX, TXT, MD, CSV — no images.
 ### Supabase staging auth
 Redirect URLs configured on `inboxy-staging`: staging git URL, Vercel preview wildcard, `localhost:3000`.
 
+### Password reset email (produção / staging hospedado)
+
+O template em português fica versionado em `supabase/templates/recovery.html`. Para projetos **hospedados** (não só local):
+
+1. **Supabase Dashboard** → **Authentication** → **Email Templates** → **Reset password**
+2. **Subject:** `Redefinir sua senha — Inboxy`
+3. Cole o HTML de `supabase/templates/recovery.html` (usa `{{ .ConfirmationURL }}` e `{{ .Email }}`)
+4. **Authentication** → **URL Configuration** → confirme redirect URLs:
+   - `https://inboxy.braxentech.com/auth/callback`
+   - `https://inboxy.braxentech.com/auth/callback?next=%2Freset-password`
+   - URLs equivalentes de staging e `http://localhost:3000/auth/callback` para dev local
+
+Localmente, `supabase/config.toml` já aponta `[auth.email.template.recovery]` para esse arquivo; emails de teste aparecem no Inbucket (`supabase start`).
+
 ### Inngest staging sync (required once)
 Preview deploys use Vercel Deployment Protection. Inngest cannot sync until bypass is configured:
 

@@ -3,23 +3,18 @@ import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { needsBillingSetup } from "@/lib/billing-setup";
+import {
+  getAuthCallbackRedirectTarget,
+  isAuthPublicPath,
+  isReservedAppSlug,
+} from "@/lib/auth-routes";
 
-const RESERVED_SLUGS = new Set(["login", "auth", "api"]);
 const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings"]);
-
-const PUBLIC_PATHS = [
-  "/login",
-  "/auth/callback",
-  "/api/auth",
-  "/api/webhooks",
-  "/api/health",
-  "/api/inngest",
-];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (isAuthPublicPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -63,7 +58,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length >= 1 && !RESERVED_SLUGS.has(segments[0])) {
+  if (segments.length >= 1 && !isReservedAppSlug(segments[0])) {
     const orgSlug = segments[0];
     const section = segments[1];
     const needsRedirect =
