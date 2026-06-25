@@ -314,10 +314,14 @@ O template em português fica versionado em `supabase/templates/recovery.html`. 
 1. **Supabase Dashboard** → **Authentication** → **Email Templates** → **Reset password**
 2. **Subject:** `Redefinir sua senha — Inboxy`
 3. Cole o HTML de `supabase/templates/recovery.html` (usa `{{ .ConfirmationURL }}` e `{{ .Email }}`)
-4. **Authentication** → **URL Configuration** → confirme redirect URLs:
+4. **Authentication** → **URL Configuration**:
+   - **Site URL (produção):** `https://inboxy.braxentech.com`
+   - **Redirect URLs:**
    - `https://inboxy.braxentech.com/auth/callback`
    - `https://inboxy.braxentech.com/auth/callback?next=%2Freset-password`
    - URLs equivalentes de staging e `http://localhost:3000/auth/callback` para dev local
+
+**Vercel (produção):** `NEXT_PUBLIC_APP_URL=https://inboxy.braxentech.com` — obrigatório para links de auth, webhooks e reset de senha. Redeploy após alterar.
 
 Localmente, `supabase/config.toml` já aponta `[auth.email.template.recovery]` para esse arquivo; emails de teste aparecem no Inbucket (`supabase start`).
 
