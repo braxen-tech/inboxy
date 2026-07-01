@@ -19,6 +19,12 @@ function normalizeLabelTitle(title: string): string {
   return title.trim().toLowerCase();
 }
 
+const CONFLICTING_LABELS: Record<string, string[]> = {
+  quente: ["frio"],
+  frio: ["quente"],
+  interessado: [],
+};
+
 function resolveAccountLabelTitles(labels: ChatwootAccountLabel[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const label of labels) {
@@ -52,6 +58,25 @@ function validateRequestedLabels(
   }
 
   return { ok: true, resolved };
+}
+
+function removeConflictingLabels(
+  currentLabels: string[],
+  newLabels: string[],
+): string[] {
+  let result = currentLabels;
+
+  for (const newLabel of newLabels) {
+    const normalized = normalizeLabelTitle(newLabel);
+    const conflicts = CONFLICTING_LABELS[normalized] || [];
+
+    result = result.filter((label) => {
+      const labelNormalized = normalizeLabelTitle(label);
+      return !conflicts.some((c) => normalizeLabelTitle(c) === labelNormalized);
+    });
+  }
+
+  return result;
 }
 
 export async function manageConversationLabels(
@@ -119,7 +144,7 @@ export async function manageConversationLabels(
       ? current.filter(
           (label) => !requested.some((r) => normalizeLabelTitle(r) === normalizeLabelTitle(label)),
         )
-      : [...new Set([...current, ...requested])];
+      : [...new Set([...removeConflictingLabels(current, requested), ...requested])];
 
   const setResult = await client.setConversationLabels(accountId, conversationId, nextLabels);
   if (!setResult.ok) {

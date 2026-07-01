@@ -23,7 +23,8 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui:
 - Cliente pergunta preço → label "interessado"
 - Cliente pede proposta ou demo → label "quente"
-- Cliente diz que não tem interesse → label "frio" e remova "quente"
+- Cliente diz que não tem interesse → label "frio" (remove "quente" automaticamente)
+- IMPORTANTE: "quente" e "frio" são mutuamente exclusivas — nunca devem estar juntas
 
 ## CRM / Contato (Chatwoot)
 Quando o cliente informar nome completo e e-mail:

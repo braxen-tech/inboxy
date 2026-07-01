@@ -6,6 +6,7 @@ export function buildConversationLabelSystemInstructions(availableLabels: string
     `- Use SOMENTE labels que existem no Chatwoot. Nunca invente nomes de labels.`,
     `- Prefira action "add" salvo se o prompt pedir remoção ou troca de label (use action "remove").`,
     `- Aplicar label não substitui transfer_to_human — são ações independentes.`,
+    `- Labels mutuamente exclusivas: "quente" e "frio" nunca podem estar na mesma conversa — aplicar uma remove a outra automaticamente.`,
   ];
 
   if (availableLabels.length > 0) {

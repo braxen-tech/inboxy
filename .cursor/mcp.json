@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=zazrslirxeogfdwlbzwz"
+    },
+    "supabase-staging": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=cwlgroaygsiaumnfaqrn"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    },
+    "inngest-dev": {
+      "url": "http://127.0.0.1:8288/mcp"
+    }
+  }
+}
