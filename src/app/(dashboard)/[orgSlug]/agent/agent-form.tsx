@@ -20,11 +20,10 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 - a reclamação for sobre entrega atrasada há mais de 7 dias.
 
 ## Labels de lead (Chatwoot)
-Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui:
-- Cliente pergunta preço → label "interessado"
-- Cliente pede proposta ou demo → label "quente"
-- Cliente diz que não tem interesse → label "frio" (remove "quente" automaticamente)
-- IMPORTANTE: "quente" e "frio" são mutuamente exclusivas — nunca devem estar juntas
+Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui as regras:
+- Exemplos: "cliente pergunta preço → aplicar label X", "cliente diz que não quer → aplicar label Y e remover label X"
+- Se precisar remover uma label antes de aplicar outra, use a ferramenta duas vezes: remova "X", depois adicione "Y"
+- Você controla quais labels usar — não há labels pré-definidas obrigatórias
 
 ## CRM / Contato (Chatwoot)
 Quando o cliente informar nome completo e e-mail:
