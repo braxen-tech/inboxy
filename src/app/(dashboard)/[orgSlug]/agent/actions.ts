@@ -10,7 +10,6 @@ export async function updateAgentSettings(
   orgSlug: string,
   settings: {
     systemPrompt: string;
-    model: string;
     followupEnabled?: boolean;
     followupIdleMinutes?: number;
   },
@@ -20,7 +19,6 @@ export async function updateAgentSettings(
 
   const updatePayload: Record<string, unknown> = {
     system_prompt: settings.systemPrompt,
-    model: settings.model,
   };
 
   if (settings.followupEnabled !== undefined) {

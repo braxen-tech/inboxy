@@ -1,5 +1,5 @@
 /** Default Claude model for new orgs and fallbacks. */
-export const DEFAULT_AGENT_MODEL = "claude-sonnet-4-6";
+export const DEFAULT_AGENT_MODEL = "claude-haiku-4-5-20251001";
 
 export const AGENT_MODEL_OPTIONS = [
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (recomendado)" },

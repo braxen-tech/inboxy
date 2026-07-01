@@ -6,13 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateAgentSettings } from "./actions";
-import { AGENT_MODEL_OPTIONS } from "@/lib/agent-models";
 import {
   FOLLOWUP_IDLE_OPTIONS,
   normalizeFollowupIdleMinutes,
 } from "@/lib/followup-idle-options";
-
-const MODELS = [...AGENT_MODEL_OPTIONS];
 
 const PROMPT_PLACEHOLDER = `Você é o assistente virtual da Clínica Exemplo.
 Seja cordial, profissional e direto.
@@ -44,7 +41,6 @@ interface Props {
   orgId: string;
   orgSlug: string;
   initialPrompt: string;
-  initialModel: string;
   initialFollowupEnabled: boolean;
   initialFollowupIdleMinutes: number;
   chatwootActive: boolean;
@@ -56,7 +52,6 @@ export function AgentForm({
   orgId,
   orgSlug,
   initialPrompt,
-  initialModel,
   initialFollowupEnabled,
   initialFollowupIdleMinutes,
   chatwootActive,
@@ -64,7 +59,6 @@ export function AgentForm({
   chatwootAgents = [],
 }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [model, setModel] = useState(initialModel);
   const [followupEnabled, setFollowupEnabled] = useState(initialFollowupEnabled);
   const [followupIdleMinutes, setFollowupIdleMinutes] = useState(
     normalizeFollowupIdleMinutes(initialFollowupIdleMinutes),
@@ -76,18 +70,17 @@ export function AgentForm({
     startTransition(async () => {
       const result = await updateAgentSettings(orgId, orgSlug, {
         systemPrompt: prompt,
-        model,
         followupEnabled,
         followupIdleMinutes,
       });
       if (result.error) {
         setMessage({ type: "error", text: result.error });
         if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-          posthog.captureException(new Error(result.error), { org_slug: orgSlug, model });
+          posthog.captureException(new Error(result.error), { org_slug: orgSlug });
         }
       } else {
         if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-          posthog.capture("agent_config_saved", { org_slug: orgSlug, model });
+          posthog.capture("agent_config_saved", { org_slug: orgSlug });
         }
         setMessage({ type: "success", text: "Configurações salvas." });
       }
@@ -164,20 +157,6 @@ export function AgentForm({
           )}
         </div>
       )}
-
-      <div className="space-y-2">
-        <Label htmlFor="model">Modelo de IA</Label>
-        <select
-          id="model"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-3 py-1 text-sm"
-        >
-          {MODELS.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-      </div>
 
       {chatwootActive && (
         <div className="space-y-4 rounded-lg border p-4">
