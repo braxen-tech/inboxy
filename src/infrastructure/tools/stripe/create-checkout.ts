@@ -60,8 +60,8 @@ export class CreateCheckoutTool implements AgentTool {
         contactId: order.contact_id,
         orderId: order.id,
       },
-      successUrl: `https://example.com/success`,
-      cancelUrl: `https://example.com/cancelled`,
+      successUrl: `${this.appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${this.appUrl}/checkout/cancelled`,
       customerEmail: parsed.data.customerEmail,
     });
 

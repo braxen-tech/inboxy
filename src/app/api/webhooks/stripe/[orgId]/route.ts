@@ -48,15 +48,15 @@ export async function POST(
 
   const { data: existing } = await db
     .from("processed_webhook_events")
-    .select("id")
-    .eq("id", event.id)
+    .select("event_id")
+    .eq("event_id", event.id)
     .maybeSingle();
 
   if (existing) {
     return NextResponse.json({ status: "already_processed" });
   }
 
-  await db.from("processed_webhook_events").insert({ id: event.id, source: "stripe" });
+  await db.from("processed_webhook_events").insert({ event_id: event.id, source: "stripe" });
 
   const ctx = { orgId, eventType: event.type, eventId: event.id };
 
