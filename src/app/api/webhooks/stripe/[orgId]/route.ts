@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe/payment-adapter";
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
+import { getEventBus } from "@/infrastructure/events/get-event-bus";
+import { toOrgId, toConversationId, toMessageId } from "@/domain/value-objects";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
@@ -117,6 +120,20 @@ async function handleCheckoutCompleted(
   captureServerEvent("stripe_payment_received", { ...ctx, order_id: orderId });
 
   if (conversationId && org.chatwoot_status === "active" && org.chatwoot_api_token) {
+    const { data: orderItems } = await db
+      .from("order_items")
+      .select("product_name, quantity")
+      .eq("order_id", orderId);
+
+    const itemsSummary = (orderItems ?? [])
+      .map((i) => `${i.quantity}x ${i.product_name}`)
+      .join(", ");
+
+    const amountTotal = session.amount_total as number | undefined;
+    const totalFormatted = amountTotal
+      ? `R$ ${(amountTotal / 100).toFixed(2).replace(".", ",")}`
+      : "";
+
     try {
       const { data: conversation } = await db
         .from("conversations")
@@ -128,20 +145,6 @@ async function handleCheckoutCompleted(
         const encKey = process.env.ENCRYPTION_KEY?.trim() ?? "";
         const secretStore = new AesSecretStore(encKey);
         const apiToken = secretStore.decrypt(org.chatwoot_api_token);
-
-        const { data: orderItems } = await db
-          .from("order_items")
-          .select("product_name, quantity")
-          .eq("order_id", orderId);
-
-        const itemsSummary = (orderItems ?? [])
-          .map((i) => `${i.quantity}x ${i.product_name}`)
-          .join(", ");
-
-        const amountTotal = session.amount_total as number | undefined;
-        const totalFormatted = amountTotal
-          ? `R$ ${(amountTotal / 100).toFixed(2).replace(".", ",")}`
-          : "";
 
         const message = [
           "Pagamento confirmado! ✓",
@@ -165,6 +168,81 @@ async function handleCheckoutCompleted(
     } catch (error) {
       logger.error("Failed to send payment confirmation", { ...ctx, error });
     }
+
+    await triggerAgentAfterPayment(db, {
+      orgId: ctx.orgId,
+      conversationId,
+      itemsSummary,
+      totalFormatted,
+      ctx,
+    });
+  }
+}
+
+/**
+ * Inserts a synthetic inbound message describing the payment and enqueues the
+ * agent pipeline (via Inngest) so the AI can respond with dynamic next steps
+ * (e.g. suggest calendar slots), instead of only sending a static confirmation.
+ */
+async function triggerAgentAfterPayment(
+  db: ReturnType<typeof getAdminClient>,
+  params: {
+    orgId: string;
+    conversationId: string;
+    itemsSummary: string;
+    totalFormatted: string;
+    ctx: Record<string, string>;
+  },
+): Promise<void> {
+  const { orgId, conversationId, itemsSummary, totalFormatted, ctx } = params;
+
+  try {
+    const correlationId = randomUUID();
+
+    const syntheticContent = [
+      "[PAGAMENTO CONFIRMADO]",
+      "O cliente acabou de pagar. Não pergunte se o pagamento foi feito nem peça para aguardar confirmação — ele já está confirmado.",
+      `Pedido: ${itemsSummary || "Nao informado"}`,
+      totalFormatted ? `Valor: ${totalFormatted}` : "",
+      "",
+      "Prossiga com os próximos passos conforme suas instruções (ex: agendar reunião, enviar orientações, etc).",
+    ].filter(Boolean).join("\n");
+
+    const { data: syntheticMsg, error: insertErr } = await db
+      .from("messages")
+      .insert({
+        organization_id: orgId,
+        conversation_id: conversationId,
+        direction: "inbound",
+        content: syntheticContent,
+        status: "received",
+        correlation_id: correlationId,
+      })
+      .select("id")
+      .single();
+
+    if (insertErr || !syntheticMsg) {
+      logger.error("Failed to insert synthetic payment message", {
+        ...ctx,
+        conversationId,
+        error: insertErr?.message,
+      });
+      return;
+    }
+
+    await getEventBus().emit({
+      type: "message.received",
+      payload: {
+        orgId: toOrgId(orgId),
+        conversationId: toConversationId(conversationId),
+        messageId: toMessageId(syntheticMsg.id),
+        correlationId,
+      },
+    });
+
+    logger.info("Agent triggered after payment confirmation", { ...ctx, conversationId });
+  } catch (error) {
+    logger.error("Failed to trigger agent after payment", { ...ctx, conversationId, error });
   }
 }
 
