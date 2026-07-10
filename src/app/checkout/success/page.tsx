@@ -22,13 +22,13 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Você já pode voltar para o WhatsApp — enviamos uma confirmação lá com os próximos passos.
+            Você já pode voltar à conversa — enviamos uma confirmação com os próximos passos.
           </p>
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">O que acontece agora?</p>
             <p>
               Nosso assistente já foi notificado do seu pagamento e vai continuar o atendimento
-              automaticamente no WhatsApp.
+              automaticamente no chat.
             </p>
           </div>
           {session_id && (

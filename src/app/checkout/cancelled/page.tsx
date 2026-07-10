@@ -16,13 +16,13 @@ export default function CheckoutCancelledPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Se você mudou de ideia ou teve algum problema, pode voltar ao WhatsApp e solicitar um
+            Se você mudou de ideia ou teve algum problema, pode voltar à conversa e solicitar um
             novo link de pagamento.
           </p>
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Precisa de ajuda?</p>
             <p>
-              Nosso assistente está disponível no WhatsApp para responder suas dúvidas e gerar um
+              Nosso assistente está disponível no chat para responder suas dúvidas e gerar um
               novo link quando você estiver pronto.
             </p>
           </div>
