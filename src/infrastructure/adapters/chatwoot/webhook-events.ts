@@ -1,6 +1,7 @@
 import type { InboundMessage } from "@/domain/ports";
 import type { ConversationStatus } from "@/lib/conversation-status";
 import { normalizeChatwootConversationStatus } from "@/lib/conversation-status";
+import { parseChatwootChannel } from "@/lib/chatwoot-channel";
 
 export type ChatwootWebhookEvent =
   | { type: "message_created"; message: InboundMessage; conversationStatus: ConversationStatus | null }
@@ -25,6 +26,7 @@ interface RawPayload {
   conversation?: {
     id: number;
     inbox_id?: number;
+    channel?: string;
     status?: string;
   };
   account?: {
@@ -82,6 +84,8 @@ export function parseChatwootWebhookPayload(payload: RawPayload): ChatwootWebhoo
     senderPhone: payload.sender?.phone_number ?? null,
     senderEmail: payload.sender?.email ?? null,
     senderChatwootId: payload.sender?.id ?? null,
+    chatwootChannel: parseChatwootChannel(payload.conversation.channel),
+    chatwootInboxId: payload.conversation.inbox_id ?? null,
     content: payload.content,
     timestamp: new Date(payload.created_at ?? Date.now()),
     accountId: String(payload.account.id),

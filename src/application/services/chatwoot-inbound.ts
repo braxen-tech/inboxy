@@ -9,8 +9,23 @@ import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { incrementUsage } from "@/application/services/usage-tracker";
 import { cancelPendingFollowups } from "@/application/services/cancel-pending-followups";
 import { isBotQueueStatus, type ConversationStatus } from "@/lib/conversation-status";
+import { normalizeChatwootChannel } from "@/lib/chatwoot-channel";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
+
+function conversationChannelFields(msg: InboundMessage): {
+  chatwoot_channel?: string;
+  chatwoot_inbox_id?: number;
+} {
+  const fields: { chatwoot_channel?: string; chatwoot_inbox_id?: number } = {};
+  if (msg.chatwootChannel) {
+    fields.chatwoot_channel = msg.chatwootChannel;
+  }
+  if (msg.chatwootInboxId != null) {
+    fields.chatwoot_inbox_id = msg.chatwootInboxId;
+  }
+  return fields;
+}
 
 export async function syncConversationStatusByChatwootId(
   db: SupabaseClient,
@@ -62,7 +77,16 @@ export async function processChatwootInboundMessage(
 ): Promise<void> {
   const eventBus = deps.eventBus ?? getEventBus();
   const correlationId = randomUUID();
-  const ctx = { correlationId, externalMessageId: msg.externalMessageId, orgId };
+  const channelFields = conversationChannelFields(msg);
+  const ctx = {
+    correlationId,
+    externalMessageId: msg.externalMessageId,
+    orgId,
+    ...(msg.chatwootChannel
+      ? { chatwootChannel: msg.chatwootChannel, channel: normalizeChatwootChannel(msg.chatwootChannel) }
+      : {}),
+    ...(msg.chatwootInboxId != null ? { chatwootInboxId: msg.chatwootInboxId } : {}),
+  };
 
   const { data: existing } = await db
     .from("processed_webhook_events")
@@ -139,6 +163,7 @@ export async function processChatwootInboundMessage(
         status: defaultStatus,
         last_message_at: new Date().toISOString(),
         last_inbound_at: new Date().toISOString(),
+        ...channelFields,
       })
       .select("id, status")
       .single();
@@ -149,6 +174,7 @@ export async function processChatwootInboundMessage(
       .update({
         last_message_at: new Date().toISOString(),
         last_inbound_at: new Date().toISOString(),
+        ...channelFields,
       })
       .eq("id", conversation.id);
 

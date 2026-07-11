@@ -27,6 +27,7 @@ const validPayload = {
   conversation: {
     id: 5678,
     inbox_id: 1,
+    channel: "Channel::Telegram",
     status: "open",
   },
   account: {
@@ -55,6 +56,8 @@ describe("ChatwootAdapter.parseWebhook", () => {
     expect(msg.senderEmail).toBe("maria@example.com");
     expect(msg.content).toBe("Olá, gostaria de agendar uma consulta");
     expect(msg.accountId).toBe("1");
+    expect(msg.chatwootChannel).toBe("Channel::Telegram");
+    expect(msg.chatwootInboxId).toBe(1);
   });
 
   it("rejects invalid secret", async () => {

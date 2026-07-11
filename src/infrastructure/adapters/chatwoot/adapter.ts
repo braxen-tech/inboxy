@@ -3,6 +3,7 @@ import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { ChatwootClient } from "./client";
 import { logger } from "@/lib/logger";
+import { parseChatwootChannel } from "@/lib/chatwoot-channel";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
@@ -25,6 +26,7 @@ interface ChatwootWebhookPayload {
   conversation: {
     id: number;
     inbox_id: number;
+    channel?: string;
     status: string;
   };
   account: {
@@ -75,6 +77,8 @@ export class ChatwootAdapter implements MessagingChannel {
       senderName: payload.sender.name ?? null,
       senderPhone: payload.sender.phone_number ?? null,
       senderEmail: payload.sender.email ?? null,
+      chatwootChannel: parseChatwootChannel(payload.conversation.channel),
+      chatwootInboxId: payload.conversation.inbox_id ?? null,
       content: payload.content,
       timestamp: new Date(payload.created_at),
       accountId: String(payload.account.id),

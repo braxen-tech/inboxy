@@ -8,7 +8,7 @@ describe("parseChatwootWebhookPayload", () => {
     content: "Oi",
     message_type: "incoming",
     private: false,
-    conversation: { id: 99, status: "pending" },
+    conversation: { id: 99, status: "pending", inbox_id: 3, channel: "Channel::Whatsapp" },
     account: { id: 1 },
     sender: { id: 1, name: "Ana", email: null, phone_number: "+5511999990000", type: "contact" },
   };
@@ -19,6 +19,19 @@ describe("parseChatwootWebhookPayload", () => {
     if (event.type !== "message_created") return;
     expect(event.message.externalMessageId).toBe("10");
     expect(event.conversationStatus).toBe("pending");
+    expect(event.message.chatwootChannel).toBe("Channel::Whatsapp");
+    expect(event.message.chatwootInboxId).toBe(3);
+  });
+
+  it("leaves channel null when absent from payload", () => {
+    const event = parseChatwootWebhookPayload({
+      ...baseMessage,
+      conversation: { id: 99, status: "pending" },
+    });
+    expect(event.type).toBe("message_created");
+    if (event.type !== "message_created") return;
+    expect(event.message.chatwootChannel).toBeNull();
+    expect(event.message.chatwootInboxId).toBeNull();
   });
 
   it("parses conversation_updated", () => {

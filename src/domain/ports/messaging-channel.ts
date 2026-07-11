@@ -8,6 +8,9 @@ export interface InboundMessage {
   senderEmail: string | null;
   /** Chatwoot contact ID from webhook sender.id */
   senderChatwootId?: number | null;
+  /** Raw Chatwoot channel type, e.g. Channel::Whatsapp */
+  chatwootChannel?: string | null;
+  chatwootInboxId?: number | null;
   content: string;
   timestamp: Date;
   accountId: string;

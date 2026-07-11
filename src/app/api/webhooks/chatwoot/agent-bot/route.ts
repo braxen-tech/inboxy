@@ -91,6 +91,10 @@ export async function POST(request: Request) {
       orgId: org.id,
       externalMessageId: event.message.externalMessageId,
       chatwootConversationId: event.message.chatwootConversationId,
+      ...(event.message.chatwootChannel ? { chatwootChannel: event.message.chatwootChannel } : {}),
+      ...(event.message.chatwootInboxId != null
+        ? { chatwootInboxId: event.message.chatwootInboxId }
+        : {}),
     });
     return NextResponse.json({ status: "ok" });
   } catch (err) {
