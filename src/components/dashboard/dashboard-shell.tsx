@@ -23,10 +23,11 @@ interface DashboardShellProps {
   orgSlug: string;
   orgName: string;
   chatwootActive: boolean;
+  billingEnabled?: boolean;
   children: React.ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   { href: "kb", label: "Base de conhecimento", icon: BookOpen },
   { href: "agent", label: "Agente", icon: Bot },
   { href: "integrations", label: "Integrações", icon: Plug },
@@ -38,11 +39,17 @@ function NavLinks({
   orgSlug,
   pathname,
   onNavigate,
+  billingEnabled = true,
 }: {
   orgSlug: string;
   pathname: string;
   onNavigate?: () => void;
+  billingEnabled?: boolean;
 }) {
+  const navItems = billingEnabled
+    ? baseNavItems
+    : baseNavItems.filter((item) => item.href !== "billing");
+
   return (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
       {navItems.map(({ href, label, icon: Icon }) => {
@@ -76,12 +83,14 @@ function SidebarContent({
   chatwootActive,
   pathname,
   onNavigate,
+  billingEnabled = true,
 }: {
   orgSlug: string;
   orgName: string;
   chatwootActive: boolean;
   pathname: string;
   onNavigate?: () => void;
+  billingEnabled?: boolean;
 }) {
   return (
     <>
@@ -115,7 +124,12 @@ function SidebarContent({
         </Badge> */}
       </div>
 
-      <NavLinks orgSlug={orgSlug} pathname={pathname} onNavigate={onNavigate} />
+      <NavLinks
+        orgSlug={orgSlug}
+        pathname={pathname}
+        onNavigate={onNavigate}
+        billingEnabled={billingEnabled}
+      />
 
       <div className="mt-auto border-t border-sidebar-border p-3">
         <SignOutButton
@@ -134,6 +148,7 @@ export function DashboardShell({
   orgSlug,
   orgName,
   chatwootActive,
+  billingEnabled = true,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -184,6 +199,7 @@ export function DashboardShell({
           chatwootActive={chatwootActive}
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
+          billingEnabled={billingEnabled}
         />
       </aside>
 

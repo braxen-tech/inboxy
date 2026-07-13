@@ -8,6 +8,33 @@
 3. Chatwoot instance available (Cloud or self-hosted)
 4. Environment variables set in Vercel
 
+## Pilot mode (acesso gratuito)
+
+Durante o piloto, novos usuários entram sem Stripe Checkout. A org recebe plano **Business** no banco com `subscription_id = 'pilot'`.
+
+### Ativar
+
+1. Vercel → Environment Variables → `INBOXY_PILOT_MODE=true` (Production)
+2. Redeploy
+
+Comportamento: paywall desligado, nav **Assinatura** oculta, quota alta (1M mensagens).
+
+### Desativar (forçar plano)
+
+1. Remover `INBOXY_PILOT_MODE` ou setar `false`
+2. Redeploy
+
+Orgs com `subscription_id = 'pilot'` passam a ser redirecionadas para checkout no próximo acesso.
+
+Listar orgs piloto:
+
+```sql
+SELECT id, slug, name, subscription_plan, created_at
+FROM organizations
+WHERE subscription_id = 'pilot';
+```
+
+
 ### Chatwoot + Agent Bot (handoff IA ↔ humano)
 
 **Status unificados** (Chatwoot e Supabase `conversations.status`):

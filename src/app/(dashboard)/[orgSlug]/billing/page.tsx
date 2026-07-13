@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getOrgBySlug } from "@/lib/get-org";
-import { needsBillingSetup, getTrialPeriodDays } from "@/lib/billing-setup";
+import { needsBillingSetup, getTrialPeriodDays, isPilotMode } from "@/lib/billing-setup";
 import { PLANS, QUOTA_WARNING_RATIO, type PlanId } from "@/lib/plans";
 import { getMonthlyUsage } from "@/application/services/monthly-usage";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
@@ -31,6 +31,11 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function BillingPage({ params, searchParams }: Props) {
   const { orgSlug } = await params;
   const { checkout, setup, session_id: sessionId } = await searchParams;
+
+  if (isPilotMode()) {
+    redirect(`/${orgSlug}/kb`);
+  }
+
   let org = await getOrgBySlug(orgSlug);
   if (!org) notFound();
 

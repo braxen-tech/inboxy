@@ -1,4 +1,9 @@
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import {
+  canGrantPilotSubscription,
+  isPilotMode,
+  pilotSubscriptionFields,
+} from "@/lib/billing-setup";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
 
@@ -28,6 +33,23 @@ async function uniqueSlug(baseSlug: string): Promise<string> {
   return `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
+async function grantPilotSubscriptionIfNeeded(
+  orgId: string,
+  subscriptionId: string | null | undefined,
+): Promise<void> {
+  if (!isPilotMode() || !canGrantPilotSubscription(subscriptionId)) return;
+
+  const db = getAdminClient();
+  const { error } = await db
+    .from("organizations")
+    .update(pilotSubscriptionFields())
+    .eq("id", orgId);
+
+  if (error) {
+    logger.warn("Failed to grant pilot subscription", { orgId, error: error.message });
+  }
+}
+
 /**
  * Ensures the authenticated user has an owned organization.
  * Idempotent — safe to call on every login for legacy accounts created before auto-provisioning.
@@ -37,7 +59,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
 
   const { data: existing, error: selectError } = await db
     .from("organizations")
-    .select("slug")
+    .select("id, slug, subscription_id")
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -47,6 +69,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
   }
 
   if (existing?.slug) {
+    await grantPilotSubscriptionIfNeeded(existing.id, existing.subscription_id);
     return { slug: existing.slug };
   }
 
@@ -59,7 +82,12 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
 
   const { data: created, error: insertError } = await db
     .from("organizations")
-    .insert({ name, slug, owner_user_id: user.id })
+    .insert({
+      name,
+      slug,
+      owner_user_id: user.id,
+      ...(isPilotMode() ? pilotSubscriptionFields() : {}),
+    })
     .select("slug")
     .single();
 

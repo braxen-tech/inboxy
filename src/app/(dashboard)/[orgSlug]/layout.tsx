@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PostHogIdentify } from "@/components/posthog-identify";
+import { isPilotMode } from "@/lib/billing-setup";
 import { getOrgBySlug } from "@/lib/get-org";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 
@@ -34,6 +35,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
         orgSlug={orgSlug}
         orgName={org.name}
         chatwootActive={org.chatwoot_status === "active"}
+        billingEnabled={!isPilotMode()}
       >
         {children}
       </DashboardShell>
