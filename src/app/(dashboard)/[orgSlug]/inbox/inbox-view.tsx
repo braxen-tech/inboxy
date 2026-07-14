@@ -53,7 +53,7 @@ export function InboxView({
   useEffect(() => {
     const supabase = createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey);
     const channel = supabase
-      .channel(`inbox:${orgId}`)
+      .channel(`inbox:${orgId}:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations", filter: `organization_id=eq.${orgId}` },

@@ -28,13 +28,15 @@ export async function ensureDefaultPipeline(db: SupabaseClient, orgId: string): 
   if (error || !created) throw new Error(error?.message ?? "Falha ao criar pipeline padrão.");
 
   const rows = DEFAULT_STAGES.map((s) => ({
+    organization_id: orgId,
     pipeline_id: created.id,
     name: s.name,
     position: s.position,
     color: s.color,
   }));
 
-  await db.from("pipeline_stages").insert(rows);
+  const { error: stagesError } = await db.from("pipeline_stages").insert(rows);
+  if (stagesError) throw new Error(stagesError.message);
 
   return created.id as string;
 }

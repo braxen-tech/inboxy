@@ -45,7 +45,7 @@ export function NotificationsBell({ userId, organizationId, supabaseUrl, supabas
     })();
 
     const channel = supabase
-      .channel(`notifs:${userId}:${organizationId}`)
+      .channel(`notifs:${userId}:${organizationId}:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {

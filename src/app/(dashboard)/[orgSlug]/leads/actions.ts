@@ -37,7 +37,7 @@ export async function moveLead(raw: z.infer<typeof moveSchema>) {
 
   const { data: current } = await supabase
     .from("leads")
-    .select("stage_id")
+    .select("pipeline_stage_id")
     .eq("id", parsed.data.leadId)
     .eq("organization_id", org.id)
     .maybeSingle();
@@ -45,7 +45,7 @@ export async function moveLead(raw: z.infer<typeof moveSchema>) {
   const { error: upErr } = await supabase
     .from("leads")
     .update({
-      stage_id: parsed.data.targetStageId,
+      pipeline_stage_id: parsed.data.targetStageId,
       position: parsed.data.targetPosition,
       updated_at: new Date().toISOString(),
     })
@@ -54,14 +54,14 @@ export async function moveLead(raw: z.infer<typeof moveSchema>) {
 
   if (upErr) return { error: upErr.message };
 
-  if (current?.stage_id !== parsed.data.targetStageId) {
+  if (current?.pipeline_stage_id !== parsed.data.targetStageId) {
     await supabase.from("activities").insert({
       organization_id: org.id,
       entity_type: "lead",
       entity_id: parsed.data.leadId,
       user_id: user.id,
       type: "stage_changed",
-      metadata: { from: current?.stage_id, to: parsed.data.targetStageId },
+      metadata: { from: current?.pipeline_stage_id, to: parsed.data.targetStageId },
     });
   }
 
@@ -85,18 +85,32 @@ export async function createLead(raw: z.infer<typeof createSchema>) {
   const { supabase, user, org, error } = await resolveOrg(parsed.data.orgSlug);
   if (error || !org || !user) return { error: error ?? "Não autenticado." };
 
+  let contactId = parsed.data.contactId;
+  if (!contactId) {
+    const { data: contact, error: contactErr } = await supabase
+      .from("contacts")
+      .insert({
+        organization_id: org.id,
+        name: parsed.data.title,
+      })
+      .select("id")
+      .single();
+    if (contactErr || !contact) return { error: contactErr?.message ?? "Falha ao criar contato." };
+    contactId = contact.id as string;
+  }
+
   const { count } = await supabase
     .from("leads")
     .select("id", { count: "exact", head: true })
-    .eq("stage_id", parsed.data.stageId);
+    .eq("pipeline_stage_id", parsed.data.stageId);
 
   const { error: insErr } = await supabase.from("leads").insert({
     organization_id: org.id,
     pipeline_id: parsed.data.pipelineId,
-    stage_id: parsed.data.stageId,
+    pipeline_stage_id: parsed.data.stageId,
     title: parsed.data.title,
-    contact_id: parsed.data.contactId ?? null,
-    value: parsed.data.value ?? null,
+    contact_id: contactId,
+    value: parsed.data.value ?? 0,
     position: (count ?? 0) * 1000,
     status: "open",
     created_by: user.id,

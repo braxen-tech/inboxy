@@ -25,7 +25,7 @@ export default async function LeadsPage({ params }: Props) {
       .order("position", { ascending: true }),
     db
       .from("leads")
-      .select("id, title, value, stage_id, position, status, contact:contacts(id, name, phone, ig_username)")
+      .select("id, title, value, pipeline_stage_id, position, status, contact:contacts(id, name, phone, ig_username)")
       .eq("organization_id", org.id)
       .eq("pipeline_id", pipelineId)
       .neq("status", "won")
@@ -45,7 +45,7 @@ export default async function LeadsPage({ params }: Props) {
       id: l.id as string,
       title: (l.title ?? "Sem título") as string,
       value: (l.value ?? null) as number | null,
-      stageId: l.stage_id as string,
+      stageId: l.pipeline_stage_id as string,
       position: (l.position ?? 0) as number,
       contactName: contact?.name ?? contact?.phone ?? contact?.ig_username ?? "Sem contato",
     };

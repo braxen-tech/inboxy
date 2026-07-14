@@ -53,7 +53,7 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
     })();
 
     const channel = supabase
-      .channel(`conv:${conversation.id}`)
+      .channel(`conv:${conversation.id}:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
