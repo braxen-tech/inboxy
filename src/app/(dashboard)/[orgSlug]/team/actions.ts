@@ -52,23 +52,84 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
   if ("error" in ctx) return { error: ctx.error };
   const { supabase, user, org } = ctx;
 
+  const email = parsed.data.email.toLowerCase();
+
+  const { data: existingProfile } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const { data: alreadyMember } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", org.id)
+      .eq("user_id", existingProfile.id)
+      .maybeSingle();
+    if (alreadyMember) {
+      return { error: "Este usuário já é membro desta organização." };
+    }
+  }
+
+  const { data: existingInvite } = await supabase
+    .from("organization_invites")
+    .select("id, accepted_at")
+    .eq("organization_id", org.id)
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingInvite && !existingInvite.accepted_at) {
+    return {
+      error: "Já existe um convite pendente para este e-mail. Revogue-o na lista abaixo para enviar de novo.",
+    };
+  }
+
   const token = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
-  const { data: invite, error } = await supabase
-    .from("organization_invites")
-    .insert({
-      organization_id: org.id,
-      email: parsed.data.email.toLowerCase(),
-      role: parsed.data.role,
-      invited_by: user.id,
-      token,
-      expires_at: expiresAt,
-    })
-    .select("id, email, role, created_at, expires_at")
-    .single();
+  let invite: {
+    id: string;
+    email: string;
+    role: string;
+    created_at: string;
+    expires_at: string;
+  } | null = null;
 
-  if (error || !invite) return { error: error?.message ?? "Falha ao criar convite." };
+  if (existingInvite?.accepted_at) {
+    // Accepted row still blocks UNIQUE(org, email); refresh it into a new pending invite.
+    const { data, error } = await supabase
+      .from("organization_invites")
+      .update({
+        role: parsed.data.role,
+        invited_by: user.id,
+        token,
+        expires_at: expiresAt,
+        accepted_at: null,
+      })
+      .eq("id", existingInvite.id)
+      .select("id, email, role, created_at, expires_at")
+      .single();
+    if (error || !data) return { error: error?.message ?? "Falha ao recriar convite." };
+    invite = data as typeof invite;
+  } else {
+    const { data, error } = await supabase
+      .from("organization_invites")
+      .insert({
+        organization_id: org.id,
+        email,
+        role: parsed.data.role,
+        invited_by: user.id,
+        token,
+        expires_at: expiresAt,
+      })
+      .select("id, email, role, created_at, expires_at")
+      .single();
+    if (error || !data) return { error: error?.message ?? "Falha ao criar convite." };
+    invite = data as typeof invite;
+  }
+
+  if (!invite) return { error: "Falha ao criar convite." };
 
   const appUrl = getAppUrl().replace(/\/$/, "");
   const acceptUrl = `${appUrl}/invite/${token}`;
