@@ -11,7 +11,9 @@ export type TagId = string & { readonly __brand: "TagId" };
 export type UserId = string & { readonly __brand: "UserId" };
 
 export type PhoneNumber = string & { readonly __brand: "PhoneNumber" };
-export type ChannelType = "whatsapp" | "instagram";
+export type ChannelType = "whatsapp" | "instagram" | "telegram";
+
+export const CHANNEL_TYPES: readonly ChannelType[] = ["whatsapp", "instagram", "telegram"] as const;
 
 export function toOrgId(id: string): OrgId {
   return id as OrgId;

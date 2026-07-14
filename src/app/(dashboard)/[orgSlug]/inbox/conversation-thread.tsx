@@ -108,7 +108,14 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
         <div>
           <div className="font-medium">{conversation.contact.name}</div>
           <div className="text-xs text-muted-foreground">
-            {conversation.channelType === "instagram" ? "Instagram DM" : "WhatsApp"} · {conversation.contact.subtitle}
+            {conversation.channelType === "instagram"
+              ? "Instagram DM"
+              : conversation.channelType === "telegram"
+                ? "Telegram"
+                : conversation.channelType === "whatsapp"
+                  ? "WhatsApp"
+                  : "Canal"}{" "}
+            · {conversation.contact.subtitle}
           </div>
         </div>
         <div className="flex items-center gap-2">

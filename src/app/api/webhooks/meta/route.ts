@@ -3,7 +3,7 @@ import type { MessagingChannel } from "@/domain/ports";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
 import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
-import { processMetaInboundMessage, resolveChannelForInbound } from "@/application/services/meta-inbound";
+import { processChannelInboundMessage, resolveChannelForInbound } from "@/application/services/channel-inbound";
 import { logger } from "@/lib/logger";
 import { logWebhookHandled, logWebhookIgnored } from "@/lib/operational-telemetry";
 import { captureServerException } from "@/lib/posthog-server";
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         continue;
       }
 
-      await processMetaInboundMessage(db, channel, msg);
+      await processChannelInboundMessage(db, channel, msg);
       logWebhookHandled(WEBHOOK, "message_received", {
         channelType: msg.channelType,
         externalMessageId: msg.externalMessageId,

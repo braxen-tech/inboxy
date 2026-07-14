@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe/payment-adapter";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
-import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
+import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { toOrgId, toConversationId, toMessageId } from "@/domain/value-objects";
@@ -143,11 +142,12 @@ async function handleCheckoutCompleted(
 
       const channel = conversation?.channels as unknown as
         | {
-            type: "whatsapp" | "instagram";
+            type: "whatsapp" | "instagram" | "telegram";
             status: string;
             access_token: string | null;
             phone_number_id: string | null;
             ig_user_id: string | null;
+            telegram_bot_id: string | null;
           }
         | null;
 
@@ -168,11 +168,11 @@ async function handleCheckoutCompleted(
           .join("\n");
 
         const adapter =
-          channel.type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
+          getChannelAdapter(channel.type);
 
         await adapter.send({
           accessToken,
-          fromExternalId: (channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id) ?? "",
+          fromExternalId: getOutboundFromId(channel) ?? "",
           toExternalId: conversation.external_conversation_id,
           content: message,
         });

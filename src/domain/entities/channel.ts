@@ -16,6 +16,7 @@ export interface Channel {
   displayName: string | null;
   igUserId: string | null;
   igUsername: string | null;
+  telegramBotId: string | null;
   connectedAt: Date | null;
   lastError: string | null;
   createdAt: Date;

@@ -19,6 +19,8 @@ export interface InboundMessage {
   recipientPhoneNumberId?: string | null;
   /** For Instagram: the IG business user id that received the message. */
   recipientIgUserId?: string | null;
+  /** For Telegram: the bot id that received the message (from getMe). */
+  recipientTelegramBotId?: string | null;
   content: string;
   attachments: InboundAttachment[];
   timestamp: Date;
@@ -39,9 +41,9 @@ export interface OutboundAttachment {
 
 export interface SendParams {
   accessToken: string;
-  /** For WhatsApp: phone_number_id; for Instagram: ig_user_id. */
+  /** Provider "from" id: WA phone_number_id, IG user id, Telegram bot id (unused by Bot API). */
   fromExternalId: string;
-  /** Recipient identifier: phone (E.164) for WhatsApp, IGSID for Instagram. */
+  /** Recipient: WA phone (E.164), IG IGSID, or Telegram chat_id. */
   toExternalId: string;
   content: string;
   attachments?: OutboundAttachment[];

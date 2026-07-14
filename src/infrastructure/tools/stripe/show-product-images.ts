@@ -2,8 +2,7 @@ import { z } from "zod/v4";
 import type { AgentTool, ToolContext, ToolError, ProductCatalog } from "@/domain/ports";
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
-import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
+import { getChannelAdapter } from "@/infrastructure/adapters/channel-registry";
 
 const inputSchema = z.object({
   productId: z.string().describe("ID do produto no Stripe (ex: prod_xxx)"),
@@ -47,7 +46,7 @@ export class ShowProductImagesTool implements AgentTool {
     }
 
     const adapter =
-      ctx.messaging.channelType === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
+      getChannelAdapter(ctx.messaging.channelType);
 
     let sentCount = 0;
     const errors: string[] = [];

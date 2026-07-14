@@ -25,7 +25,7 @@ export default async function InboxPage({ params, searchParams }: Props) {
       unread_count,
       last_message_at,
       channel_type,
-      contact:contacts(id, name, phone, email, avatar_url, ig_username),
+      contact:contacts(id, name, phone, email, avatar_url, ig_username, telegram_user_id),
       channel:channels(type, display_name, phone_number)
       `,
     )
@@ -41,12 +41,26 @@ export default async function InboxPage({ params, searchParams }: Props) {
       email: string | null;
       avatar_url: string | null;
       ig_username: string | null;
+      telegram_user_id: string | null;
     } | null;
     const channel = (Array.isArray(c.channel) ? c.channel[0] : c.channel) as {
-      type: "whatsapp" | "instagram";
+      type: "whatsapp" | "instagram" | "telegram";
       display_name: string | null;
       phone_number: string | null;
     } | null;
+
+    const channelType = (c.channel_type ?? channel?.type ?? null) as
+      | "whatsapp"
+      | "instagram"
+      | "telegram"
+      | null;
+
+    let subtitle = contact?.phone ?? "";
+    if (channelType === "instagram" && contact?.ig_username) {
+      subtitle = `@${contact.ig_username}`;
+    } else if (channelType === "telegram") {
+      subtitle = contact?.name ? `TG · ${contact.name}` : "Telegram";
+    }
 
     return {
       id: c.id as string,
@@ -54,14 +68,11 @@ export default async function InboxPage({ params, searchParams }: Props) {
       priority: (c.priority ?? "normal") as string,
       unreadCount: (c.unread_count ?? 0) as number,
       lastMessageAt: (c.last_message_at ?? null) as string | null,
-      channelType: (c.channel_type ?? channel?.type ?? null) as "whatsapp" | "instagram" | null,
+      channelType,
       contact: {
         id: contact?.id ?? "",
         name: contact?.name ?? contact?.phone ?? contact?.ig_username ?? "Sem nome",
-        subtitle:
-          channel?.type === "instagram" && contact?.ig_username
-            ? `@${contact.ig_username}`
-            : contact?.phone ?? "",
+        subtitle,
         avatarUrl: contact?.avatar_url ?? null,
       },
     };

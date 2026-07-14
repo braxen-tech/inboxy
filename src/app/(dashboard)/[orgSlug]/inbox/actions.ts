@@ -4,8 +4,7 @@ import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
-import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
+import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { logger } from "@/lib/logger";
 
 async function requireUser() {
@@ -71,11 +70,12 @@ export async function sendOutboundMessage(raw: {
   }
 
   const channel = (Array.isArray(convo.channels) ? convo.channels[0] : convo.channels) as {
-    type: "whatsapp" | "instagram";
+    type: "whatsapp" | "instagram" | "telegram";
     status: string;
     access_token: string | null;
     phone_number_id: string | null;
     ig_user_id: string | null;
+    telegram_bot_id: string | null;
   } | null;
 
   if (!channel || channel.status !== "active" || !channel.access_token) {
@@ -91,8 +91,8 @@ export async function sendOutboundMessage(raw: {
     return { error: "Não foi possível ler credencial do canal." };
   }
 
-  const adapter = channel.type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
-  const fromExternalId = channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id;
+  const adapter = getChannelAdapter(channel.type);
+  const fromExternalId = getOutboundFromId(channel);
   const toExternalId = convo.external_conversation_id;
   if (!fromExternalId || !toExternalId) {
     return { error: "Conversa sem identificador externo." };

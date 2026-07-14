@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SecretStore, MessagingChannel } from "@/domain/ports";
+import type { SecretStore } from "@/domain/ports";
 import type { ConversationId, MessageId, ChannelType } from "@/domain/value-objects";
 import { toOrgId, toCorrelationId } from "@/domain/value-objects";
 import { acquireConversationLock, releaseConversationLock } from "../services/conversation-lock";
@@ -8,8 +8,7 @@ import { incrementUsage } from "../services/usage-tracker";
 import { generateNudgeReply } from "../services/generate-nudge-reply";
 import { needsBillingSetup } from "@/lib/billing-setup";
 import { isBotQueueStatus } from "@/lib/conversation-status";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
-import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
+import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { randomUUID } from "node:crypto";
@@ -30,10 +29,6 @@ interface SendFollowupInput {
 interface Deps {
   db: SupabaseClient;
   secretStore: SecretStore;
-}
-
-function pickAdapter(type: ChannelType): MessagingChannel {
-  return type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
 }
 
 async function conversationAlreadyNudged(
@@ -126,6 +121,7 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
       access_token: string | null;
       phone_number_id: string | null;
       ig_user_id: string | null;
+      telegram_bot_id: string | null;
     } | null;
 
     if (!channel || channel.status !== "active" || !channel.access_token) return;
@@ -133,7 +129,8 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
     if (!conversation.last_inbound_at) return;
 
     const lastInboundMs = new Date(conversation.last_inbound_at).getTime();
-    if (Date.now() - lastInboundMs > WHATSAPP_WINDOW_MS) {
+    // Meta customer-care window; Telegram has no equivalent restriction.
+    if (channel.type !== "telegram" && Date.now() - lastInboundMs > WHATSAPP_WINDOW_MS) {
       logger.info("Follow-up skipped: outside 24h window", ctx);
       if (input.scheduledFollowupId) {
         await db
@@ -210,11 +207,11 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
       return;
     }
 
-    const fromExternalId = channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id;
+    const fromExternalId = getOutboundFromId(channel);
     const toExternalId = conversation.external_conversation_id as string | null;
     if (!fromExternalId || !toExternalId) return;
 
-    const adapter = pickAdapter(channel.type);
+    const adapter = getChannelAdapter(channel.type);
     const sendResult = await adapter.send({
       accessToken,
       fromExternalId,

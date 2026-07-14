@@ -13,7 +13,7 @@ export interface ConversationRow {
   priority: string;
   unreadCount: number;
   lastMessageAt: string | null;
-  channelType: "whatsapp" | "instagram" | null;
+  channelType: "whatsapp" | "instagram" | "telegram" | null;
   contact: {
     id: string;
     name: string;
@@ -130,7 +130,14 @@ export function InboxView({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs text-muted-foreground">
-                      {c.channelType === "instagram" ? "IG" : c.channelType === "whatsapp" ? "WA" : "-"} · {c.contact.subtitle}
+                      {c.channelType === "instagram"
+                        ? "IG"
+                        : c.channelType === "telegram"
+                          ? "TG"
+                          : c.channelType === "whatsapp"
+                            ? "WA"
+                            : "-"}{" "}
+                      · {c.contact.subtitle}
                     </span>
                     {c.unreadCount > 0 && (
                       <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-medium text-white">

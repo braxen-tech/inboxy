@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AgentRunner, MessagingChannel, ToolRegistry, SecretStore } from "@/domain/ports";
+import type { AgentRunner, ToolRegistry, SecretStore } from "@/domain/ports";
 import type { MessageId, ConversationId, ChannelType } from "@/domain/value-objects";
 import { toOrgId, toCorrelationId, toContactId, toConversationId } from "@/domain/value-objects";
 import { acquireConversationLock, releaseConversationLock } from "../services/conversation-lock";
@@ -17,8 +17,7 @@ import {
   reportMessageSendFailed,
   reportPipelineAbort,
 } from "@/lib/operational-telemetry";
-import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
-import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
+import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { fetchAccountLabelTitles } from "@/application/services/conversation-labels";
 import { fetchAccountAgents } from "@/application/services/conversation-assignment";
 
@@ -37,10 +36,6 @@ async function orgHasReadyKbDocuments(db: SupabaseClient, orgId: string): Promis
   }
 
   return (count ?? 0) > 0;
-}
-
-function pickAdapter(type: ChannelType): MessagingChannel {
-  return type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
 }
 
 interface Deps {
@@ -106,6 +101,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       access_token: string | null;
       phone_number_id: string | null;
       ig_user_id: string | null;
+      telegram_bot_id: string | null;
       status: string;
     } | null;
 
@@ -132,9 +128,8 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
-    const adapter = pickAdapter(channel.type);
-    const fromExternalId =
-      channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id;
+    const adapter = getChannelAdapter(channel.type);
+    const fromExternalId = getOutboundFromId(channel);
     const toExternalId = conversation.external_conversation_id as string | null;
 
     if (!fromExternalId || !toExternalId) {
