@@ -27,7 +27,17 @@ declare global {
 }
 
 const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID;
-const CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID;
+/** Prefer per-channel config; fall back to the generic Embedded Signup config. */
+const WHATSAPP_CONFIG_ID =
+  process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ??
+  process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID;
+const INSTAGRAM_CONFIG_ID =
+  process.env.NEXT_PUBLIC_META_INSTAGRAM_CONFIG_ID ??
+  process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID;
+
+function configIdFor(variant: "whatsapp" | "instagram"): string | undefined {
+  return variant === "whatsapp" ? WHATSAPP_CONFIG_ID : INSTAGRAM_CONFIG_ID;
+}
 
 /** Shared across all EmbeddedSignupButton instances — avoids fbAsyncInit race. */
 let fbSdkPromise: Promise<FBSdk> | null = null;
@@ -181,6 +191,7 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
 
   const launch = useCallback(() => {
     setError(null);
+    const CONFIG_ID = configIdFor(variant);
     if (!CONFIG_ID) {
       setError("Configuration ID do Meta não configurado.");
       return;
@@ -198,7 +209,7 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
             if (!code) {
               const detail =
                 response.status === "unknown"
-                  ? "Popup bloqueado ou configuração inválida no Meta App (Site URL / App Domains / Configuration ID)."
+                  ? "Popup bloqueado ou configuração inválida no Meta App (Site URL precisa ser https://, App Domains, Configuration ID)."
                   : "Fluxo cancelado ou permissão negada.";
               setError(detail);
               setBusy(false);
@@ -225,7 +236,9 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
         setError(err instanceof Error ? err.message : "Falha ao carregar Facebook SDK.");
         setBusy(false);
       });
-  }, [finishExchange]);
+  }, [finishExchange, variant]);
+
+  const CONFIG_ID = configIdFor(variant);
 
   if (!APP_ID || !CONFIG_ID) {
     return (
