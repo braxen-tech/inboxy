@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { inviteMember, revokeInvite, updateMemberRole, removeMember } from "./actions";
@@ -32,12 +33,18 @@ interface Props {
 }
 
 export function TeamManager({ orgSlug, canManage, members: initialMembers, invites: initialInvites }: Props) {
+  const router = useRouter();
   const [members, setMembers] = useState(initialMembers);
   const [invites, setInvites] = useState(initialInvites);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("agent");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMembers(initialMembers);
+    setInvites(initialInvites);
+  }, [initialMembers, initialInvites]);
 
   function handleInvite() {
     if (!inviteEmail.trim()) return;
@@ -46,9 +53,16 @@ export function TeamManager({ orgSlug, canManage, members: initialMembers, invit
       const res = await inviteMember({ orgSlug, email: inviteEmail.trim(), role: inviteRole });
       if (res.error) {
         setMessage(res.error);
-      } else if (res.invite) {
+        return;
+      }
+      setInviteEmail("");
+      if (res.addedDirectly) {
+        setMessage(`${inviteEmail.trim()} foi adicionado como membro (já tinha conta).`);
+        router.refresh();
+        return;
+      }
+      if (res.invite) {
         setInvites((prev) => [res.invite!, ...prev]);
-        setInviteEmail("");
         setMessage(
           res.emailed
             ? `Convite enviado por e-mail para ${res.invite.email}.`

@@ -3,7 +3,10 @@
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
+import {
+  getAdminClient,
+  getServerClientFromCookies,
+} from "@/infrastructure/repositories/supabase-clients";
 import { getResendClient, getFromAddress } from "@/infrastructure/adapters/resend/client";
 import { logger } from "@/lib/logger";
 import { getAppUrl } from "@/lib/app-url";
@@ -50,18 +53,19 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
 
   const ctx = await requireAdmin(parsed.data.orgSlug);
   if ("error" in ctx) return { error: ctx.error };
-  const { supabase, user, org } = ctx;
+  const { user, org } = ctx;
+  const admin = getAdminClient();
 
   const email = parsed.data.email.toLowerCase();
 
-  const { data: existingProfile } = await supabase
+  const { data: existingProfile } = await admin
     .from("user_profiles")
-    .select("id")
-    .eq("email", email)
+    .select("id, email")
+    .ilike("email", email)
     .maybeSingle();
 
   if (existingProfile) {
-    const { data: alreadyMember } = await supabase
+    const { data: alreadyMember } = await admin
       .from("organization_members")
       .select("id")
       .eq("organization_id", org.id)
@@ -70,9 +74,48 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
     if (alreadyMember) {
       return { error: "Este usuário já é membro desta organização." };
     }
+
+    // Account already exists — add to org immediately (no pending accept step).
+    const { error: memberErr } = await admin.from("organization_members").upsert(
+      {
+        organization_id: org.id,
+        user_id: existingProfile.id,
+        role: parsed.data.role,
+        invited_by: user.id,
+      },
+      { onConflict: "organization_id,user_id" },
+    );
+    if (memberErr) return { error: memberErr.message };
+
+    await admin.from("organization_invites").upsert(
+      {
+        organization_id: org.id,
+        email,
+        role: parsed.data.role,
+        invited_by: user.id,
+        token: randomBytes(24).toString("hex"),
+        expires_at: new Date().toISOString(),
+        accepted_at: new Date().toISOString(),
+      },
+      { onConflict: "organization_id,email" },
+    );
+
+    revalidatePath(`/${parsed.data.orgSlug}/team`);
+    return {
+      success: true as const,
+      emailed: false,
+      addedDirectly: true as const,
+      member: {
+        userId: existingProfile.id as string,
+        email,
+        role: parsed.data.role,
+      },
+      invite: null,
+      acceptUrl: null,
+    };
   }
 
-  const { data: existingInvite } = await supabase
+  const { data: existingInvite } = await admin
     .from("organization_invites")
     .select("id, accepted_at")
     .eq("organization_id", org.id)
@@ -81,7 +124,8 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
 
   if (existingInvite && !existingInvite.accepted_at) {
     return {
-      error: "Já existe um convite pendente para este e-mail. Revogue-o na lista abaixo para enviar de novo.",
+      error:
+        "Já existe um convite pendente para este e-mail. Revogue-o na lista abaixo para enviar de novo.",
     };
   }
 
@@ -99,8 +143,7 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
   let invite: InviteRow | null = null;
 
   if (existingInvite?.accepted_at) {
-    // Accepted row still blocks UNIQUE(org, email); refresh it into a new pending invite.
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("organization_invites")
       .update({
         role: parsed.data.role,
@@ -115,7 +158,7 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
     if (error || !data) return { error: error?.message ?? "Falha ao recriar convite." };
     invite = data as InviteRow;
   } else {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("organization_invites")
       .insert({
         organization_id: org.id,
@@ -166,12 +209,14 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
   return {
     success: true as const,
     emailed,
+    addedDirectly: false as const,
+    member: null,
     invite: {
-      id: invite.id as string,
-      email: invite.email as string,
+      id: invite.id,
+      email: invite.email,
       role: invite.role as Role,
-      createdAt: invite.created_at as string,
-      expiresAt: invite.expires_at as string,
+      createdAt: invite.created_at,
+      expiresAt: invite.expires_at,
     },
     acceptUrl,
   };
