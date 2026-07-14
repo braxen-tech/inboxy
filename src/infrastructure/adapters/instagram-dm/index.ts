@@ -1,0 +1,1 @@
+export { InstagramDmAdapter } from "./adapter";

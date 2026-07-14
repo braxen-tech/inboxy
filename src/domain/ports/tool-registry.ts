@@ -1,6 +1,6 @@
 import type { z } from "zod/v4";
 import type { Result } from "../errors";
-import type { OrgId } from "../value-objects";
+import type { ChannelType, ContactId, ConversationId, OrgId } from "../value-objects";
 
 export interface CalendarContext {
   eventTypeId: string;
@@ -13,26 +13,23 @@ export interface StripeContext {
   apiKey: string;
 }
 
-export interface ChatwootContext {
-  apiUrl: string;
-  /** Admin API token */
-  apiToken: string;
-  botAccessToken?: string | null;
-  accountId: string;
-  conversationId: number;
-  /** Chatwoot contact ID from local metadata or conversation API */
-  contactId?: number;
+export interface MessagingContext {
+  channelType: ChannelType;
+  accessToken: string;
+  /** WhatsApp phone_number_id or Instagram ig_user_id. */
+  fromExternalId: string;
+  /** Recipient identifier: E.164 phone (WA) or IGSID (IG). */
+  toExternalId: string;
 }
 
 export interface ToolContext {
   orgId: OrgId;
-  contactPhone: string;
-  conversationId: string;
-  /** Local Supabase contact row ID */
-  localContactId?: string;
+  conversationId: ConversationId;
+  contactId: ContactId;
+  contactPhone: string | null;
   calendar?: CalendarContext;
   stripe?: StripeContext;
-  chatwoot?: ChatwootContext;
+  messaging?: MessagingContext;
 }
 
 export interface AgentTool {

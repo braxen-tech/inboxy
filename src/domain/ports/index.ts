@@ -1,10 +1,12 @@
 export type {
   MessagingChannel,
   InboundMessage,
+  InboundAttachment,
+  OutboundAttachment,
   SendParams,
   SendError,
   WebhookError,
-  Attachment,
+  WebhookVerification,
 } from "./messaging-channel";
 
 export type {
@@ -21,7 +23,7 @@ export type {
   ToolError,
   CalendarContext,
   StripeContext,
-  ChatwootContext,
+  MessagingContext,
 } from "./tool-registry";
 
 export type { EventBus, DomainEvent } from "./event-bus";

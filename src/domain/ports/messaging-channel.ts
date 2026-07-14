@@ -1,49 +1,75 @@
 import type { Result } from "../errors";
+import type { ChannelType } from "../value-objects";
 
 export interface InboundMessage {
+  channelType: ChannelType;
+  /** Provider-specific id of the incoming message (wamid / IG mid). */
   externalMessageId: string;
-  chatwootConversationId: number;
+  /** Provider-specific thread/conversation identifier. */
+  externalConversationId: string;
+  /** Sender profile info from the provider payload. */
   senderName: string | null;
   senderPhone: string | null;
   senderEmail: string | null;
-  /** Chatwoot contact ID from webhook sender.id */
-  senderChatwootId?: number | null;
-  /** Raw Chatwoot channel type, e.g. Channel::Whatsapp */
-  chatwootChannel?: string | null;
-  chatwootInboxId?: number | null;
+  /** For Instagram: the sender IG user id (PSID / IGSID). */
+  senderExternalId: string | null;
+  /** For Instagram: sender IG username if available. */
+  senderUsername: string | null;
+  /** For WhatsApp: E.164 number of the business phone that received the message. */
+  recipientPhoneNumberId?: string | null;
+  /** For Instagram: the IG business user id that received the message. */
+  recipientIgUserId?: string | null;
   content: string;
+  attachments: InboundAttachment[];
   timestamp: Date;
-  accountId: string;
 }
 
-export interface Attachment {
-  url: string;
+export interface InboundAttachment {
+  url?: string;
+  mediaId?: string;
+  contentType?: string;
   filename?: string;
 }
 
+export interface OutboundAttachment {
+  url: string;
+  filename?: string;
+  contentType?: string;
+}
+
 export interface SendParams {
-  apiUrl: string;
-  apiToken: string;
-  accountId: string;
-  conversationId: number;
+  accessToken: string;
+  /** For WhatsApp: phone_number_id; for Instagram: ig_user_id. */
+  fromExternalId: string;
+  /** Recipient identifier: phone (E.164) for WhatsApp, IGSID for Instagram. */
+  toExternalId: string;
   content: string;
-  attachments?: Attachment[];
-  /** When set, message is sent as Chatwoot AgentBot (requires bot access token). */
-  agentBotId?: number;
+  attachments?: OutboundAttachment[];
 }
 
 export type SendError = {
-  code: "RATE_LIMITED" | "API_ERROR" | "NETWORK_ERROR" | "UNAUTHORIZED";
+  code: "RATE_LIMITED" | "API_ERROR" | "NETWORK_ERROR" | "UNAUTHORIZED" | "INVALID_RECIPIENT";
   message: string;
   httpStatus?: number;
 };
 
 export type WebhookError = {
-  code: "SECRET_INVALID" | "PARSE_FAILED" | "IGNORED_EVENT";
+  code: "SECRET_INVALID" | "PARSE_FAILED" | "IGNORED_EVENT" | "UNSUPPORTED";
   message: string;
 };
 
+export interface WebhookVerification {
+  mode: string;
+  token: string;
+  challenge: string;
+}
+
 export interface MessagingChannel {
-  parseWebhook(request: Request, secret: string): Promise<Result<InboundMessage[], WebhookError>>;
+  readonly type: ChannelType;
+  /** Handle the Meta webhook GET verification handshake. */
+  verifyWebhook(params: WebhookVerification, expectedToken: string): string | null;
+  /** Parse an incoming Meta webhook payload into normalized inbound messages. */
+  parseWebhook(rawBody: string, signature: string | null, appSecret: string): Promise<Result<InboundMessage[], WebhookError>>;
+  /** Send an outbound message via the provider API. */
   send(params: SendParams): Promise<Result<string, SendError>>;
 }

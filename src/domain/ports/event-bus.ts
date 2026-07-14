@@ -1,4 +1,5 @@
-import type { OrgId, ConversationId, MessageId } from "../value-objects";
+import type { ChannelId, ConversationId, LeadId, MessageId, OrgId, UserId } from "../value-objects";
+import type { ChannelType } from "../value-objects";
 
 export type DomainEvent =
   | {
@@ -20,8 +21,16 @@ export type DomainEvent =
       };
     }
   | {
-      type: "chatwoot.connected";
-      payload: { orgId: OrgId; accountId: string };
+      type: "channel.connected";
+      payload: { orgId: OrgId; channelId: ChannelId; channelType: ChannelType };
+    }
+  | {
+      type: "conversation.assigned";
+      payload: { orgId: OrgId; conversationId: ConversationId; assignedTo: UserId };
+    }
+  | {
+      type: "lead.stage_changed";
+      payload: { orgId: OrgId; leadId: LeadId; fromStageId: string; toStageId: string };
     }
   | {
       type: "kb.document.uploaded";
