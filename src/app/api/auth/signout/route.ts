@@ -4,11 +4,16 @@ import { createServerClient } from "@supabase/ssr";
 
 export async function POST(request: Request) {
   const url = new URL(request.url);
+  const nextParam = url.searchParams.get("next");
+  const safeNext =
+    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : "/login";
 
   const cookieStore = await cookies();
 
   /** 303 so the browser follows with GET; default 307 would POST to /login and return 405 */
-  let response = NextResponse.redirect(new URL("/login", url.origin), 303);
+  let response = NextResponse.redirect(new URL(safeNext, url.origin), 303);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -7,12 +7,15 @@ interface SignOutButtonProps {
   variant?: "default" | "outline" | "ghost" | "destructive" | "secondary" | "link";
   className?: string;
   children?: React.ReactNode;
+  /** Path to land on after sign-out (must be same-origin absolute path). Defaults to /login. */
+  redirectTo?: string;
 }
 
 export function SignOutButton({
   variant = "outline",
   className,
   children = "Sair",
+  redirectTo = "/login",
 }: SignOutButtonProps) {
   function handleSignOut() {
     if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
@@ -20,7 +23,8 @@ export function SignOutButton({
     }
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = "/api/auth/signout";
+    const next = redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/login";
+    form.action = `/api/auth/signout?next=${encodeURIComponent(next)}`;
     document.body.appendChild(form);
     form.submit();
   }

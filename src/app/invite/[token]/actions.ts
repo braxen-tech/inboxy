@@ -6,9 +6,16 @@ import {
   getServerClientFromCookies,
 } from "@/infrastructure/repositories/supabase-clients";
 
-export async function acceptInvite(formData: FormData) {
+export type AcceptInviteState = { error: string } | null;
+
+export async function acceptInvite(
+  _prev: AcceptInviteState,
+  formData: FormData,
+): Promise<AcceptInviteState> {
   const token = formData.get("token");
-  if (typeof token !== "string" || !token) throw new Error("Token inválido.");
+  if (typeof token !== "string" || !token) {
+    return { error: "Token inválido." };
+  }
 
   const supabase = await getServerClientFromCookies();
   const admin = getAdminClient();
@@ -23,36 +30,52 @@ export async function acceptInvite(formData: FormData) {
     .eq("token", token)
     .maybeSingle();
 
-  if (findErr || !invite) throw new Error("Convite não encontrado.");
-  if (invite.accepted_at) throw new Error("Convite já aceito.");
+  if (findErr || !invite) return { error: "Convite não encontrado." };
+  if (invite.accepted_at) return { error: "Este convite já foi aceito." };
   if (new Date(invite.expires_at as string).getTime() < Date.now()) {
-    throw new Error("Convite expirado.");
+    return { error: "Este convite expirou." };
   }
 
   const email = user.email?.toLowerCase();
-  if (email && email !== (invite.email as string).toLowerCase()) {
-    throw new Error(`Este convite foi enviado para ${invite.email}. Faça login com esse email.`);
+  const inviteEmail = (invite.email as string).toLowerCase();
+  if (!email) {
+    return { error: "Sua conta não tem e-mail. Faça login com outra conta." };
+  }
+  if (email !== inviteEmail) {
+    return {
+      error: `Este convite foi enviado para ${invite.email}. Você está logado como ${user.email}. Saia e entre com o e-mail do convite.`,
+    };
   }
 
-  await admin
-    .from("organization_members")
-    .upsert(
-      {
-        organization_id: invite.organization_id as string,
-        user_id: user.id,
-        role: invite.role as "admin" | "agent" | "viewer",
-      },
-      { onConflict: "organization_id,user_id" },
-    );
+  const { error: memberErr } = await admin.from("organization_members").upsert(
+    {
+      organization_id: invite.organization_id as string,
+      user_id: user.id,
+      role: invite.role as "admin" | "agent" | "viewer",
+    },
+    { onConflict: "organization_id,user_id" },
+  );
 
-  await admin
+  if (memberErr) {
+    return { error: memberErr.message || "Falha ao adicionar você à organização." };
+  }
+
+  const { error: acceptErr } = await admin
     .from("organization_invites")
     .update({ accepted_at: new Date().toISOString() })
     .eq("id", invite.id as string);
+
+  if (acceptErr) {
+    return { error: acceptErr.message || "Falha ao marcar o convite como aceito." };
+  }
 
   const org = (Array.isArray(invite.organizations) ? invite.organizations[0] : invite.organizations) as {
     slug: string;
   } | null;
 
-  redirect(`/${org?.slug ?? ""}`);
+  if (!org?.slug) {
+    return { error: "Organização do convite inválida." };
+  }
+
+  redirect(`/${org.slug}`);
 }

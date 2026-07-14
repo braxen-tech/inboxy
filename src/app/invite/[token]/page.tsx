@@ -3,8 +3,7 @@ import {
   getAdminClient,
   getServerClientFromCookies,
 } from "@/infrastructure/repositories/supabase-clients";
-import { acceptInvite } from "./actions";
-import { Button } from "@/components/ui/button";
+import { AcceptInviteForm } from "./accept-invite-form";
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -54,12 +53,11 @@ export default async function AcceptInvitePage({ params }: Props) {
         )}
 
         {!expired && !alreadyAccepted && (
-          <form action={acceptInvite}>
-            <input type="hidden" name="token" value={token} />
-            <Button type="submit" className="w-full">
-              Aceitar convite
-            </Button>
-          </form>
+          <AcceptInviteForm
+            token={token}
+            inviteEmail={invite.email as string}
+            userEmail={user.email ?? null}
+          />
         )}
       </div>
     </div>
