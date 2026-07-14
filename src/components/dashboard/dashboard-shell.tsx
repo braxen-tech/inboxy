@@ -269,7 +269,14 @@ export function DashboardShell({
         )}
 
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+          <div
+            className={cn(
+              "mx-auto w-full px-4 py-6 sm:px-6 sm:py-8",
+              pathname === `/${orgSlug}/leads` || pathname.startsWith(`/${orgSlug}/leads/`)
+                ? "max-w-none"
+                : "max-w-5xl",
+            )}
+          >
             {children}
           </div>
         </main>

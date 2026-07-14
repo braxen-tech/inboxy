@@ -12,5 +12,5 @@ export function getResendClient(): Resend | null {
 }
 
 export function getFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL?.trim() || "Inboxy <notifications@inboxy.app>";
+  return process.env.RESEND_FROM_EMAIL?.trim() || "Inboxy <noreply@braxentech.com>";
 }

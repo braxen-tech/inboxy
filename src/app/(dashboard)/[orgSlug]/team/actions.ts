@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { getResendClient, getFromAddress } from "@/infrastructure/adapters/resend/client";
 import { logger } from "@/lib/logger";
+import { getAppUrl } from "@/lib/app-url";
 
 type Role = "admin" | "agent" | "viewer";
 
@@ -69,10 +70,11 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
 
   if (error || !invite) return { error: error?.message ?? "Falha ao criar convite." };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const appUrl = getAppUrl().replace(/\/$/, "");
   const acceptUrl = `${appUrl}/invite/${token}`;
 
   const resend = getResendClient();
+  let emailed = false;
   if (resend) {
     try {
       await resend.emails.send({
@@ -89,14 +91,18 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
           <p style="color:#666;font-size:12px;">Este convite expira em 7 dias.</p>
         `,
       });
+      emailed = true;
     } catch (err) {
       logger.warn("Invite email failed", { error: String(err) });
     }
+  } else {
+    logger.warn("RESEND_API_KEY ausente — convite criado sem e-mail", { orgId: org.id });
   }
 
   revalidatePath(`/${parsed.data.orgSlug}/team`);
   return {
     success: true as const,
+    emailed,
     invite: {
       id: invite.id as string,
       email: invite.email as string,

@@ -16,6 +16,13 @@ import { ManageConversationLabelsTool } from "./manage-conversation-labels";
 import { UpdateContactTool } from "./update-contact";
 import { LookupKnowledgeTool } from "./lookup-knowledge";
 import { ScheduleFollowupTool } from "./schedule-followup";
+import { ListPipelineStagesTool } from "./list-pipeline-stages";
+import { ListLeadsTool } from "./list-leads";
+import { CreateLeadTool } from "./create-lead";
+import { UpdateLeadTool } from "./update-lead";
+import { MoveLeadTool } from "./move-lead";
+import { DeleteLeadTool } from "./delete-lead";
+import { ManageLeadTagsTool } from "./manage-lead-tags";
 
 interface ToolRegistryDeps {
   calendarProvider: CalendarProvider;
@@ -45,6 +52,13 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new ManageConversationLabelsTool(deps.db));
   registry.register(new UpdateContactTool(deps.db));
   registry.register(new ScheduleFollowupTool(deps.db));
+  registry.register(new ListPipelineStagesTool(deps.db));
+  registry.register(new ListLeadsTool(deps.db));
+  registry.register(new CreateLeadTool(deps.db));
+  registry.register(new UpdateLeadTool(deps.db));
+  registry.register(new MoveLeadTool(deps.db));
+  registry.register(new DeleteLeadTool(deps.db));
+  registry.register(new ManageLeadTagsTool(deps.db));
 
   if (deps.knowledgeRetriever) {
     registry.register(new LookupKnowledgeTool(deps.knowledgeRetriever));

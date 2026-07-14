@@ -49,7 +49,11 @@ export function TeamManager({ orgSlug, canManage, members: initialMembers, invit
       } else if (res.invite) {
         setInvites((prev) => [res.invite!, ...prev]);
         setInviteEmail("");
-        setMessage(`Convite criado. Link: ${res.acceptUrl}`);
+        setMessage(
+          res.emailed
+            ? `Convite enviado por e-mail para ${res.invite.email}.`
+            : `Convite criado (e-mail não enviado — confira RESEND_API_KEY). Link: ${res.acceptUrl}`,
+        );
       }
     });
   }

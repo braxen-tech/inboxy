@@ -77,10 +77,19 @@ export function planFromStripePriceId(priceId: string | null | undefined): PlanI
   return PRICE_TO_PLAN[priceId] ?? null;
 }
 
-/** Always available (not plan-gated) — the CRM handoff/tagging tools. */
+/** Always available (not plan-gated) — the CRM handoff/tagging/pipeline tools. */
 export const HANDOFF_TOOL = "transfer_to_human";
 export const TAG_TOOL = "manage_conversation_tags";
 export const CONTACT_UPDATE_TOOL = "update_contact";
+export const CRM_PIPELINE_TOOLS = [
+  "list_pipeline_stages",
+  "list_leads",
+  "create_lead",
+  "update_lead",
+  "move_lead",
+  "delete_lead",
+  "manage_lead_tags",
+] as const;
 
 /** Enabled when org has at least one indexed KB document. */
 export const LOOKUP_KNOWLEDGE_TOOL = "lookup_knowledge";
@@ -140,6 +149,9 @@ export function resolveEnabledToolsForOrg(org: {
     if (!base.includes(HANDOFF_TOOL)) base.push(HANDOFF_TOOL);
     if (!base.includes(TAG_TOOL)) base.push(TAG_TOOL);
     if (!base.includes(CONTACT_UPDATE_TOOL)) base.push(CONTACT_UPDATE_TOOL);
+    for (const name of CRM_PIPELINE_TOOLS) {
+      if (!base.includes(name)) base.push(name);
+    }
   }
 
   if (org.hasKbDocuments && !base.includes(LOOKUP_KNOWLEDGE_TOOL)) {

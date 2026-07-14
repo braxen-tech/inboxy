@@ -19,11 +19,12 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 - o cliente mencionar cancelamento ou reembolso;
 - a reclamação for sobre entrega atrasada há mais de 7 dias.
 
-## Tags de lead
-Crie tags antes em Ajustes → Tags, depois defina aqui as regras:
-- Exemplos: "cliente pergunta preço → aplicar tag X", "cliente diz que não quer → aplicar tag Y e remover tag X"
-- Se precisar remover uma tag antes de aplicar outra, use a ferramenta duas vezes: remova "X", depois adicione "Y"
-- Você controla quais tags usar — não há tags pré-definidas obrigatórias
+## Tags (conversa e lead)
+Crie tags antes em Configurações → Tags, depois defina aqui as regras:
+- Conversa: manage_conversation_tags (thread)
+- Kanban/lead: manage_lead_tags / create_lead / move_lead (ex.: "aplique tag quente no lead", "mova para Proposta")
+- Exemplos: "cliente pergunta preço → tag na conversa X", "lead quente → manage_lead_tags"
+- Tags devem existir previamente — o agente não cria nomes novos
 
 ## CRM / Contato
 Quando o cliente informar nome completo e e-mail:
@@ -129,7 +130,7 @@ export function AgentForm({
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Nenhuma tag cadastrada. Crie em Ajustes → Tags antes de referenciá-las no prompt.
+              Nenhuma tag cadastrada. Crie em Configurações → Tags antes de referenciá-las no prompt.
             </p>
           )}
         </div>
