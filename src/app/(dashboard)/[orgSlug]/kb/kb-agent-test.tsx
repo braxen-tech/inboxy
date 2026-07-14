@@ -90,7 +90,7 @@ export function KbAgentTest({ orgSlug, hasReadyDocuments, hasManualKb }: Props) 
         <h2 className="text-lg font-medium">Testar agente</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Simule uma pergunta de cliente e veja a resposta da IA, incluindo se ela consultou os
-          documentos indexados. Não passa pelo Chatwoot e não consome cota de mensagens.
+          documentos indexados. Não envia mensagem real e não consome cota.
         </p>
       </div>
 

@@ -13,7 +13,7 @@ import { CheckOrderStatusTool } from "./stripe/check-order-status";
 import { ShowProductImagesTool } from "./stripe/show-product-images";
 import { TransferToHumanTool } from "./transfer-to-human";
 import { ManageConversationLabelsTool } from "./manage-conversation-labels";
-import { UpdateChatwootContactTool } from "./update-chatwoot-contact";
+import { UpdateContactTool } from "./update-contact";
 import { LookupKnowledgeTool } from "./lookup-knowledge";
 import { ScheduleFollowupTool } from "./schedule-followup";
 
@@ -40,9 +40,10 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway, deps.appUrl));
   registry.register(new CheckOrderStatusTool(deps.db));
   registry.register(new ShowProductImagesTool(deps.productCatalog));
+
   registry.register(new TransferToHumanTool(deps.db));
-  registry.register(new ManageConversationLabelsTool());
-  registry.register(new UpdateChatwootContactTool(deps.db));
+  registry.register(new ManageConversationLabelsTool(deps.db));
+  registry.register(new UpdateContactTool(deps.db));
   registry.register(new ScheduleFollowupTool(deps.db));
 
   if (deps.knowledgeRetriever) {

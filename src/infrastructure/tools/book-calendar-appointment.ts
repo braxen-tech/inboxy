@@ -35,7 +35,7 @@ export class BookCalendarAppointmentTool implements AgentTool {
       start,
       attendeeName,
       attendeeEmail,
-      attendeePhone: ctx.contactPhone,
+      attendeePhone: ctx.contactPhone ?? undefined,
       timeZone: ctx.calendar.timezone,
       apiToken: ctx.calendar.apiToken,
       idempotencyKey,

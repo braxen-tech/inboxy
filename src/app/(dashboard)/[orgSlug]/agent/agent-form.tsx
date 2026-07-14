@@ -19,20 +19,19 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 - o cliente mencionar cancelamento ou reembolso;
 - a reclamação for sobre entrega atrasada há mais de 7 dias.
 
-## Labels de lead (Chatwoot)
-Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui as regras:
-- Exemplos: "cliente pergunta preço → aplicar label X", "cliente diz que não quer → aplicar label Y e remover label X"
-- Se precisar remover uma label antes de aplicar outra, use a ferramenta duas vezes: remova "X", depois adicione "Y"
-- Você controla quais labels usar — não há labels pré-definidas obrigatórias
+## Tags de lead
+Crie tags antes em Ajustes → Tags, depois defina aqui as regras:
+- Exemplos: "cliente pergunta preço → aplicar tag X", "cliente diz que não quer → aplicar tag Y e remover tag X"
+- Se precisar remover uma tag antes de aplicar outra, use a ferramenta duas vezes: remova "X", depois adicione "Y"
+- Você controla quais tags usar — não há tags pré-definidas obrigatórias
 
-## CRM / Contato (Chatwoot)
+## CRM / Contato
 Quando o cliente informar nome completo e e-mail:
-- Chame update_chatwoot_contact com name, email
-- Tag de contato "lead-qualificado"
+- Chame update_contact com name, email e notas
 - Note resumindo interesse e próximo passo
 
 ## Roteamento de atendentes
-Use os nomes exatos dos atendentes cadastrados no Chatwoot:
+Use os nomes exatos dos atendentes cadastrados na organização:
 - Assuntos financeiros → transferir para "Ana Silva"
 - Suporte técnico → transferir para "Carlos Mendes"
 - Cliente pede humano sem especificar → transferir sem assignee (fila geral)`;
@@ -43,9 +42,9 @@ interface Props {
   initialPrompt: string;
   initialFollowupEnabled: boolean;
   initialFollowupIdleMinutes: number;
-  chatwootActive: boolean;
-  chatwootLabels?: string[];
-  chatwootAgents?: { name: string; email: string }[];
+  hasActiveChannel: boolean;
+  availableTags?: string[];
+  availableAgents?: { name: string; email: string }[];
 }
 
 export function AgentForm({
@@ -54,9 +53,9 @@ export function AgentForm({
   initialPrompt,
   initialFollowupEnabled,
   initialFollowupIdleMinutes,
-  chatwootActive,
-  chatwootLabels = [],
-  chatwootAgents = [],
+  hasActiveChannel,
+  availableTags = [],
+  availableAgents = [],
 }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [followupEnabled, setFollowupEnabled] = useState(initialFollowupEnabled);
@@ -95,13 +94,13 @@ export function AgentForm({
         <p className="text-xs text-muted-foreground">
           Define a personalidade, tom de voz e regras do agente. A base de conhecimento é adicionada
           separadamente.
-          {chatwootActive && (
+          {hasActiveChannel && (
             <>
               {" "}
-              Com Chatwoot conectado, a transferência para humano acontece automaticamente quando o
+              Com um canal conectado, a transferência para humano acontece automaticamente quando o
               cliente pedir — e você pode definir <strong>outros gatilhos</strong> aqui no prompt (ex.:
-              cancelamento, reclamações graves). Também pode definir <strong>regras de labels</strong>{" "}
-              para classificar leads nas conversas (labels devem existir no Chatwoot) e{" "}
+              cancelamento, reclamações graves). Também pode definir <strong>regras de tags</strong>{" "}
+              para classificar leads nas conversas (tags devem existir na organização) e{" "}
               <strong>roteamento para atendentes</strong> específicos pelo nome.
             </>
           )}
@@ -116,34 +115,33 @@ export function AgentForm({
         />
       </div>
 
-      {chatwootActive && (
+      {hasActiveChannel && (
         <div className="space-y-2">
-          <Label>Labels no Chatwoot</Label>
-          {chatwootLabels.length > 0 ? (
+          <Label>Tags disponíveis</Label>
+          {availableTags.length > 0 ? (
             <p className="text-xs text-muted-foreground">
-              Labels disponíveis nesta conta:{" "}
-              {chatwootLabels.map((label) => (
-                <code key={label} className="mr-1 rounded bg-muted px-1 py-0.5">
-                  {label}
+              Tags cadastradas:{" "}
+              {availableTags.map((tag) => (
+                <code key={tag} className="mr-1 rounded bg-muted px-1 py-0.5">
+                  {tag}
                 </code>
               ))}
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Nenhuma label encontrada. Crie em Chatwoot → Settings → Labels antes de referenciá-las
-              no prompt.
+              Nenhuma tag cadastrada. Crie em Ajustes → Tags antes de referenciá-las no prompt.
             </p>
           )}
         </div>
       )}
 
-      {chatwootActive && (
+      {hasActiveChannel && (
         <div className="space-y-2">
-          <Label>Atendentes no Chatwoot</Label>
-          {chatwootAgents.length > 0 ? (
+          <Label>Atendentes</Label>
+          {availableAgents.length > 0 ? (
             <p className="text-xs text-muted-foreground">
               Atendentes disponíveis:{" "}
-              {chatwootAgents.map((agent) => (
+              {availableAgents.map((agent) => (
                 <code key={agent.email} className="mr-1 rounded bg-muted px-1 py-0.5">
                   {agent.name}
                 </code>
@@ -151,14 +149,14 @@ export function AgentForm({
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Nenhum atendente encontrado. Adicione agentes em Chatwoot → Settings → Agents antes de
-              referenciá-los no prompt.
+              Nenhum atendente encontrado. Convide membros com role admin ou agent antes de referenciá-los
+              no prompt.
             </p>
           )}
         </div>
       )}
 
-      {chatwootActive && (
+      {hasActiveChannel && (
         <div className="space-y-4 rounded-lg border p-4">
           <div>
             <h2 className="text-sm font-medium">Reengajamento automático</h2>

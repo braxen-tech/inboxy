@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe/payment-adapter";
-import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
+import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
+import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { toOrgId, toConversationId, toMessageId } from "@/domain/value-objects";
@@ -11,7 +12,6 @@ import { captureServerEvent } from "@/lib/posthog-server";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const paymentAdapter = new StripePaymentAdapter();
-const messagingAdapter = new ChatwootAdapter();
 
 export async function POST(
   request: Request,
@@ -23,7 +23,7 @@ export async function POST(
 
   const { data: org } = await db
     .from("organizations")
-    .select("id, stripe_webhook_secret, chatwoot_api_url, chatwoot_api_token, chatwoot_account_id, chatwoot_status")
+    .select("id, stripe_webhook_secret")
     .eq("id", orgId)
     .eq("stripe_status", "active")
     .single();
@@ -119,7 +119,7 @@ async function handleCheckoutCompleted(
   logger.info("Order marked as paid", { ...ctx, orderId });
   captureServerEvent("stripe_payment_received", { ...ctx, order_id: orderId });
 
-  if (conversationId && org.chatwoot_status === "active" && org.chatwoot_api_token) {
+  if (conversationId) {
     const { data: orderItems } = await db
       .from("order_items")
       .select("product_name, quantity")
@@ -137,14 +137,24 @@ async function handleCheckoutCompleted(
     try {
       const { data: conversation } = await db
         .from("conversations")
-        .select("chatwoot_conversation_id")
+        .select("external_conversation_id, channels(*)")
         .eq("id", conversationId)
         .single();
 
-      if (conversation?.chatwoot_conversation_id) {
+      const channel = conversation?.channels as unknown as
+        | {
+            type: "whatsapp" | "instagram";
+            status: string;
+            access_token: string | null;
+            phone_number_id: string | null;
+            ig_user_id: string | null;
+          }
+        | null;
+
+      if (channel && channel.status === "active" && channel.access_token && conversation?.external_conversation_id) {
         const encKey = process.env.ENCRYPTION_KEY?.trim() ?? "";
         const secretStore = new AesSecretStore(encKey);
-        const apiToken = secretStore.decrypt(org.chatwoot_api_token);
+        const accessToken = secretStore.decrypt(channel.access_token);
 
         const message = [
           "Pagamento confirmado! ✓",
@@ -153,13 +163,17 @@ async function handleCheckoutCompleted(
           totalFormatted ? `Valor: ${totalFormatted}` : "",
           "",
           "Obrigado pela compra!",
-        ].filter(Boolean).join("\n");
+        ]
+          .filter(Boolean)
+          .join("\n");
 
-        await messagingAdapter.send({
-          apiUrl: org.chatwoot_api_url,
-          apiToken,
-          accountId: org.chatwoot_account_id,
-          conversationId: conversation.chatwoot_conversation_id,
+        const adapter =
+          channel.type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
+
+        await adapter.send({
+          accessToken,
+          fromExternalId: (channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id) ?? "",
+          toExternalId: conversation.external_conversation_id,
           content: message,
         });
 

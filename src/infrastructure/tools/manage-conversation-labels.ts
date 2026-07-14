@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AgentTool, ToolContext, ToolError } from "@/domain/ports";
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
@@ -8,11 +9,11 @@ const inputSchema = z.object({
   labels: z
     .array(z.string().min(1))
     .min(1)
-    .describe('Labels a aplicar ou remover (ex.: ["quente", "interessado"])'),
+    .describe('Tags a aplicar ou remover (ex.: ["quente", "interessado"])'),
   action: z
     .enum(["add", "remove"])
     .default("add")
-    .describe('Use "add" para adicionar labels; "remove" para remover labels existentes'),
+    .describe('Use "add" para adicionar; "remove" para remover'),
   reason: z
     .string()
     .optional()
@@ -20,55 +21,45 @@ const inputSchema = z.object({
 });
 
 export class ManageConversationLabelsTool implements AgentTool {
-  name = "manage_conversation_labels";
+  name = "manage_conversation_tags";
   description =
-    "Aplica ou remove labels na conversa do Chatwoot conforme as regras do prompt da organização. " +
+    "Aplica ou remove tags na conversa conforme as regras do prompt da organização. " +
     "Use quando o cliente se encaixar em um critério de classificação de lead (ex.: interessado, quente, frio). " +
-    "Labels devem existir previamente no Chatwoot.";
+    "Tags devem existir previamente na organização.";
   inputSchema = inputSchema;
 
-  async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
-    if (!ctx.chatwoot) {
-      return Err({
-        code: "EXECUTION_FAILED",
-        message: "Chatwoot não configurado — labels indisponíveis.",
-      });
-    }
+  constructor(private db: SupabaseClient) {}
 
+  async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) {
       return Err({ code: "VALIDATION_FAILED", message: "Parâmetros inválidos." });
     }
 
     const result = await manageConversationLabels({
-      apiUrl: ctx.chatwoot.apiUrl,
-      apiToken: ctx.chatwoot.apiToken,
-      accountId: ctx.chatwoot.accountId,
-      conversationId: ctx.chatwoot.conversationId,
+      db: this.db,
+      orgId: String(ctx.orgId),
+      conversationId: String(ctx.conversationId),
       labels: parsed.data.labels,
       action: parsed.data.action,
       logContext: {
         orgId: String(ctx.orgId),
-        conversationId: ctx.conversationId,
+        conversationId: String(ctx.conversationId),
         reason: parsed.data.reason ?? "agent_classification",
       },
     });
 
     if (!result.ok) {
-      return Err({
-        code: "EXECUTION_FAILED",
-        message: result.error,
-      });
+      return Err({ code: "EXECUTION_FAILED", message: result.error });
     }
 
     const actionText =
       parsed.data.action === "remove"
-        ? `Labels removidas: ${parsed.data.labels.join(", ")}.`
-        : `Labels aplicadas: ${parsed.data.labels.join(", ")}.`;
+        ? `Tags removidas: ${parsed.data.labels.join(", ")}.`
+        : `Tags aplicadas: ${parsed.data.labels.join(", ")}.`;
 
     return Ok(
-      `${actionText} Labels atuais da conversa: ${result.labels.join(", ") || "(nenhuma)"}. ` +
-        "Continue o atendimento normalmente.",
+      `${actionText} Tags atuais da conversa: ${result.labels.join(", ") || "(nenhuma)"}. Continue o atendimento normalmente.`,
     );
   }
 }

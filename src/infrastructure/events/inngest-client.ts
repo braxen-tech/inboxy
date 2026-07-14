@@ -1,7 +1,7 @@
 import { Inngest } from "inngest";
 
 export const inngest = new Inngest({
-  id: "chatwoot-agent",
+  id: "inboxy-crm",
 });
 
 /** Ensures INNGEST_EVENT_KEY is set before calling inngest.send() in production. */

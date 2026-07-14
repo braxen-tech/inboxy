@@ -9,7 +9,7 @@ export const PLANS = {
     allowedIntegrations: [] as PlanIntegration[],
     features: [
       "Agente IA com base de conhecimento",
-      "Inbox via Chatwoot (canais no Chatwoot)",
+      "Inbox unificada (WhatsApp + Instagram DM)",
       "500 mensagens de saída/mês",
     ],
   },
@@ -77,10 +77,10 @@ export function planFromStripePriceId(priceId: string | null | undefined): PlanI
   return PRICE_TO_PLAN[priceId] ?? null;
 }
 
-/** Always available when Chatwoot is connected (not plan-gated). */
-export const CHATWOOT_HANDOFF_TOOL = "transfer_to_human";
-export const CHATWOOT_LABEL_TOOL = "manage_conversation_labels";
-export const CHATWOOT_CONTACT_TOOL = "update_chatwoot_contact";
+/** Always available (not plan-gated) — the CRM handoff/tagging tools. */
+export const HANDOFF_TOOL = "transfer_to_human";
+export const TAG_TOOL = "manage_conversation_tags";
+export const CONTACT_UPDATE_TOOL = "update_contact";
 
 /** Enabled when org has at least one indexed KB document. */
 export const LOOKUP_KNOWLEDGE_TOOL = "lookup_knowledge";
@@ -102,7 +102,6 @@ export function resolveAllowedTools(integrations: PlanIntegration[]): string[] {
   return integrations.flatMap((i) => INTEGRATION_TOOLS[i]);
 }
 
-/** Enabled when org has follow-up automático ativo. */
 export const SCHEDULE_FOLLOWUP_TOOL = "schedule_followup";
 
 export function resolveEnabledToolsForOrg(org: {
@@ -112,12 +111,10 @@ export function resolveEnabledToolsForOrg(org: {
   cal_event_type_id?: string | null;
   stripe_status?: string | null;
   stripe_secret_key?: string | null;
-  chatwoot_status?: string | null;
-  chatwoot_api_token?: string | null;
-  chatwoot_account_id?: string | null;
   tools_enabled?: string[] | null;
   hasKbDocuments?: boolean;
   followup_enabled?: boolean | null;
+  hasActiveChannel?: boolean;
 }): string[] {
   const planId = (org.subscription_plan ?? "starter") as PlanId;
   const plan = PLANS[planId] ?? PLANS.starter;
@@ -138,44 +135,18 @@ export function resolveEnabledToolsForOrg(org: {
     if (!base.includes(name)) base.push(name);
   }
 
-  if (
-    org.chatwoot_status === "active" &&
-    org.chatwoot_api_token &&
-    org.chatwoot_account_id &&
-    !base.includes(CHATWOOT_HANDOFF_TOOL)
-  ) {
-    base.push(CHATWOOT_HANDOFF_TOOL);
-  }
-
-  if (
-    org.chatwoot_status === "active" &&
-    org.chatwoot_api_token &&
-    org.chatwoot_account_id &&
-    !base.includes(CHATWOOT_LABEL_TOOL)
-  ) {
-    base.push(CHATWOOT_LABEL_TOOL);
-  }
-
-  if (
-    org.chatwoot_status === "active" &&
-    org.chatwoot_api_token &&
-    org.chatwoot_account_id &&
-    !base.includes(CHATWOOT_CONTACT_TOOL)
-  ) {
-    base.push(CHATWOOT_CONTACT_TOOL);
+  // CRM tools are available whenever a messaging channel exists
+  if (org.hasActiveChannel) {
+    if (!base.includes(HANDOFF_TOOL)) base.push(HANDOFF_TOOL);
+    if (!base.includes(TAG_TOOL)) base.push(TAG_TOOL);
+    if (!base.includes(CONTACT_UPDATE_TOOL)) base.push(CONTACT_UPDATE_TOOL);
   }
 
   if (org.hasKbDocuments && !base.includes(LOOKUP_KNOWLEDGE_TOOL)) {
     base.push(LOOKUP_KNOWLEDGE_TOOL);
   }
 
-  if (
-    org.followup_enabled &&
-    org.chatwoot_status === "active" &&
-    org.chatwoot_api_token &&
-    org.chatwoot_account_id &&
-    !base.includes(SCHEDULE_FOLLOWUP_TOOL)
-  ) {
+  if (org.followup_enabled && org.hasActiveChannel && !base.includes(SCHEDULE_FOLLOWUP_TOOL)) {
     base.push(SCHEDULE_FOLLOWUP_TOOL);
   }
 

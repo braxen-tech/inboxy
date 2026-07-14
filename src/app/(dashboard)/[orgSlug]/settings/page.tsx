@@ -39,11 +39,9 @@ export default async function SettingsPage({ params }: Props) {
           </div>
           <Separator />
           <div>
-            <p className="text-sm font-medium">Chatwoot</p>
+            <p className="text-sm font-medium">Canais de mensagem</p>
             <p className="text-sm text-muted-foreground">
-              {org.chatwoot_status === "active"
-                ? `Ativo — Account ${org.chatwoot_account_id}`
-                : "Não conectado"}
+              Conecte WhatsApp e Instagram DM na página de Integrações.
             </p>
           </div>
         </CardContent>

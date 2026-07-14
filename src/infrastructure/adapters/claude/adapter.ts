@@ -7,7 +7,6 @@ import { logger } from "@/lib/logger";
 import { logAgentToolCall } from "@/lib/operational-telemetry";
 import { buildHandoffSystemInstructions } from "@/lib/handoff";
 import { buildConversationLabelSystemInstructions } from "@/lib/conversation-labels";
-import { buildChatwootContactSystemInstructions } from "@/lib/chatwoot-contact";
 import { resolveAgentModel } from "@/lib/agent-models";
 import { wrapAgentModelForPostHog } from "@/lib/agent-telemetry";
 
@@ -68,7 +67,8 @@ export class ClaudeAdapter implements AgentRunner {
       }
     }
 
-    if (toolContext.chatwoot) {
+    const hasHandoffTool = tools.some((t) => t.name === "transfer_to_human");
+    if (hasHandoffTool) {
       systemParts.push("");
       systemParts.push(`## Transferência para atendente humano`);
       for (const line of buildHandoffSystemInstructions(availableAgents ?? [])) {
@@ -76,22 +76,23 @@ export class ClaudeAdapter implements AgentRunner {
       }
     }
 
-    const hasConversationLabels = tools.some((t) => t.name === "manage_conversation_labels");
-    if (toolContext.chatwoot && hasConversationLabels) {
+    const hasConversationTags = tools.some((t) => t.name === "manage_conversation_tags");
+    if (hasConversationTags) {
       systemParts.push("");
-      systemParts.push(`## Labels de conversa (Chatwoot)`);
+      systemParts.push(`## Tags de conversa`);
       for (const line of buildConversationLabelSystemInstructions(availableLabels ?? [])) {
         systemParts.push(line);
       }
     }
 
-    const hasContactSync = tools.some((t) => t.name === "update_chatwoot_contact");
-    if (toolContext.chatwoot && hasContactSync) {
+    const hasContactUpdate = tools.some((t) => t.name === "update_contact");
+    if (hasContactUpdate) {
       systemParts.push("");
-      systemParts.push(`## CRM / Contato (Chatwoot)`);
-      for (const line of buildChatwootContactSystemInstructions(availableLabels ?? [])) {
-        systemParts.push(line);
-      }
+      systemParts.push(`## CRM / Contato`);
+      systemParts.push(
+        `- Quando o cliente informar dados como nome, email, ou detalhes relevantes durante a conversa, chame update_contact para persistir esses dados no perfil do contato.`,
+      );
+      systemParts.push(`- Não invente dados. Só use o que o cliente disser explicitamente.`);
     }
 
     if (toolContext.stripe) {
@@ -155,7 +156,7 @@ export class ClaudeAdapter implements AgentRunner {
           const durationMs = Date.now() - started;
           logAgentToolCall(t.name, {
             orgId: params.orgId,
-            conversationId: toolContext.conversationId,
+            conversationId: String(toolContext.conversationId),
             durationMs,
             ok: result.ok,
             errorCode: result.ok ? undefined : result.error.code,
@@ -171,7 +172,7 @@ export class ClaudeAdapter implements AgentRunner {
 
     const tracedModel = wrapAgentModelForPostHog(anthropic(resolvedModel), {
       orgId: params.orgId,
-      conversationId: toolContext.conversationId,
+      conversationId: String(toolContext.conversationId),
       hasTools,
       modelName: resolvedModel,
     });

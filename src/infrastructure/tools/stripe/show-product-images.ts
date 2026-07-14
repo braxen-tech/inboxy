@@ -2,7 +2,8 @@ import { z } from "zod/v4";
 import type { AgentTool, ToolContext, ToolError, ProductCatalog } from "@/domain/ports";
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
-import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
+import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
+import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
 
 const inputSchema = z.object({
   productId: z.string().describe("ID do produto no Stripe (ex: prod_xxx)"),
@@ -22,7 +23,7 @@ export class ShowProductImagesTool implements AgentTool {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada para esta organização." });
     }
 
-    if (!ctx.chatwoot) {
+    if (!ctx.messaging) {
       return Err({ code: "EXECUTION_FAILED", message: "Canal de mensagens não configurado." });
     }
 
@@ -32,7 +33,6 @@ export class ShowProductImagesTool implements AgentTool {
     }
 
     const result = await this.catalog.getProduct(ctx.stripe.apiKey, parsed.data.productId);
-
     if (!result.ok) {
       if (result.error.code === "AUTH_FAILED") {
         return Err({ code: "EXECUTION_FAILED", message: "Credencial da loja expirada." });
@@ -46,28 +46,32 @@ export class ShowProductImagesTool implements AgentTool {
       return Ok("Este produto não possui imagens cadastradas.");
     }
 
-    const client = new ChatwootClient(ctx.chatwoot.apiUrl, ctx.chatwoot.apiToken);
+    const adapter =
+      ctx.messaging.channelType === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
+
     let sentCount = 0;
     const errors: string[] = [];
 
-    for (const imageUrl of product.images) {
-      const caption = sentCount === 0 ? (parsed.data.caption ?? "") : "";
-      const sendResult = await client.sendMessageWithAttachment(
-        ctx.chatwoot.accountId,
-        ctx.chatwoot.conversationId,
-        caption,
-        imageUrl,
-      );
+    for (let i = 0; i < product.images.length; i++) {
+      const imageUrl = product.images[i];
+      const caption = i === 0 ? (parsed.data.caption ?? "") : "";
+      const sendResult = await adapter.send({
+        accessToken: ctx.messaging.accessToken,
+        fromExternalId: ctx.messaging.fromExternalId,
+        toExternalId: ctx.messaging.toExternalId,
+        content: caption,
+        attachments: [{ url: imageUrl, contentType: "image/jpeg" }],
+      });
 
-      if (sendResult.ok) {
-        sentCount++;
-      } else {
-        errors.push(`Imagem ${imageUrl}: ${sendResult.error}`);
-      }
+      if (sendResult.ok) sentCount++;
+      else errors.push(`Imagem ${imageUrl}: ${sendResult.error.message}`);
     }
 
     if (sentCount === 0) {
-      return Err({ code: "EXECUTION_FAILED", message: `Não foi possível enviar as imagens. Erros: ${errors.join("; ")}` });
+      return Err({
+        code: "EXECUTION_FAILED",
+        message: `Não foi possível enviar as imagens. Erros: ${errors.join("; ")}`,
+      });
     }
 
     return Ok(`${sentCount} imagem(ns) de "${product.name}" enviada(s) ao cliente.`);

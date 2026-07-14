@@ -7,11 +7,13 @@ import {
   BookOpen,
   Bot,
   Inbox,
+  Kanban,
   LogOut,
   Menu,
   CreditCard,
   Plug,
   Settings,
+  Users,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +24,15 @@ import { cn } from "@/lib/utils";
 interface DashboardShellProps {
   orgSlug: string;
   orgName: string;
-  chatwootActive: boolean;
+  hasActiveChannel: boolean;
   billingEnabled?: boolean;
   children: React.ReactNode;
 }
 
 const baseNavItems = [
+  { href: "inbox", label: "Inbox", icon: Inbox },
+  { href: "leads", label: "Leads (Kanban)", icon: Kanban },
+  { href: "contacts", label: "Contatos", icon: Users },
   { href: "kb", label: "Base de conhecimento", icon: BookOpen },
   { href: "agent", label: "Agente", icon: Bot },
   { href: "integrations", label: "Integrações", icon: Plug },
@@ -80,14 +85,14 @@ function NavLinks({
 function SidebarContent({
   orgSlug,
   orgName,
-  chatwootActive,
+  hasActiveChannel,
   pathname,
   onNavigate,
   billingEnabled = true,
 }: {
   orgSlug: string;
   orgName: string;
-  chatwootActive: boolean;
+  hasActiveChannel: boolean;
   pathname: string;
   onNavigate?: () => void;
   billingEnabled?: boolean;
@@ -111,17 +116,17 @@ function SidebarContent({
       </div>
 
       <div className="px-4 py-3">
-        {/* <Badge
+        <Badge
           variant="secondary"
           className={cn(
             "w-full justify-center text-xs",
-            chatwootActive
+            hasActiveChannel
               ? "bg-green-500/15 text-green-700 dark:text-green-400"
               : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
           )}
         >
-          {chatwootActive ? "Chatwoot ativo" : "Chatwoot pendente"}
-        </Badge> */}
+          {hasActiveChannel ? "Canais ativos" : "Nenhum canal conectado"}
+        </Badge>
       </div>
 
       <NavLinks
@@ -147,7 +152,7 @@ function SidebarContent({
 export function DashboardShell({
   orgSlug,
   orgName,
-  chatwootActive,
+  hasActiveChannel,
   billingEnabled = true,
   children,
 }: DashboardShellProps) {
@@ -196,7 +201,7 @@ export function DashboardShell({
         <SidebarContent
           orgSlug={orgSlug}
           orgName={orgName}
-          chatwootActive={chatwootActive}
+          hasActiveChannel={hasActiveChannel}
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
           billingEnabled={billingEnabled}
@@ -222,12 +227,12 @@ export function DashboardShell({
             variant="secondary"
             className={cn(
               "shrink-0 text-xs",
-              chatwootActive
+              hasActiveChannel
                 ? "bg-green-500/15 text-green-700"
                 : "bg-amber-500/15 text-amber-700",
             )}
           >
-            {chatwootActive ? "Ativo" : "Pendente"}
+            {hasActiveChannel ? "Ativo" : "Pendente"}
           </Badge>
         </header>
 

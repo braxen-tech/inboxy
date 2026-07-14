@@ -1,5 +1,4 @@
 import { processIncomingMessage } from "@/application/use-cases/process-incoming-message";
-import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
 import { StripeCatalogAdapter, StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
@@ -9,10 +8,7 @@ import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
-import {
-  captureServerEvent,
-  captureServerException,
-} from "@/lib/posthog-server";
+import { captureServerEvent, captureServerException } from "@/lib/posthog-server";
 import { flushPostHogTelemetry } from "@/lib/posthog-telemetry";
 
 export interface ProcessMessageJobInput {
@@ -23,16 +19,13 @@ export interface ProcessMessageJobInput {
 }
 
 /** Runs the AI reply pipeline (Inngest worker). */
-export async function runProcessIncomingMessageJob(
-  input: ProcessMessageJobInput,
-): Promise<void> {
+export async function runProcessIncomingMessageJob(input: ProcessMessageJobInput): Promise<void> {
   const encryptionKey = process.env.ENCRYPTION_KEY?.trim();
   if (!encryptionKey) {
     throw new Error("ENCRYPTION_KEY is not set");
   }
 
   const db = getAdminClient();
-  const messagingChannel = new ChatwootAdapter();
   const agentRunner = new ClaudeAdapter();
   const voyage = createVoyageEmbeddingAdapter();
   const knowledgeRetriever = voyage ? new PgVectorKnowledgeRetriever(db, voyage) : undefined;
@@ -46,15 +39,10 @@ export async function runProcessIncomingMessageJob(
   });
   const secretStore = new AesSecretStore(encryptionKey);
 
-  await processIncomingMessage(
-    { db, agentRunner, messagingChannel, toolRegistry, secretStore },
-    input,
-  );
+  await processIncomingMessage({ db, agentRunner, toolRegistry, secretStore }, input);
 }
 
-export async function runProcessIncomingMessageJobSafe(
-  input: ProcessMessageJobInput,
-): Promise<void> {
+export async function runProcessIncomingMessageJobSafe(input: ProcessMessageJobInput): Promise<void> {
   try {
     await runProcessIncomingMessageJob(input);
   } catch (error) {

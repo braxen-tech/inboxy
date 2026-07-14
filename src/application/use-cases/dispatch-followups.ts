@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MessagingChannel, SecretStore } from "@/domain/ports";
+import type { SecretStore } from "@/domain/ports";
 import { sendFollowupMessage } from "./send-followup-message";
 import { isBotQueueStatus } from "@/lib/conversation-status";
 import { logger } from "@/lib/logger";
@@ -9,7 +9,6 @@ const BATCH_LIMIT = 50;
 
 interface Deps {
   db: SupabaseClient;
-  messagingChannel: MessagingChannel;
   secretStore: SecretStore;
 }
 
@@ -47,11 +46,12 @@ export async function dispatchFollowups(deps: Deps): Promise<void> {
   const now = Date.now();
   const windowStart = new Date(now - WHATSAPP_WINDOW_MS).toISOString();
 
+  // Any org with at least one active channel is eligible
   const { data: orgs } = await db
     .from("organizations")
-    .select("id, followup_idle_minutes")
+    .select("id, followup_idle_minutes, channels!inner(id)")
     .eq("followup_enabled", true)
-    .eq("chatwoot_status", "active");
+    .eq("channels.status", "active");
 
   for (const org of orgs ?? []) {
     const idleMinutes = org.followup_idle_minutes ?? 60;

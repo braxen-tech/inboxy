@@ -97,7 +97,7 @@ const steps = [
     step: "04",
     title: "Conecte os canais",
     description:
-      "Conecte Chatwoot, ative WhatsApp, Telegram, e-mail e cole o script do chat no seu site — mais um canal na mesma fila.",
+      "Conecte WhatsApp Business e Instagram DM em minutos via Meta Embedded Signup — sem sair do Inboxy.",
   },
   {
     step: "05",
@@ -131,9 +131,8 @@ export function LandingPage() {
                 <span className="text-blue-600">Um só lugar para atender, vender e agendar.</span>
               </h1>
               <p className="mt-6 text-lg text-muted-foreground text-pretty sm:text-xl">
-                Conecte WhatsApp, Telegram, SMS, e-mail e o chat do seu site — com o widget
-                Chatwoot, basta colar um script na página. O agente responde, vende com Stripe
-                e agenda com Cal.com na mesma conversa.
+                Conecte WhatsApp Business e Instagram DM via Meta Embedded Signup em minutos.
+                O agente responde, vende com Stripe e agenda com Cal.com na mesma conversa.
               </p>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link href="/login">
@@ -186,10 +185,9 @@ export function LandingPage() {
                 Seus clientes falam por vários canais. Atenda em todos.
               </h2>
               <p className="mt-4 text-muted-foreground text-pretty">
-                Tudo passa pelo Chatwoot: canais de mensagem e também o{" "}
-                <strong className="font-medium text-foreground">live chat no seu site</strong>.
-                Você copia o script do widget, cola no HTML do site ou loja — visitantes
-                conversam pelo balão e o agente atende no mesmo inbox que o WhatsApp.
+                Uma inbox unificada para WhatsApp Business e Instagram DM. Conecte via Meta
+                Embedded Signup e o agente responde em ambos os canais com o mesmo contexto,
+                base de conhecimento e regras.
               </p>
             </div>
             <div className="mx-auto mt-14 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -209,10 +207,9 @@ export function LandingPage() {
 
             <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 text-center text-sm text-muted-foreground">
               <p className="text-pretty">
-                <span className="font-medium text-foreground">Chat no site:</span> no Chatwoot,
-                crie um inbox de Website, copie o snippet e publique na sua landing, WordPress
-                ou e-commerce. Sem desenvolver chat do zero — o Inboxy responde nesse canal
-                como nos demais.
+                <span className="font-medium text-foreground">Onboarding em minutos:</span> o
+                Meta Embedded Signup v4 conecta WhatsApp Business e Instagram DM no mesmo fluxo,
+                sem token manual nem configuração no Facebook Business Manager.
               </p>
             </div>
           </div>
@@ -387,7 +384,7 @@ export function LandingPage() {
           <p>&copy; {new Date().getFullYear()} Inboxy</p>
           <p className="text-center sm:text-right">
             Integração via{" "}
-            <span className="text-foreground">Chatwoot</span> ·{" "}
+            <span className="text-foreground">Meta</span> ·{" "}
             <span className="text-foreground">Stripe</span> ·{" "}
             <span className="text-foreground">Cal.com</span> · IA com Claude
           </p>

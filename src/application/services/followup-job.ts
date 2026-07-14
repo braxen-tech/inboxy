@@ -1,5 +1,4 @@
 import { dispatchFollowups } from "@/application/use-cases/dispatch-followups";
-import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { logger } from "@/lib/logger";
@@ -13,10 +12,9 @@ export async function runFollowupDispatchJob(): Promise<void> {
   }
 
   const db = getAdminClient();
-  const messagingChannel = new ChatwootAdapter();
   const secretStore = new AesSecretStore(encryptionKey);
 
-  await dispatchFollowups({ db, messagingChannel, secretStore });
+  await dispatchFollowups({ db, secretStore });
 }
 
 export async function runFollowupDispatchJobSafe(): Promise<void> {

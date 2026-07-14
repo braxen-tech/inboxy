@@ -419,7 +419,71 @@ WHERE owner_user_id IS NOT NULL
 ON CONFLICT (organization_id, user_id) DO NOTHING;
 
 -- ============================================================
--- 11. Helper: check current user's role in org
+-- 11. User profiles (mirrors auth.users for RLS-safe joins)
+-- ============================================================
+CREATE TABLE public.user_profiles (
+  id           uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email        text,
+  name         text,
+  avatar_url   text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.user_profiles
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Members of the same organization can see each other's profile summary
+CREATE POLICY user_profiles_visible_to_org_members ON public.user_profiles
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.organization_members m1
+      JOIN public.organization_members m2 ON m2.organization_id = m1.organization_id
+      WHERE m1.user_id = auth.uid() AND m2.user_id = user_profiles.id
+    )
+    OR id = auth.uid()
+  );
+
+-- Users can update their own profile
+CREATE POLICY user_profiles_self_update ON public.user_profiles
+  FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+
+-- Auto-create profile on signup via trigger on auth.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id, email, name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill existing users
+INSERT INTO public.user_profiles (id, email, name)
+SELECT
+  u.id,
+  u.email,
+  COALESCE(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1))
+FROM auth.users u
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 12. Helper: check current user's role in org
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.current_user_role_in_org(p_org_id uuid)
 RETURNS text

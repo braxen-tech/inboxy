@@ -1,161 +1,99 @@
-import {
-  ChatwootClient,
-  type ChatwootAccountLabel,
-} from "@/infrastructure/adapters/chatwoot/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
 
 export interface ManageConversationLabelsParams {
-  apiUrl: string;
-  apiToken: string;
-  accountId: string;
-  conversationId: number;
+  db: SupabaseClient;
+  orgId: string;
+  conversationId: string;
   labels: string[];
   action: "add" | "remove";
   logContext?: Record<string, string>;
 }
 
-function normalizeLabelTitle(title: string): string {
-  return title.trim().toLowerCase();
+function normalize(label: string): string {
+  return label.trim().toLowerCase();
 }
 
-function resolveAccountLabelTitles(labels: ChatwootAccountLabel[]): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const label of labels) {
-    if (typeof label.title === "string" && label.title.trim()) {
-      map.set(normalizeLabelTitle(label.title), label.title);
-    }
-  }
-  return map;
+async function fetchOrgTags(
+  db: SupabaseClient,
+  orgId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const { data } = await db.from("tags").select("id, name").eq("organization_id", orgId);
+  return data ?? [];
 }
 
-function validateRequestedLabels(
-  requested: string[],
-  accountLabels: ChatwootAccountLabel[],
-): { ok: true; resolved: string[] } | { ok: false; invalid: string[]; available: string[] } {
-  const byNormalized = resolveAccountLabelTitles(accountLabels);
-  const available = [...byNormalized.values()].sort((a, b) => a.localeCompare(b));
-  const resolved: string[] = [];
-  const invalid: string[] = [];
-
-  for (const label of requested) {
-    const canonical = byNormalized.get(normalizeLabelTitle(label));
-    if (canonical) {
-      if (!resolved.includes(canonical)) resolved.push(canonical);
-    } else {
-      invalid.push(label);
-    }
-  }
-
-  if (invalid.length > 0) {
-    return { ok: false, invalid, available };
-  }
-
-  return { ok: true, resolved };
+export async function fetchAccountLabelTitles(params: {
+  db: SupabaseClient;
+  orgId: string;
+}): Promise<string[]> {
+  const tags = await fetchOrgTags(params.db, params.orgId);
+  return tags.map((t) => t.name).sort((a, b) => a.localeCompare(b));
 }
 
 export async function manageConversationLabels(
   params: ManageConversationLabelsParams,
 ): Promise<{ ok: true; labels: string[] } | { ok: false; error: string }> {
-  const {
-    apiUrl,
-    apiToken,
-    accountId,
-    conversationId,
-    labels,
-    action,
-    logContext = {},
-  } = params;
+  const { db, orgId, conversationId, labels, action, logContext = {} } = params;
 
   if (labels.length === 0) {
-    return { ok: false, error: "Nenhuma label informada." };
+    return { ok: false, error: "Nenhuma tag informada." };
   }
 
-  const client = new ChatwootClient(apiUrl, apiToken);
+  const tags = await fetchOrgTags(db, orgId);
+  const byNormalized = new Map(tags.map((t) => [normalize(t.name), t]));
+  const invalid: string[] = [];
+  const resolved: Array<{ id: string; name: string }> = [];
 
-  const accountLabelsResult = await client.listAccountLabels(accountId);
-  if (!accountLabelsResult.ok) {
-    logger.warn("Failed to list Chatwoot account labels", {
-      ...logContext,
-      error: accountLabelsResult.error,
-    });
+  for (const req of labels) {
+    const t = byNormalized.get(normalize(req));
+    if (t) resolved.push(t);
+    else invalid.push(req);
+  }
+
+  if (invalid.length > 0) {
+    const available = tags.map((t) => t.name).sort().join(", ") || "nenhuma tag configurada";
     return {
       ok: false,
-      error: "Não foi possível validar as labels no Chatwoot agora.",
+      error: `Tag(s) inválida(s): ${invalid.join(", ")}. Use apenas tags existentes: ${available}.`,
     };
   }
 
-  const validation = validateRequestedLabels(labels, accountLabelsResult.data);
-  if (!validation.ok) {
-    const availableText =
-      validation.available.length > 0
-        ? validation.available.join(", ")
-        : "nenhuma label configurada na conta";
-    return {
-      ok: false,
-      error:
-        `Label(s) inválida(s): ${validation.invalid.join(", ")}. ` +
-        `Use apenas labels existentes no Chatwoot: ${availableText}.`,
-    };
+  if (action === "add") {
+    const rows = resolved.map((t) => ({ conversation_id: conversationId, tag_id: t.id }));
+    const { error } = await db.from("conversation_tags").upsert(rows, { onConflict: "conversation_id,tag_id" });
+    if (error) {
+      logger.warn("Failed to add conversation tags", { ...logContext, error: error.message });
+      return { ok: false, error: error.message };
+    }
+  } else {
+    const ids = resolved.map((t) => t.id);
+    const { error } = await db
+      .from("conversation_tags")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .in("tag_id", ids);
+    if (error) {
+      logger.warn("Failed to remove conversation tags", { ...logContext, error: error.message });
+      return { ok: false, error: error.message };
+    }
   }
 
-  const currentResult = await client.getConversationLabels(accountId, conversationId);
-  if (!currentResult.ok) {
-    logger.warn("Failed to get Chatwoot conversation labels", {
-      ...logContext,
-      error: currentResult.error,
-    });
-    return {
-      ok: false,
-      error: "Não foi possível ler as labels atuais da conversa.",
-    };
-  }
+  const { data: currentTags } = await db
+    .from("conversation_tags")
+    .select("tags(name)")
+    .eq("conversation_id", conversationId);
 
-  const current = currentResult.data;
-  const requested = validation.resolved;
+  const currentNames =
+    ((currentTags as unknown as Array<{ tags: { name: string } | null }>) ?? [])
+      .map((r) => r.tags?.name)
+      .filter((n): n is string => Boolean(n));
 
-  const nextLabels =
-    action === "remove"
-      ? current.filter(
-          (label) => !requested.some((r) => normalizeLabelTitle(r) === normalizeLabelTitle(label)),
-        )
-      : [...new Set([...current, ...requested])];
-
-  const setResult = await client.setConversationLabels(accountId, conversationId, nextLabels);
-  if (!setResult.ok) {
-    logger.warn("Failed to set Chatwoot conversation labels", {
-      ...logContext,
-      error: setResult.error,
-    });
-    return {
-      ok: false,
-      error: "Não foi possível atualizar as labels da conversa no Chatwoot.",
-    };
-  }
-
-  logger.info("Conversation labels updated", {
-    ...logContext,
-    action,
-    labels: requested.join(", "),
-  });
   captureServerEvent("conversation_label_applied", {
     ...logContext,
     action,
-    labels: requested.join(", "),
+    labels: resolved.map((t) => t.name).join(", "),
   });
 
-  return { ok: true, labels: setResult.data };
-}
-
-export async function fetchAccountLabelTitles(params: {
-  apiUrl: string;
-  apiToken: string;
-  accountId: string;
-}): Promise<string[]> {
-  const client = new ChatwootClient(params.apiUrl, params.apiToken);
-  const result = await client.listAccountLabels(params.accountId);
-  if (!result.ok) return [];
-  return [...resolveAccountLabelTitles(result.data).values()].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  return { ok: true, labels: currentNames };
 }

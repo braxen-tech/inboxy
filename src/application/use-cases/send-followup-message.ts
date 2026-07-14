@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MessagingChannel, SecretStore } from "@/domain/ports";
-import type { ConversationId, MessageId } from "@/domain/value-objects";
+import type { SecretStore, MessagingChannel } from "@/domain/ports";
+import type { ConversationId, MessageId, ChannelType } from "@/domain/value-objects";
 import { toOrgId, toCorrelationId } from "@/domain/value-objects";
 import { acquireConversationLock, releaseConversationLock } from "../services/conversation-lock";
 import { getMonthlyUsage } from "../services/monthly-usage";
@@ -8,8 +8,8 @@ import { incrementUsage } from "../services/usage-tracker";
 import { generateNudgeReply } from "../services/generate-nudge-reply";
 import { needsBillingSetup } from "@/lib/billing-setup";
 import { isBotQueueStatus } from "@/lib/conversation-status";
-import { ChatwootClient } from "@/infrastructure/adapters/chatwoot/client";
-import { regenerateAndStoreBotToken } from "@/application/services/chatwoot-agent-bot-provision";
+import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud";
+import { InstagramDmAdapter } from "@/infrastructure/adapters/instagram-dm";
 import { logger } from "@/lib/logger";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { randomUUID } from "node:crypto";
@@ -29,8 +29,11 @@ interface SendFollowupInput {
 
 interface Deps {
   db: SupabaseClient;
-  messagingChannel: MessagingChannel;
   secretStore: SecretStore;
+}
+
+function pickAdapter(type: ChannelType): MessagingChannel {
+  return type === "whatsapp" ? new WhatsAppCloudAdapter() : new InstagramDmAdapter();
 }
 
 async function conversationAlreadyNudged(
@@ -53,10 +56,7 @@ async function conversationAlreadyNudged(
   return (count ?? 0) > 0;
 }
 
-async function lastMessageIsOutbound(
-  db: SupabaseClient,
-  conversationId: string,
-): Promise<boolean> {
+async function lastMessageIsOutbound(db: SupabaseClient, conversationId: string): Promise<boolean> {
   const { data } = await db
     .from("messages")
     .select("direction")
@@ -69,7 +69,7 @@ async function lastMessageIsOutbound(
 }
 
 export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput): Promise<void> {
-  const { db, messagingChannel, secretStore } = deps;
+  const { db, secretStore } = deps;
   const correlationId = randomUUID();
   const ctx = {
     correlationId,
@@ -85,24 +85,14 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
   }
 
   try {
-    const { data: org } = await db
-      .from("organizations")
-      .select("*")
-      .eq("id", input.orgId)
-      .single();
+    const { data: org } = await db.from("organizations").select("*").eq("id", input.orgId).single();
 
-    if (!org?.followup_enabled || org.chatwoot_status !== "active") {
-      return;
-    }
+    if (!org?.followup_enabled) return;
 
-    if (needsBillingSetup(org)) {
-      return;
-    }
+    if (needsBillingSetup(org)) return;
 
     const subscriptionStatus = org.subscription_status ?? "trialing";
-    if (!BILLING_ACTIVE_STATUSES.has(subscriptionStatus)) {
-      return;
-    }
+    if (!BILLING_ACTIVE_STATUSES.has(subscriptionStatus)) return;
 
     const messageQuota = org.message_quota ?? 500;
     const monthlyUsage = await getMonthlyUsage(db, input.orgId);
@@ -113,7 +103,7 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
 
     const { data: conversation } = await db
       .from("conversations")
-      .select("*")
+      .select("*, channels(*)")
       .eq("id", input.conversationId)
       .eq("organization_id", input.orgId)
       .single();
@@ -129,9 +119,18 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
       return;
     }
 
-    if (!conversation.last_inbound_at) {
-      return;
-    }
+    const channel = conversation.channels as {
+      id: string;
+      type: ChannelType;
+      status: string;
+      access_token: string | null;
+      phone_number_id: string | null;
+      ig_user_id: string | null;
+    } | null;
+
+    if (!channel || channel.status !== "active" || !channel.access_token) return;
+
+    if (!conversation.last_inbound_at) return;
 
     const lastInboundMs = new Date(conversation.last_inbound_at).getTime();
     if (Date.now() - lastInboundMs > WHATSAPP_WINDOW_MS) {
@@ -148,17 +147,9 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
 
     if (input.followupType === "silent_nudge") {
       const idleMs = (org.followup_idle_minutes ?? 60) * 60 * 1000;
-      if (Date.now() - lastInboundMs < idleMs) {
-        return;
-      }
-
-      if (!(await lastMessageIsOutbound(db, input.conversationId))) {
-        return;
-      }
-
-      if (await conversationAlreadyNudged(db, input.conversationId, "silent_nudge")) {
-        return;
-      }
+      if (Date.now() - lastInboundMs < idleMs) return;
+      if (!(await lastMessageIsOutbound(db, input.conversationId))) return;
+      if (await conversationAlreadyNudged(db, input.conversationId, "silent_nudge")) return;
     }
 
     const { data: messages } = await db
@@ -174,7 +165,11 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
       conversationId: m.conversation_id as ConversationId,
       direction: m.direction as "inbound" | "outbound",
       content: m.content as string,
+      messageType: (m.message_type ?? "text") as "text",
+      attachments: (m.attachments ?? []) as never[],
       externalMessageId: m.external_message_id as string | null,
+      senderUserId: null as never,
+      isInternalNote: Boolean(m.is_internal_note),
       status: m.status as "received" | "processing" | "replied" | "failed",
       aiMetadata: m.ai_metadata as Record<string, unknown> | null,
       correlationId: m.correlation_id ? toCorrelationId(m.correlation_id as string) : null,
@@ -205,85 +200,27 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
     }
 
     const reply = nudgeResult.value.reply.trim();
-    if (!reply) {
+    if (!reply) return;
+
+    let accessToken: string;
+    try {
+      accessToken = secretStore.decrypt(channel.access_token);
+    } catch {
+      logger.error("Follow-up: cannot decrypt channel token", ctx);
       return;
     }
 
-    let sendToken: string | null = null;
-    if (org.chatwoot_agent_bot_access_token) {
-      try {
-        sendToken = secretStore.decrypt(org.chatwoot_agent_bot_access_token);
-      } catch {
-        logger.warn("Follow-up: cannot decrypt bot token", ctx);
-      }
-    }
+    const fromExternalId = channel.type === "whatsapp" ? channel.phone_number_id : channel.ig_user_id;
+    const toExternalId = conversation.external_conversation_id as string | null;
+    if (!fromExternalId || !toExternalId) return;
 
-    const usedBotToken = !!sendToken;
-    if (!sendToken && org.chatwoot_api_token) {
-      try {
-        sendToken = secretStore.decrypt(org.chatwoot_api_token);
-      } catch {
-        logger.error("Follow-up: cannot decrypt Chatwoot token", ctx);
-        return;
-      }
-    }
-
-    if (!sendToken || !conversation.chatwoot_conversation_id) {
-      return;
-    }
-
-    if (
-      usedBotToken &&
-      org.chatwoot_api_url &&
-      org.chatwoot_api_token &&
-      org.chatwoot_account_id
-    ) {
-      try {
-        const adminToken = secretStore.decrypt(org.chatwoot_api_token);
-        const cw = new ChatwootClient(org.chatwoot_api_url, adminToken);
-        await cw.toggleConversationStatus(
-          org.chatwoot_account_id,
-          conversation.chatwoot_conversation_id,
-          "pending",
-        );
-      } catch (err) {
-        logger.warn("Follow-up: could not set Chatwoot pending", { ...ctx, error: String(err) });
-      }
-    }
-
-    const agentBotId =
-      usedBotToken && org.chatwoot_agent_bot_id
-        ? Number(org.chatwoot_agent_bot_id)
-        : undefined;
-
-    const sendParams = {
-      apiUrl: org.chatwoot_api_url,
-      apiToken: sendToken,
-      accountId: org.chatwoot_account_id,
-      conversationId: conversation.chatwoot_conversation_id,
+    const adapter = pickAdapter(channel.type);
+    const sendResult = await adapter.send({
+      accessToken,
+      fromExternalId,
+      toExternalId,
       content: reply,
-      agentBotId,
-    };
-
-    let sendResult = await messagingChannel.send(sendParams);
-
-    if (
-      !sendResult.ok &&
-      sendResult.error.code === "UNAUTHORIZED" &&
-      usedBotToken &&
-      org.chatwoot_agent_bot_id &&
-      org.chatwoot_api_token
-    ) {
-      const freshToken = await regenerateAndStoreBotToken(db, secretStore, input.orgId, {
-        chatwoot_api_url: org.chatwoot_api_url,
-        chatwoot_api_token: org.chatwoot_api_token,
-        chatwoot_account_id: org.chatwoot_account_id,
-        chatwoot_agent_bot_id: org.chatwoot_agent_bot_id,
-      }, ctx);
-      if (freshToken) {
-        sendResult = await messagingChannel.send({ ...sendParams, apiToken: freshToken });
-      }
-    }
+    });
 
     if (!sendResult.ok) {
       logger.error("Follow-up send failed", { ...ctx, error: sendResult.error.message });
@@ -302,12 +239,12 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
       conversation_id: input.conversationId,
       direction: "outbound",
       content: reply,
-      external_message_id: `cw:${sendResult.value}`,
+      message_type: "text",
+      external_message_id: `${channel.type}:${sendResult.value}`,
       status: "replied",
       ai_metadata: {
         inputTokens: nudgeResult.value.inputTokens,
         outputTokens: nudgeResult.value.outputTokens,
-        sentAsBot: usedBotToken,
         followupType: input.followupType,
       },
       correlation_id: correlationId,
@@ -351,10 +288,7 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
     });
 
     logger.info("Follow-up sent", ctx);
-    captureServerEvent("followup_sent", {
-      ...ctx,
-      followup_type: input.followupType,
-    });
+    captureServerEvent("followup_sent", { ...ctx, followup_type: input.followupType });
   } finally {
     await releaseConversationLock(db, input.conversationId);
   }

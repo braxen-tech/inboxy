@@ -19,6 +19,13 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const { count: activeChannelCount } = await supabase
+    .from("channels")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", org.id)
+    .eq("status", "active");
+  const hasActiveChannel = (activeChannelCount ?? 0) > 0;
+
   return (
     <>
       {user && (
@@ -34,7 +41,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
       <DashboardShell
         orgSlug={orgSlug}
         orgName={org.name}
-        chatwootActive={org.chatwoot_status === "active"}
+        hasActiveChannel={hasActiveChannel}
         billingEnabled={!isPilotMode()}
       >
         {children}

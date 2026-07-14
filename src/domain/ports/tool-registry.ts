@@ -25,7 +25,7 @@ export interface MessagingContext {
 export interface ToolContext {
   orgId: OrgId;
   conversationId: ConversationId;
-  contactId: ContactId;
+  contactId?: ContactId;
   contactPhone: string | null;
   calendar?: CalendarContext;
   stripe?: StripeContext;

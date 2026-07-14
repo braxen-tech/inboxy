@@ -1,32 +1,45 @@
-import {
-  ChatwootClient,
-  type ChatwootAccountAgent,
-} from "@/infrastructure/adapters/chatwoot/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface AccountAgentSummary {
-  id: number;
+  id: string;
   name: string;
   email: string;
 }
-
-const ASSIGNABLE_ROLES = new Set(["agent", "administrator"]);
 
 function normalizeLookup(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function isAssignableAgent(agent: ChatwootAccountAgent): boolean {
-  if (!agent.name?.trim() || !agent.email?.trim()) return false;
-  if (!agent.role) return true;
-  return ASSIGNABLE_ROLES.has(agent.role);
-}
+/**
+ * Fetches assignable members (admin/agent roles) of an org from Supabase auth + membership.
+ */
+export async function fetchAccountAgents(params: {
+  db: SupabaseClient;
+  orgId: string;
+}): Promise<AccountAgentSummary[]> {
+  const { db, orgId } = params;
 
-export function toAccountAgentSummary(agent: ChatwootAccountAgent): AccountAgentSummary {
-  return {
-    id: agent.id,
-    name: agent.name.trim(),
-    email: agent.email.trim(),
-  };
+  const { data: members } = await db
+    .from("organization_members")
+    .select("user_id, role")
+    .eq("organization_id", orgId)
+    .in("role", ["admin", "agent"]);
+
+  if (!members?.length) return [];
+
+  const userIds = members.map((m) => m.user_id);
+
+  const { data: users } = await db
+    .from("user_profiles")
+    .select("id, email, name")
+    .in("id", userIds);
+
+  const list = (users ?? []) as Array<{ id: string; email: string | null; name: string | null }>;
+
+  return list
+    .filter((u): u is { id: string; email: string; name: string } => Boolean(u.email && u.name))
+    .map((u) => ({ id: u.id, name: u.name.trim(), email: u.email.trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function resolveAgentByName(
@@ -36,76 +49,43 @@ export function resolveAgentByName(
   | { ok: true; agent: AccountAgentSummary }
   | { ok: false; error: string; available: string[] } {
   const query = normalizeLookup(name);
-  if (!query) {
-    return {
-      ok: false,
-      error: "Nome do atendente não informado.",
-      available: agents.map((a) => a.name).sort((a, b) => a.localeCompare(b)),
-    };
-  }
-
   const available = agents.map((a) => a.name).sort((a, b) => a.localeCompare(b));
 
-  const exactNameMatches = agents.filter((a) => normalizeLookup(a.name) === query);
-  if (exactNameMatches.length === 1) {
-    return { ok: true, agent: exactNameMatches[0] };
+  if (!query) {
+    return { ok: false, error: "Nome do atendente não informado.", available };
   }
-  if (exactNameMatches.length > 1) {
+
+  const exact = agents.filter((a) => normalizeLookup(a.name) === query);
+  if (exact.length === 1) return { ok: true, agent: exact[0] };
+  if (exact.length > 1) {
     return {
       ok: false,
-      error: `Nome ambíguo "${name}". Use o nome completo: ${exactNameMatches.map((a) => `"${a.name}"`).join(", ")}.`,
+      error: `Nome ambíguo "${name}". Use o nome completo: ${exact.map((a) => `"${a.name}"`).join(", ")}.`,
       available,
     };
   }
 
-  const partialNameMatches = agents.filter((a) => normalizeLookup(a.name).includes(query));
-  if (partialNameMatches.length === 1) {
-    return { ok: true, agent: partialNameMatches[0] };
-  }
-  if (partialNameMatches.length > 1) {
+  const partial = agents.filter((a) => normalizeLookup(a.name).includes(query));
+  if (partial.length === 1) return { ok: true, agent: partial[0] };
+  if (partial.length > 1) {
     return {
       ok: false,
-      error: `Nome ambíguo "${name}". Especifique um destes: ${partialNameMatches.map((a) => `"${a.name}"`).join(", ")}.`,
+      error: `Nome ambíguo "${name}". Especifique um destes: ${partial.map((a) => `"${a.name}"`).join(", ")}.`,
       available,
     };
   }
 
-  const emailMatches = agents.filter((a) => {
+  const emailMatch = agents.filter((a) => {
     const email = normalizeLookup(a.email);
-    const localPart = email.split("@")[0] ?? "";
-    return email === query || localPart === query;
+    return email === query || (email.split("@")[0] ?? "") === query;
   });
-  if (emailMatches.length === 1) {
-    return { ok: true, agent: emailMatches[0] };
-  }
-  if (emailMatches.length > 1) {
-    return {
-      ok: false,
-      error: `Identificador ambíguo "${name}". Use o nome completo do atendente.`,
-      available,
-    };
-  }
+  if (emailMatch.length === 1) return { ok: true, agent: emailMatch[0] };
 
   return {
     ok: false,
     error:
       `Atendente "${name}" não encontrado. ` +
-      `Use um destes nomes: ${available.length > 0 ? available.map((n) => `"${n}"`).join(", ") : "nenhum atendente configurado na conta"}.`,
+      `Use um destes nomes: ${available.length > 0 ? available.map((n) => `"${n}"`).join(", ") : "nenhum atendente cadastrado"}.`,
     available,
   };
-}
-
-export async function fetchAccountAgents(params: {
-  apiUrl: string;
-  apiToken: string;
-  accountId: string;
-}): Promise<AccountAgentSummary[]> {
-  const client = new ChatwootClient(params.apiUrl, params.apiToken);
-  const result = await client.listAccountAgents(params.accountId);
-  if (!result.ok) return [];
-
-  return result.data
-    .filter(isAssignableAgent)
-    .map(toAccountAgentSummary)
-    .sort((a, b) => a.name.localeCompare(b.name));
 }

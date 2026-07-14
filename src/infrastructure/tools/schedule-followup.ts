@@ -67,7 +67,7 @@ export class ScheduleFollowupTool implements AgentTool {
     const { data: conversation } = await this.db
       .from("conversations")
       .select("last_inbound_at, status")
-      .eq("id", ctx.conversationId)
+      .eq("id", String(ctx.conversationId))
       .maybeSingle();
 
     if (!conversation) {
@@ -89,7 +89,7 @@ export class ScheduleFollowupTool implements AgentTool {
     const { data: existing } = await this.db
       .from("scheduled_followups")
       .select("id")
-      .eq("conversation_id", ctx.conversationId)
+      .eq("conversation_id", String(ctx.conversationId))
       .eq("type", "manual")
       .eq("status", "pending")
       .maybeSingle();
@@ -106,7 +106,7 @@ export class ScheduleFollowupTool implements AgentTool {
     } else {
       const { error } = await this.db.from("scheduled_followups").insert({
         organization_id: String(ctx.orgId),
-        conversation_id: ctx.conversationId,
+        conversation_id: String(ctx.conversationId),
         type: "manual",
         scheduled_at: scheduledAt.toISOString(),
         status: "pending",
