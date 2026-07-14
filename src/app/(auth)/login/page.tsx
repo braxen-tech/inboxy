@@ -1,7 +1,12 @@
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+interface Props {
+  searchParams: Promise<{ redirect?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { redirect: redirectTo } = await searchParams;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
@@ -29,6 +34,7 @@ export default function LoginPage() {
     <LoginForm
       supabaseUrl={supabaseUrl.trim()}
       supabaseAnonKey={supabaseAnonKey.trim()}
+      redirectTo={redirectTo}
     />
   );
 }

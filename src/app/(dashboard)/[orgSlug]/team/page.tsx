@@ -20,7 +20,7 @@ export default async function TeamPage({ params }: Props) {
   const [{ data: members }, { data: invites }, { data: myMembership }] = await Promise.all([
     db
       .from("organization_members")
-      .select("id, role, user_id, created_at, user_profiles(email, name, avatar_url)")
+      .select("id, role, user_id, created_at")
       .eq("organization_id", org.id)
       .order("created_at", { ascending: true }),
     db
@@ -39,6 +39,26 @@ export default async function TeamPage({ params }: Props) {
       : Promise.resolve({ data: null }),
   ]);
 
+  const userIds = [...new Set((members ?? []).map((m) => m.user_id as string))];
+  const profilesById = new Map<
+    string,
+    { email: string | null; name: string | null; avatar_url: string | null }
+  >();
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await db
+      .from("user_profiles")
+      .select("id, email, name, avatar_url")
+      .in("id", userIds);
+    for (const p of profiles ?? []) {
+      profilesById.set(p.id as string, {
+        email: (p.email as string | null) ?? null,
+        name: (p.name as string | null) ?? null,
+        avatar_url: (p.avatar_url as string | null) ?? null,
+      });
+    }
+  }
+
   const myRole = ((myMembership as { role?: string } | null)?.role ?? null) as
     | "admin"
     | "agent"
@@ -47,11 +67,7 @@ export default async function TeamPage({ params }: Props) {
   const canManage = myRole === "admin";
 
   const memberRows = (members ?? []).map((m) => {
-    const profile = (Array.isArray(m.user_profiles) ? m.user_profiles[0] : m.user_profiles) as {
-      email: string | null;
-      name: string | null;
-      avatar_url: string | null;
-    } | null;
+    const profile = profilesById.get(m.user_id as string);
     return {
       id: m.id as string,
       userId: m.user_id as string,

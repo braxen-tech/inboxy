@@ -17,10 +17,18 @@ type Mode = "login" | "signup";
 interface LoginFormProps {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  redirectTo?: string;
 }
 
-export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
+function safeRedirectPath(redirectTo: string | undefined): string {
+  if (!redirectTo) return "/";
+  if (!redirectTo.startsWith("/") || redirectTo.startsWith("//")) return "/";
+  return redirectTo;
+}
+
+export function LoginForm({ supabaseUrl, supabaseAnonKey, redirectTo }: LoginFormProps) {
   const router = useRouter();
+  const afterAuthPath = safeRedirectPath(redirectTo);
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
     [supabaseUrl, supabaseAnonKey],
@@ -74,7 +82,7 @@ export function LoginForm({ supabaseUrl, supabaseAnonKey }: LoginFormProps) {
           posthog.identify(data.user.id, data.user.email ? { email: data.user.email } : undefined);
           posthog.capture("user_signed_in", { mode: "login" });
         }
-        router.push("/");
+        router.push(afterAuthPath);
         router.refresh();
       }
     }
