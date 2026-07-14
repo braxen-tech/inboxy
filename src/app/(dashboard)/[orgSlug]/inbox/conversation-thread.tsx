@@ -56,20 +56,47 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
       .channel(`conv:${conversation.id}:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
         (payload) => {
           setMessages((prev) => {
             const row = payload.new as MessageRow;
             if (prev.some((m) => m.id === row.id)) return prev;
-            return [...prev, row];
+            // Drop optimistic temp rows once the real message arrives.
+            const withoutTemp = prev.filter(
+              (m) =>
+                !(
+                  m.id.startsWith("temp:") &&
+                  m.direction === row.direction &&
+                  m.content === row.content
+                ),
+            );
+            return [...withoutTemp, row];
           });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          const row = payload.new as MessageRow;
+          setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)));
         },
       )
       .subscribe();
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [conversation.id, supabaseUrl, supabaseAnonKey]);
 
@@ -81,6 +108,21 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
     const content = draft.trim();
     if (!content) return;
 
+    const tempId = `temp:${crypto.randomUUID()}`;
+    const optimistic: MessageRow = {
+      id: tempId,
+      direction: "outbound",
+      content,
+      message_type: "text",
+      attachments: [],
+      is_internal_note: false,
+      created_at: new Date().toISOString(),
+      status: "pending",
+    };
+
+    setMessages((prev) => [...prev, optimistic]);
+    setDraft("");
+
     startTransition(async () => {
       setError(null);
       const res = await sendOutboundMessage({
@@ -90,8 +132,8 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
       });
       if (res.error) {
         setError(res.error);
-      } else {
-        setDraft("");
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setDraft(content);
       }
     });
   }
@@ -141,6 +183,7 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
         )}
         {messages.map((m) => {
           const outbound = m.direction === "outbound";
+          const isTemp = m.id.startsWith("temp:");
           return (
             <div key={m.id} className={cn("flex", outbound ? "justify-end" : "justify-start")}>
               <div
@@ -151,10 +194,16 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
                     : outbound
                       ? "bg-blue-600 text-white"
                       : "bg-background border",
+                  isTemp && "opacity-70",
                 )}
               >
                 <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                <div className={cn("mt-1 text-[10px]", outbound && !m.is_internal_note ? "text-blue-100" : "text-muted-foreground")}>
+                <div
+                  className={cn(
+                    "mt-1 text-[10px]",
+                    outbound && !m.is_internal_note ? "text-blue-100" : "text-muted-foreground",
+                  )}
+                >
                   {format(new Date(m.created_at), "HH:mm")}
                 </div>
               </div>
