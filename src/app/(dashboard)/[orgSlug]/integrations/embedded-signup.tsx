@@ -45,28 +45,50 @@ const CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID;
 export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
   const pendingRef = useRef<{ wabaId?: string; phoneNumberId?: string; igUserId?: string } | null>(
     null,
   );
 
   useEffect(() => {
     if (!APP_ID) return;
-    if (window.FB) return;
+
+    function markReady() {
+      if (window.FB) setSdkReady(true);
+    }
+
+    if (window.FB) {
+      markReady();
+      return;
+    }
 
     window.fbAsyncInit = () => {
       window.FB?.init({
         appId: APP_ID,
         cookie: true,
         xfbml: false,
-        version: "v21.0",
+        version: "v22.0",
       });
+      markReady();
     };
+
+    const existing = document.querySelector<HTMLScriptElement>('script[data-inboxy-fb-sdk="1"]');
+    if (existing) {
+      const tick = window.setInterval(() => {
+        if (window.FB) {
+          window.clearInterval(tick);
+          markReady();
+        }
+      }, 200);
+      return () => window.clearInterval(tick);
+    }
 
     const script = document.createElement("script");
     script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.async = true;
     script.defer = true;
     script.crossOrigin = "anonymous";
+    script.dataset.inboxyFbSdk = "1";
     document.body.appendChild(script);
   }, []);
 
@@ -120,7 +142,7 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
 
   const launch = useCallback(() => {
     setError(null);
-    if (!window.FB || !CONFIG_ID) {
+    if (!window.FB || !CONFIG_ID || !sdkReady) {
       setError("SDK do Meta ainda carregando. Aguarde alguns segundos e tente novamente.");
       return;
     }
@@ -133,7 +155,11 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
       (response) => {
         const code = response.authResponse?.code;
         if (!code) {
-          setError("Fluxo cancelado ou permissão negada.");
+          const detail =
+            response.status === "unknown"
+              ? "Popup bloqueado ou configuração inválida no Meta App (Site URL / App Domains / Configuration ID)."
+              : "Fluxo cancelado ou permissão negada.";
+          setError(detail);
           setBusy(false);
           return;
         }
@@ -153,7 +179,7 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
         },
       },
     );
-  }, [finishExchange]);
+  }, [finishExchange, sdkReady]);
 
   if (!APP_ID || !CONFIG_ID) {
     return (
@@ -165,10 +191,10 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" onClick={launch} disabled={busy || disabled}>
-        {busy ? "Conectando..." : "Conectar"}
+      <Button size="sm" onClick={launch} disabled={busy || disabled || !sdkReady}>
+        {busy ? "Conectando..." : !sdkReady ? "Carregando…" : "Conectar"}
       </Button>
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {error && <span className="text-xs text-destructive max-w-[240px] text-right">{error}</span>}
     </div>
   );
 }
