@@ -219,6 +219,8 @@ export async function processMetaInboundMessage(
       title: "Nova mensagem",
       body: msg.content.slice(0, 160) || "(mensagem sem texto)",
       actionUrl: `/inbox?conversation=${conversation.id}`,
+      entityType: "conversation",
+      entityId: conversation.id,
       metadata: { conversationId: conversation.id, channelType: msg.channelType },
     });
   }

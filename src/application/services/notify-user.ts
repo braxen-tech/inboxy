@@ -6,6 +6,8 @@ export type NotificationType =
   | "new_message"
   | "assigned"
   | "mention"
+  | "lead_stage_changed"
+  | "invite"
   | "system"
   | "quota_warning"
   | "quota_exceeded";
@@ -18,6 +20,8 @@ export interface NotifyUserInput {
   body: string;
   /** Optional deep link path within the app (relative). */
   actionUrl?: string;
+  entityType?: "lead" | "contact" | "conversation" | "organization";
+  entityId?: string;
   /** Extra metadata stored on the notification row. */
   metadata?: Record<string, unknown>;
   /** If true, also emails the user via Resend (requires RESEND_API_KEY). */
@@ -39,6 +43,8 @@ export async function notifyUser(
     title: input.title,
     body: input.body,
     action_url: input.actionUrl ?? null,
+    entity_type: input.entityType ?? null,
+    entity_id: input.entityId ?? null,
     metadata: input.metadata ?? {},
   });
 
