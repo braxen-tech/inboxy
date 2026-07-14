@@ -3,6 +3,7 @@ import type { EventBus, InboundMessage } from "@/domain/ports";
 import { toConversationId, toMessageId, toOrgId } from "@/domain/value-objects";
 import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { incrementUsage } from "@/application/services/usage-tracker";
+import { notifyUser } from "@/application/services/notify-user";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
 
@@ -126,7 +127,7 @@ export async function processMetaInboundMessage(
   const now = new Date().toISOString();
   let { data: conversation } = await db
     .from("conversations")
-    .select("id, status, unread_count")
+    .select("id, status, unread_count, assigned_to")
     .eq("organization_id", orgId)
     .eq("contact_id", contactId)
     .eq("channel_id", channel.id)
@@ -149,7 +150,7 @@ export async function processMetaInboundMessage(
         last_inbound_at: now,
         unread_count: 1,
       })
-      .select("id, status, unread_count")
+      .select("id, status, unread_count, assigned_to")
       .single();
     conversation = created;
   } else {
@@ -208,6 +209,19 @@ export async function processMetaInboundMessage(
       correlationId,
     },
   });
+
+  // Notify assignee (if any) about the new inbound message.
+  if (conversation.assigned_to) {
+    await notifyUser(db, {
+      organizationId: orgId,
+      userId: conversation.assigned_to,
+      type: "new_message",
+      title: "Nova mensagem",
+      body: msg.content.slice(0, 160) || "(mensagem sem texto)",
+      actionUrl: `/inbox?conversation=${conversation.id}`,
+      metadata: { conversationId: conversation.id, channelType: msg.channelType },
+    });
+  }
 
   logger.info("Meta inbound processed", {
     eventId,

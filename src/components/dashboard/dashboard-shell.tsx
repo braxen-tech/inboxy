@@ -13,12 +13,14 @@ import {
   CreditCard,
   Plug,
   Settings,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
+import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { cn } from "@/lib/utils";
 
 interface DashboardShellProps {
@@ -26,6 +28,10 @@ interface DashboardShellProps {
   orgName: string;
   hasActiveChannel: boolean;
   billingEnabled?: boolean;
+  userId?: string | null;
+  organizationId?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
   children: React.ReactNode;
 }
 
@@ -36,6 +42,7 @@ const baseNavItems = [
   { href: "kb", label: "Base de conhecimento", icon: BookOpen },
   { href: "agent", label: "Agente", icon: Bot },
   { href: "integrations", label: "Integrações", icon: Plug },
+  { href: "team", label: "Equipe", icon: UserCog },
   { href: "billing", label: "Assinatura", icon: CreditCard },
   { href: "settings", label: "Configurações", icon: Settings },
 ] as const;
@@ -154,6 +161,10 @@ export function DashboardShell({
   orgName,
   hasActiveChannel,
   billingEnabled = true,
+  userId,
+  organizationId,
+  supabaseUrl,
+  supabaseAnonKey,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -234,7 +245,26 @@ export function DashboardShell({
           >
             {hasActiveChannel ? "Ativo" : "Pendente"}
           </Badge>
+          {userId && organizationId && supabaseUrl && supabaseAnonKey && (
+            <NotificationsBell
+              userId={userId}
+              organizationId={organizationId}
+              supabaseUrl={supabaseUrl}
+              supabaseAnonKey={supabaseAnonKey}
+            />
+          )}
         </header>
+
+        {userId && organizationId && supabaseUrl && supabaseAnonKey && (
+          <div className="sticky top-0 z-20 hidden h-12 items-center justify-end gap-2 border-b bg-background/95 px-4 backdrop-blur lg:flex">
+            <NotificationsBell
+              userId={userId}
+              organizationId={organizationId}
+              supabaseUrl={supabaseUrl}
+              supabaseAnonKey={supabaseAnonKey}
+            />
+          </div>
+        )}
 
         <main className="flex-1 overflow-auto">
           <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">

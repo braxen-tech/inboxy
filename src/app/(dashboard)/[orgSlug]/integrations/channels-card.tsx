@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { disconnectChannelAction } from "./actions";
+import { EmbeddedSignupButton } from "./embedded-signup";
 
 interface ChannelRow {
   id: string;
@@ -63,9 +64,7 @@ export function ChannelsCard({ orgSlug, channels }: Props) {
               Desconectar
             </Button>
           ) : (
-            <Button size="sm" disabled title="Embedded Signup v4 será integrado aqui">
-              Conectar
-            </Button>
+            <EmbeddedSignupButton orgSlug={orgSlug} variant="whatsapp" />
           )}
         </div>
       </div>
@@ -76,7 +75,9 @@ export function ChannelsCard({ orgSlug, channels }: Props) {
             <div className="font-medium">Instagram DM</div>
             {activeInstagram ? (
               <div className="text-sm text-muted-foreground">
-                {activeInstagram.ig_username ? `@${activeInstagram.ig_username}` : activeInstagram.display_name ?? "Conectado"}
+                {activeInstagram.ig_username
+                  ? `@${activeInstagram.ig_username}`
+                  : activeInstagram.display_name ?? "Conectado"}
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">Não conectado</div>
@@ -92,16 +93,15 @@ export function ChannelsCard({ orgSlug, channels }: Props) {
               Desconectar
             </Button>
           ) : (
-            <Button size="sm" disabled title="Embedded Signup v4 será integrado aqui">
-              Conectar
-            </Button>
+            <EmbeddedSignupButton orgSlug={orgSlug} variant="instagram" />
           )}
         </div>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        A conexão via Meta Embedded Signup v4 será habilitada em breve. Após configurar o Meta App
-        do Inboxy, o botão &ldquo;Conectar&rdquo; abrirá o fluxo oficial da Meta.
+        A conexão usa o fluxo oficial <strong>Meta Embedded Signup v4</strong>. Ao clicar em
+        &ldquo;Conectar&rdquo;, você entra com sua conta do Facebook Business e autoriza o Inboxy a
+        atender mensagens neste canal.
       </p>
     </div>
   );

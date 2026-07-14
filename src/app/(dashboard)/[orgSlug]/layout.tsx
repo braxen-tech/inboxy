@@ -43,6 +43,10 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
         orgName={org.name}
         hasActiveChannel={hasActiveChannel}
         billingEnabled={!isPilotMode()}
+        userId={user?.id ?? null}
+        organizationId={org.id}
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}
+        supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""}
       >
         {children}
       </DashboardShell>
