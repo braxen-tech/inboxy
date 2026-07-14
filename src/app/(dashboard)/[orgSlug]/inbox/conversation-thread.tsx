@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MessageBody } from "@/components/inbox/message-body";
 import { createSupabaseBrowserClient } from "@/infrastructure/repositories/supabase-browser";
 import { sendOutboundMessage, updateConversationStatus } from "./actions";
 import type { ConversationRow } from "./inbox-view";
@@ -197,7 +198,11 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
                   isTemp && "opacity-70",
                 )}
               >
-                <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                <MessageBody
+                  content={m.content}
+                  messageType={m.message_type}
+                  outbound={outbound && !m.is_internal_note}
+                />
                 <div
                   className={cn(
                     "mt-1 text-[10px]",
