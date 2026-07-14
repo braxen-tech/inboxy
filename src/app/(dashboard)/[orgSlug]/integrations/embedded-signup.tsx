@@ -29,67 +29,106 @@ declare global {
 const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID;
 const CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID;
 
+/** Shared across all EmbeddedSignupButton instances — avoids fbAsyncInit race. */
+let fbSdkPromise: Promise<FBSdk> | null = null;
+
+function loadFbSdk(): Promise<FBSdk> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("FB SDK só roda no browser."));
+  }
+  if (window.FB) return Promise.resolve(window.FB);
+  if (fbSdkPromise) return fbSdkPromise;
+  if (!APP_ID) return Promise.reject(new Error("NEXT_PUBLIC_META_APP_ID ausente."));
+
+  fbSdkPromise = new Promise<FBSdk>((resolve, reject) => {
+    let settled = false;
+    const done = (fb: FBSdk) => {
+      if (settled) return;
+      settled = true;
+      resolve(fb);
+    };
+    const fail = (err: unknown) => {
+      if (settled) return;
+      settled = true;
+      fbSdkPromise = null;
+      reject(err);
+    };
+
+    const prevInit = window.fbAsyncInit;
+    window.fbAsyncInit = () => {
+      try {
+        prevInit?.();
+        window.FB?.init({
+          appId: APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: "v22.0",
+        });
+        if (!window.FB) {
+          fail(new Error("FB SDK carregou sem expor window.FB"));
+          return;
+        }
+        done(window.FB);
+      } catch (err) {
+        fail(err);
+      }
+    };
+
+    if (!document.querySelector('script[data-inboxy-fb-sdk="1"]')) {
+      const script = document.createElement("script");
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.dataset.inboxyFbSdk = "1";
+      script.onerror = () => fail(new Error("Falha ao carregar Facebook SDK."));
+      document.body.appendChild(script);
+    }
+
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      if (window.FB) {
+        window.clearInterval(tick);
+        try {
+          window.FB.init({
+            appId: APP_ID,
+            cookie: true,
+            xfbml: false,
+            version: "v22.0",
+          });
+          done(window.FB);
+        } catch (err) {
+          fail(err);
+        }
+      } else if (Date.now() - started > 15_000) {
+        window.clearInterval(tick);
+        fail(new Error("Timeout carregando Facebook SDK."));
+      }
+    }, 200);
+  });
+
+  return fbSdkPromise;
+}
+
 /**
  * Meta Embedded Signup v4 button.
  *
- * Flow:
- * 1. Load the Facebook JS SDK once.
- * 2. FB.login with the org's Configuration ID.
- * 3. Meta posts a `WA_EMBEDDED_SIGNUP` message with waba_id / phone_number_id / ig_user_id.
- * 4. On success we send the short-lived `code` (from authResponse) to the server, which
- *    exchanges it for a long-lived token and persists the channel.
- *
  * Important: FB.login rejects async callbacks ("Expression is of type asyncfunction").
- * Always wrap async work in a sync callback + void IIFE.
+ * Always wrap async work in a sync callback + void promise.
  */
 export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
   const pendingRef = useRef<{ wabaId?: string; phoneNumberId?: string; igUserId?: string } | null>(
     null,
   );
 
+  // Warm the SDK in background (shared singleton for all buttons on the page).
   useEffect(() => {
     if (!APP_ID) return;
-
-    function markReady() {
-      if (window.FB) setSdkReady(true);
-    }
-
-    if (window.FB) {
-      markReady();
-      return;
-    }
-
-    window.fbAsyncInit = () => {
-      window.FB?.init({
-        appId: APP_ID,
-        cookie: true,
-        xfbml: false,
-        version: "v22.0",
-      });
-      markReady();
-    };
-
-    const existing = document.querySelector<HTMLScriptElement>('script[data-inboxy-fb-sdk="1"]');
-    if (existing) {
-      const tick = window.setInterval(() => {
-        if (window.FB) {
-          window.clearInterval(tick);
-          markReady();
-        }
-      }, 200);
-      return () => window.clearInterval(tick);
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://connect.facebook.net/en_US/sdk.js";
-    script.async = true;
-    script.defer = true;
-    script.crossOrigin = "anonymous";
-    script.dataset.inboxyFbSdk = "1";
-    document.body.appendChild(script);
+    void loadFbSdk().catch(() => {
+      /* surfaced on click */
+    });
   }, []);
 
   useEffect(() => {
@@ -142,44 +181,51 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
 
   const launch = useCallback(() => {
     setError(null);
-    if (!window.FB || !CONFIG_ID || !sdkReady) {
-      setError("SDK do Meta ainda carregando. Aguarde alguns segundos e tente novamente.");
+    if (!CONFIG_ID) {
+      setError("Configuration ID do Meta não configurado.");
       return;
     }
 
     setBusy(true);
     pendingRef.current = null;
 
-    // Must be a sync function — Meta SDK rejects AsyncFunction.
-    window.FB.login(
-      (response) => {
-        const code = response.authResponse?.code;
-        if (!code) {
-          const detail =
-            response.status === "unknown"
-              ? "Popup bloqueado ou configuração inválida no Meta App (Site URL / App Domains / Configuration ID)."
-              : "Fluxo cancelado ou permissão negada.";
-          setError(detail);
-          setBusy(false);
-          return;
-        }
-        void finishExchange(code).catch((err) => {
-          setError(err instanceof Error ? err.message : "Falha ao conectar.");
-          setBusy(false);
-        });
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "",
-          sessionInfoVersion: "3",
-        },
-      },
-    );
-  }, [finishExchange, sdkReady]);
+    void loadFbSdk()
+      .then((FB) => {
+        // Must be a sync function — Meta SDK rejects AsyncFunction.
+        FB.login(
+          (response) => {
+            const code = response.authResponse?.code;
+            if (!code) {
+              const detail =
+                response.status === "unknown"
+                  ? "Popup bloqueado ou configuração inválida no Meta App (Site URL / App Domains / Configuration ID)."
+                  : "Fluxo cancelado ou permissão negada.";
+              setError(detail);
+              setBusy(false);
+              return;
+            }
+            void finishExchange(code).catch((err) => {
+              setError(err instanceof Error ? err.message : "Falha ao conectar.");
+              setBusy(false);
+            });
+          },
+          {
+            config_id: CONFIG_ID,
+            response_type: "code",
+            override_default_response_type: true,
+            extras: {
+              setup: {},
+              featureType: "",
+              sessionInfoVersion: "3",
+            },
+          },
+        );
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Falha ao carregar Facebook SDK.");
+        setBusy(false);
+      });
+  }, [finishExchange]);
 
   if (!APP_ID || !CONFIG_ID) {
     return (
@@ -191,8 +237,8 @@ export function EmbeddedSignupButton({ orgSlug, variant, disabled }: Props) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" onClick={launch} disabled={busy || disabled || !sdkReady}>
-        {busy ? "Conectando..." : !sdkReady ? "Carregando…" : "Conectar"}
+      <Button size="sm" onClick={launch} disabled={busy || disabled}>
+        {busy ? "Conectando..." : "Conectar"}
       </Button>
       {error && <span className="text-xs text-destructive max-w-[240px] text-right">{error}</span>}
     </div>
