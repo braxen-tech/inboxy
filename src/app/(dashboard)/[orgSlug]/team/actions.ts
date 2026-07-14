@@ -88,13 +88,15 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
   const token = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
-  let invite: {
+  type InviteRow = {
     id: string;
     email: string;
     role: string;
     created_at: string;
     expires_at: string;
-  } | null = null;
+  };
+
+  let invite: InviteRow | null = null;
 
   if (existingInvite?.accepted_at) {
     // Accepted row still blocks UNIQUE(org, email); refresh it into a new pending invite.
@@ -111,7 +113,7 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
       .select("id, email, role, created_at, expires_at")
       .single();
     if (error || !data) return { error: error?.message ?? "Falha ao recriar convite." };
-    invite = data as typeof invite;
+    invite = data as InviteRow;
   } else {
     const { data, error } = await supabase
       .from("organization_invites")
@@ -126,7 +128,7 @@ export async function inviteMember(raw: z.infer<typeof inviteSchema>) {
       .select("id, email, role, created_at, expires_at")
       .single();
     if (error || !data) return { error: error?.message ?? "Falha ao criar convite." };
-    invite = data as typeof invite;
+    invite = data as InviteRow;
   }
 
   if (!invite) return { error: "Falha ao criar convite." };
