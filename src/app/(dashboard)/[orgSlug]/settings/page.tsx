@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { TagsManager } from "./tags-manager";
+import { can } from "@/lib/authz";
+import type { MemberRole } from "@/domain/entities/organization-member";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -27,7 +29,7 @@ export default async function SettingsPage({ params }: Props) {
       .eq("organization_id", org.id)
       .eq("user_id", user.id)
       .maybeSingle();
-    canManageTags = membership?.role === "admin";
+    canManageTags = can(membership?.role as MemberRole | undefined, "manage_tags");
   }
 
   const { data: tags } = await db

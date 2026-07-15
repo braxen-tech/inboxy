@@ -4,6 +4,7 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { revalidatePath } from "next/cache";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 import { normalizeFollowupIdleMinutes } from "@/lib/followup-idle-options";
+import { requireOrgCapability } from "@/lib/authz";
 
 export async function updateAgentSettings(
   orgId: string,
@@ -15,6 +16,11 @@ export async function updateAgentSettings(
   },
 ) {
   scheduleTelemetryFlush();
+
+  const ctx = await requireOrgCapability(orgSlug, "manage_agent");
+  if ("error" in ctx) return { error: ctx.error };
+  if (ctx.org.id !== orgId) return { error: "Organização inválida." };
+
   const db = getAdminClient();
 
   const updatePayload: Record<string, unknown> = {
@@ -29,10 +35,7 @@ export async function updateAgentSettings(
     updatePayload.followup_idle_minutes = normalizeFollowupIdleMinutes(settings.followupIdleMinutes);
   }
 
-  const { error } = await db
-    .from("organizations")
-    .update(updatePayload)
-    .eq("id", orgId);
+  const { error } = await db.from("organizations").update(updatePayload).eq("id", orgId);
 
   if (error) return { error: error.message };
 

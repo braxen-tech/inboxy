@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getOrgBySlug } from "@/lib/get-org";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { TeamManager } from "./team-manager";
+import { can } from "@/lib/authz";
+import type { MemberRole } from "@/domain/entities/organization-member";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -59,12 +61,8 @@ export default async function TeamPage({ params }: Props) {
     }
   }
 
-  const myRole = ((myMembership as { role?: string } | null)?.role ?? null) as
-    | "admin"
-    | "agent"
-    | "viewer"
-    | null;
-  const canManage = myRole === "admin";
+  const myRole = ((myMembership as { role?: string } | null)?.role ?? null) as MemberRole | null;
+  const canManage = can(myRole, "manage_team");
 
   const memberRows = (members ?? []).map((m) => {
     const profile = profilesById.get(m.user_id as string);

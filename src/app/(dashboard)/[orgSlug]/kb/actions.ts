@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { getOwnedOrg } from "@/lib/get-owned-org";
+import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import { requireOrgCapability } from "@/lib/authz";
 import { getKbPlanLimits } from "@/lib/kb-limits";
 import {
   KB_BUCKET,
@@ -20,22 +20,29 @@ import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const MAX_KB_CHARS = 200_000;
 
-async function requireOwnedOrg(orgSlug: string) {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const, org: null, userId: null };
+async function requireKbAdmin(orgSlug: string) {
+  const ctx = await requireOrgCapability(orgSlug, "manage_kb");
+  if ("error" in ctx) return { error: ctx.error as string, org: null, userId: null };
 
-  const org = await getOwnedOrg(orgSlug, user.id);
-  if (!org) return { error: "Organização não encontrada." as const, org: null, userId: null };
+  const db = getAdminClient();
+  const { data: fullOrg } = await db
+    .from("organizations")
+    .select("id, slug, owner_user_id, subscription_plan")
+    .eq("id", ctx.org.id)
+    .single();
 
-  return { error: null, org, userId: user.id };
+  if (!fullOrg) return { error: "Organização não encontrada.", org: null, userId: null };
+
+  return {
+    error: null as string | null,
+    org: fullOrg,
+    userId: ctx.user.id,
+  };
 }
 
 export async function updateKnowledgeBase(orgId: string, orgSlug: string, knowledgeBase: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
   if (auth.org!.id !== orgId) return { error: "Organização inválida." };
 
@@ -70,7 +77,7 @@ export interface KbDocumentRow {
 
 export async function listKbDocuments(orgSlug: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   const db = getAdminClient();
@@ -103,7 +110,7 @@ export async function createKbUpload(
   input: { filename: string; mimeType: string; size: number },
 ) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   if (!isKbFilenameAllowed(input.filename)) {
@@ -180,7 +187,7 @@ export async function createKbUpload(
 
 export async function confirmKbUpload(orgSlug: string, documentId: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   const db = getAdminClient();
@@ -220,7 +227,7 @@ export async function confirmKbUpload(orgSlug: string, documentId: string) {
 
 export async function deleteKbDocument(orgSlug: string, documentId: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   const db = getAdminClient();
@@ -244,7 +251,7 @@ export async function deleteKbDocument(orgSlug: string, documentId: string) {
 
 export async function retryKbDocument(orgSlug: string, documentId: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   const db = getAdminClient();
@@ -285,7 +292,7 @@ export async function retryKbDocument(orgSlug: string, documentId: string) {
 
 export async function testKbAgent(orgSlug: string, question: string) {
   scheduleTelemetryFlush();
-  const auth = await requireOwnedOrg(orgSlug);
+  const auth = await requireKbAdmin(orgSlug);
   if (auth.error) return { error: auth.error };
 
   const db = getAdminClient();

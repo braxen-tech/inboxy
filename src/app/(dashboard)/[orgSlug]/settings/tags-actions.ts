@@ -2,37 +2,7 @@
 
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
-
-type Role = "admin" | "agent" | "viewer";
-
-async function requireAdmin(orgSlug: string) {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." as const };
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("role")
-    .eq("organization_id", org.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || (membership.role as Role) !== "admin") {
-    return { error: "Somente administradores podem gerenciar tags." as const };
-  }
-
-  return { supabase, user, org };
-}
+import { requireOrgCapability } from "@/lib/authz";
 
 const createSchema = z.object({
   orgSlug: z.string().min(1),
@@ -44,7 +14,7 @@ export async function createTag(raw: z.infer<typeof createSchema>) {
   const parsed = createSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "manage_tags");
   if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
@@ -80,7 +50,7 @@ export async function updateTag(raw: z.infer<typeof updateSchema>) {
   const parsed = updateSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "manage_tags");
   if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
@@ -114,7 +84,7 @@ export async function deleteTag(raw: z.infer<typeof deleteSchema>) {
   const parsed = deleteSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "manage_tags");
   if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 

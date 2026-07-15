@@ -2,67 +2,15 @@
 
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { manageLeadLabels } from "@/application/services/lead-labels";
-
-type Role = "admin" | "agent" | "viewer";
-
-async function resolveMembership(orgSlug: string) {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." as const };
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("role")
-    .eq("organization_id", org.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) return { error: "Sem permissão nesta organização." as const };
-
-  return { supabase, user, org, role: membership.role as Role };
-}
-
-function canWriteLeads(role: Role) {
-  return role === "admin" || role === "agent";
-}
+import { requireOrgCapability } from "@/lib/authz";
 
 async function requireLeadWriter(orgSlug: string) {
-  const ctx = await resolveMembership(orgSlug);
-  if ("error" in ctx && ctx.error) return ctx;
-  if (!canWriteLeads(ctx.role!)) {
-    return { error: "Somente administradores e agentes podem editar leads." as const };
-  }
-  return ctx as {
-    supabase: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["supabase"]>;
-    user: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["user"]>;
-    org: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["org"]>;
-    role: Role;
-  };
+  return requireOrgCapability(orgSlug, "write_leads");
 }
 
-async function requireAdmin(orgSlug: string) {
-  const ctx = await resolveMembership(orgSlug);
-  if ("error" in ctx && ctx.error) return ctx;
-  if (ctx.role !== "admin") {
-    return { error: "Somente administradores podem gerenciar colunas." as const };
-  }
-  return ctx as {
-    supabase: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["supabase"]>;
-    user: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["user"]>;
-    org: NonNullable<Awaited<ReturnType<typeof resolveMembership>>["org"]>;
-    role: Role;
-  };
+async function requirePipelineAdmin(orgSlug: string) {
+  return requireOrgCapability(orgSlug, "manage_pipeline");
 }
 
 const moveSchema = z.object({
@@ -77,7 +25,7 @@ export async function moveLead(raw: z.infer<typeof moveSchema>) {
   if (!parsed.success) return { error: "Dados inválidos." };
 
   const ctx = await requireLeadWriter(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, user, org } = ctx;
 
   const { data: current } = await supabase
@@ -129,7 +77,7 @@ export async function createLead(raw: z.infer<typeof createSchema>) {
   if (!parsed.success) return { error: "Dados inválidos." };
 
   const ctx = await requireLeadWriter(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, user, org } = ctx;
 
   let contactId = parsed.data.contactId;
@@ -195,7 +143,7 @@ export async function updateLead(raw: z.infer<typeof updateLeadSchema>) {
   if (!parsed.success) return { error: "Dados inválidos." };
 
   const ctx = await requireLeadWriter(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -233,7 +181,7 @@ export async function deleteLead(raw: z.infer<typeof deleteLeadSchema>) {
   if (!parsed.success) return { error: "Dados inválidos." };
 
   const ctx = await requireLeadWriter(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const { error } = await supabase
@@ -258,7 +206,7 @@ export async function setLeadTags(raw: z.infer<typeof setLeadTagsSchema>) {
   if (!parsed.success) return { error: "Dados inválidos." };
 
   const ctx = await requireLeadWriter(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const { data: lead } = await supabase
@@ -304,8 +252,8 @@ export async function createStage(raw: z.infer<typeof createStageSchema>) {
   const parsed = createStageSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  const ctx = await requirePipelineAdmin(parsed.data.orgSlug);
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const { data: last } = await supabase
@@ -344,8 +292,8 @@ export async function updateStage(raw: z.infer<typeof updateStageSchema>) {
   const parsed = updateStageSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  const ctx = await requirePipelineAdmin(parsed.data.orgSlug);
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -373,8 +321,8 @@ export async function reorderStages(raw: z.infer<typeof reorderStagesSchema>) {
   const parsed = reorderStagesSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  const ctx = await requirePipelineAdmin(parsed.data.orgSlug);
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   for (let i = 0; i < parsed.data.stageIds.length; i++) {
@@ -401,8 +349,8 @@ export async function deleteStage(raw: z.infer<typeof deleteStageSchema>) {
   const parsed = deleteStageSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const ctx = await requireAdmin(parsed.data.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  const ctx = await requirePipelineAdmin(parsed.data.orgSlug);
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const { count } = await supabase
@@ -450,7 +398,7 @@ export async function addRemoveLeadTagsByName(raw: {
   action: "add" | "remove";
 }) {
   const ctx = await requireLeadWriter(raw.orgSlug);
-  if ("error" in ctx && ctx.error) return { error: ctx.error };
+  if ("error" in ctx) return { error: ctx.error };
   const { supabase, org } = ctx;
 
   const result = await manageLeadLabels({

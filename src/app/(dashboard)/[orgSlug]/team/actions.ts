@@ -3,42 +3,17 @@
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
-import {
-  getAdminClient,
-  getServerClientFromCookies,
-} from "@/infrastructure/repositories/supabase-clients";
+import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { getResendClient, getFromAddress } from "@/infrastructure/adapters/resend/client";
 import { logger } from "@/lib/logger";
 import { getAppUrl } from "@/lib/app-url";
+import { requireOrgCapability } from "@/lib/authz";
+import type { MemberRole } from "@/domain/entities/organization-member";
 
-type Role = "admin" | "agent" | "viewer";
+type Role = MemberRole;
 
 async function requireAdmin(orgSlug: string) {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id, name")
-    .eq("slug", orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." as const };
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("role")
-    .eq("organization_id", org.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || membership.role !== "admin") {
-    return { error: "Somente administradores podem executar esta ação." as const };
-  }
-
-  return { supabase, user, org };
+  return requireOrgCapability(orgSlug, "manage_team");
 }
 
 const inviteSchema = z.object({

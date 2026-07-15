@@ -30,6 +30,7 @@ interface Props {
   initialSelectedId: string | null;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  canWriteInbox?: boolean;
 }
 
 type ChannelType = ConversationRow["channelType"];
@@ -130,6 +131,7 @@ export function InboxView({
   initialSelectedId,
   supabaseUrl,
   supabaseAnonKey,
+  canWriteInbox = true,
 }: Props) {
   const [rows, setRows] = useState(initial);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
@@ -320,6 +322,7 @@ export function InboxView({
             conversation={selected}
             supabaseUrl={supabaseUrl}
             supabaseAnonKey={supabaseAnonKey}
+            canWrite={canWriteInbox}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">

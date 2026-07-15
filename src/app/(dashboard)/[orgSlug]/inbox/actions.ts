@@ -2,19 +2,10 @@
 
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { logger } from "@/lib/logger";
-
-async function requireUser() {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const, supabase };
-  return { supabase, user };
-}
+import { requireOrgCapability } from "@/lib/authz";
 
 const sendSchema = z.object({
   orgSlug: z.string().min(1),
@@ -32,15 +23,9 @@ export async function sendOutboundMessage(raw: {
   const parsed = sendSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { supabase, user, error } = await requireUser();
-  if (error || !user) return { error: error ?? "Não autenticado." };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", parsed.data.orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." };
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "write_inbox");
+  if ("error" in ctx) return { error: ctx.error };
+  const { supabase, user, org } = ctx;
 
   const { data: convo } = await supabase
     .from("conversations")
@@ -141,15 +126,9 @@ export async function updateConversationStatus(raw: z.infer<typeof statusSchema>
   const parsed = statusSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { supabase, user, error } = await requireUser();
-  if (error || !user) return { error: error ?? "Não autenticado." };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", parsed.data.orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." };
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "write_inbox");
+  if ("error" in ctx) return { error: ctx.error };
+  const { supabase, user, org } = ctx;
 
   const { error: upErr } = await supabase
     .from("conversations")

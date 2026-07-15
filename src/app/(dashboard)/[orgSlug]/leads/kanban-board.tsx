@@ -42,6 +42,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { can } from "@/lib/authz";
+import type { MemberRole } from "@/domain/entities/organization-member";
 import { MoreHorizontal, Plus } from "lucide-react";
 
 interface Stage {
@@ -76,7 +78,7 @@ interface OrgTag {
   color: string;
 }
 
-type Role = "admin" | "agent" | "viewer";
+type Role = MemberRole;
 
 interface Props {
   orgSlug: string;
@@ -101,8 +103,8 @@ export function KanbanBoard({
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const canWrite = viewerRole === "admin" || viewerRole === "agent";
-  const isAdmin = viewerRole === "admin";
+  const canWrite = can(viewerRole, "write_leads");
+  const isAdmin = can(viewerRole, "manage_pipeline");
 
   useEffect(() => {
     setStages(initialStages);

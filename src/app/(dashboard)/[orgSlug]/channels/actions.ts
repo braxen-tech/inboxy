@@ -2,26 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { connectChannel, disconnectChannel } from "@/application/use-cases/connect-channel";
+import { requireOrgCapability } from "@/lib/authz";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 async function resolveOrg(orgSlug: string) {
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." as const, supabase };
-
-  const { data: org, error } = await supabase
-    .from("organizations")
-    .select("id, name")
-    .eq("slug", orgSlug)
-    .maybeSingle();
-
-  if (error || !org) return { error: "Organização não encontrada ou sem permissão." as const, supabase };
-  return { supabase, org };
+  const ctx = await requireOrgCapability(orgSlug, "manage_channels");
+  if ("error" in ctx) return { error: ctx.error as string, supabase: undefined, org: undefined };
+  return { supabase: ctx.supabase, org: ctx.org };
 }
 
 const connectMetaSchema = z.object({

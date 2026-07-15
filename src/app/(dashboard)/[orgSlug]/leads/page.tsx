@@ -3,12 +3,11 @@ import { getOrgBySlug } from "@/lib/get-org";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { KanbanBoard } from "./kanban-board";
 import { ensureDefaultPipeline } from "./ensure-pipeline";
+import type { MemberRole } from "@/domain/entities/organization-member";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
 }
-
-type Role = "admin" | "agent" | "viewer";
 
 export default async function LeadsPage({ params }: Props) {
   const { orgSlug } = await params;
@@ -20,7 +19,7 @@ export default async function LeadsPage({ params }: Props) {
     data: { user },
   } = await db.auth.getUser();
 
-  let viewerRole: Role = "viewer";
+  let viewerRole: MemberRole = "viewer";
   if (user) {
     const { data: membership } = await db
       .from("organization_members")
@@ -28,7 +27,7 @@ export default async function LeadsPage({ params }: Props) {
       .eq("organization_id", org.id)
       .eq("user_id", user.id)
       .maybeSingle();
-    if (membership?.role) viewerRole = membership.role as Role;
+    if (membership?.role) viewerRole = membership.role as MemberRole;
   }
 
   const pipelineId = await ensureDefaultPipeline(db, org.id);

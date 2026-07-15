@@ -26,9 +26,16 @@ interface Props {
   conversation: ConversationRow;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  canWrite?: boolean;
 }
 
-export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabaseAnonKey }: Props) {
+export function ConversationThread({
+  orgSlug,
+  conversation,
+  supabaseUrl,
+  supabaseAnonKey,
+  canWrite = true,
+}: Props) {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -106,6 +113,7 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
   }, [messages.length]);
 
   function handleSend() {
+    if (!canWrite) return;
     const content = draft.trim();
     if (!content) return;
 
@@ -140,6 +148,7 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
   }
 
   function handleStatus(status: "pending" | "open" | "resolved" | "snoozed" | "closed") {
+    if (!canWrite) return;
     startTransition(async () => {
       await updateConversationStatus({ orgSlug, conversationId: conversation.id, status });
     });
@@ -219,23 +228,29 @@ export function ConversationThread({ orgSlug, conversation, supabaseUrl, supabas
 
       <footer className="border-t p-3">
         {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
-        <div className="flex items-end gap-2">
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Escreva uma mensagem…"
-            rows={2}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-          />
-          <Button onClick={handleSend} disabled={pending || !draft.trim()}>
-            Enviar
-          </Button>
-        </div>
+        {!canWrite ? (
+          <p className="text-sm text-muted-foreground">
+            Você tem acesso somente leitura nesta organização.
+          </p>
+        ) : (
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Escreva uma mensagem…"
+              rows={2}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            <Button onClick={handleSend} disabled={pending || !draft.trim()}>
+              Enviar
+            </Button>
+          </div>
+        )}
       </footer>
     </>
   );

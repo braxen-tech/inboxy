@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getOrgBySlug } from "@/lib/get-org";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { InboxView } from "./inbox-view";
+import { can } from "@/lib/authz";
+import type { MemberRole } from "@/domain/entities/organization-member";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -14,6 +16,22 @@ export default async function InboxPage({ params, searchParams }: Props) {
   if (!org) notFound();
 
   const db = await getServerClientFromCookies();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  let memberRole: MemberRole | null = null;
+  if (user) {
+    const { data: membership } = await db
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", org.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    memberRole = (membership?.role as MemberRole | undefined) ?? null;
+    if (!memberRole && org.owner_user_id === user.id) memberRole = "admin";
+  }
+  const canWriteInbox = can(memberRole, "write_inbox");
 
   const { data: conversations } = await db
     .from("conversations")
@@ -90,6 +108,7 @@ export default async function InboxPage({ params, searchParams }: Props) {
         initialSelectedId={selectedId ?? rows[0]?.id ?? null}
         supabaseUrl={supabaseUrl}
         supabaseAnonKey={supabaseAnonKey}
+        canWriteInbox={canWriteInbox}
       />
     </div>
   );

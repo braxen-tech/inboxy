@@ -2,7 +2,7 @@
 
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
+import { requireOrgCapability } from "@/lib/authz";
 
 const schema = z.object({
   orgSlug: z.string().min(1),
@@ -18,18 +18,9 @@ export async function updateContact(raw: z.infer<typeof schema>) {
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", parsed.data.orgSlug)
-    .maybeSingle();
-  if (!org) return { error: "Organização não encontrada." };
+  const ctx = await requireOrgCapability(parsed.data.orgSlug, "write_contacts");
+  if ("error" in ctx) return { error: ctx.error };
+  const { supabase, user, org } = ctx;
 
   const { error } = await supabase
     .from("contacts")
