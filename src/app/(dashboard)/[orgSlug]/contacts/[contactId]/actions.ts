@@ -2,7 +2,7 @@
 
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 
 const schema = z.object({
   orgSlug: z.string().min(1),

@@ -11,7 +11,7 @@ import {
 import { toOrgId } from "@/domain/value-objects";
 import type { PlanId } from "@/lib/plans";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 
 const planSchema = z.enum(["starter", "professional", "business"]);
 

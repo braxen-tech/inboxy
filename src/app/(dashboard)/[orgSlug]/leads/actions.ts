@@ -3,7 +3,7 @@
 import { z } from "zod/v4";
 import { revalidatePath } from "next/cache";
 import { manageLeadLabels } from "@/application/services/lead-labels";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 
 async function requireLeadWriter(orgSlug: string) {
   return requireOrgCapability(orgSlug, "write_leads");

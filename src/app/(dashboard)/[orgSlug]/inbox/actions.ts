@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { AesSecretStore } from "@/infrastructure/crypto/aes-secret-store";
 import { getChannelAdapter, getOutboundFromId } from "@/infrastructure/adapters/channel-registry";
 import { logger } from "@/lib/logger";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 
 const sendSchema = z.object({
   orgSlug: z.string().min(1),

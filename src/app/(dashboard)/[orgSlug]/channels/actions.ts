@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { connectChannel, disconnectChannel } from "@/application/use-cases/connect-channel";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 async function resolveOrg(orgSlug: string) {

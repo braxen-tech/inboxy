@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { connectCalCom, disconnectCalCom } from "@/application/use-cases/connect-cal-com";
 import { connectStripe, disconnectStripe } from "@/application/use-cases/connect-stripe";

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 import { getKbPlanLimits } from "@/lib/kb-limits";
 import {
   KB_BUCKET,

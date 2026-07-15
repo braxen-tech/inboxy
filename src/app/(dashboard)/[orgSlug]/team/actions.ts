@@ -7,7 +7,7 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { getResendClient, getFromAddress } from "@/infrastructure/adapters/resend/client";
 import { logger } from "@/lib/logger";
 import { getAppUrl } from "@/lib/app-url";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 import type { MemberRole } from "@/domain/entities/organization-member";
 
 type Role = MemberRole;

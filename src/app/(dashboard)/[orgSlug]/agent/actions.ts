@@ -4,7 +4,7 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { revalidatePath } from "next/cache";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 import { normalizeFollowupIdleMinutes } from "@/lib/followup-idle-options";
-import { requireOrgCapability } from "@/lib/authz";
+import { requireOrgCapability } from "@/lib/authz-server";
 
 export async function updateAgentSettings(
   orgId: string,
