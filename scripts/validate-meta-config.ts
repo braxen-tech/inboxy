@@ -10,7 +10,8 @@
 import { config as loadEnv } from "dotenv";
 import { resolve } from "node:path";
 
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
+// Prefer .env.local over any shell-exported Meta vars (common when switching apps).
+loadEnv({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
