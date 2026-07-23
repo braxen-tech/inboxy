@@ -130,7 +130,8 @@ export function ChatwootCredentialsForm({
         <p className="text-muted-foreground text-xs">
           Ao conectar, o Inboxy cria o Agent Bot no Chatwoot, vincula todos os inboxes existentes
           e registra webhook para novos canais. Handoff: <strong>pending</strong> = IA ·{" "}
-          <strong>open</strong> = humano.
+          <strong>open</strong> = humano. Se criar um canal novo e a IA não atender, clique em
+          Conectar de novo para re-vincular o bot a todos os inboxes.
         </p>
         <p className="text-xs text-muted-foreground">
           Use um API Access Token de <strong>administrador</strong> da conta Chatwoot.

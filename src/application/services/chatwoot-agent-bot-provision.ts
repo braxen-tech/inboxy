@@ -208,6 +208,54 @@ export async function provisionChatwootAgentBot(
   };
 }
 
+/**
+ * Removes other Inboxy agent bots on the account (same webhook path, different id).
+ * Chatwoot often returns 422 on DELETE while outgoing_url is set — clear it first.
+ */
+export async function cleanupOrphanInboxyAgentBots(
+  client: ChatwootClient,
+  accountId: string,
+  keepBotId: number,
+  ctx: Record<string, string> = {},
+): Promise<void> {
+  const listed = await client.listAgentBots(accountId);
+  if (!listed.ok) {
+    logger.warn("Could not list agent bots for cleanup", { ...ctx, error: listed.error });
+    return;
+  }
+
+  for (const bot of listed.data) {
+    if (bot.id === keepBotId) continue;
+    const url = bot.outgoing_url ?? "";
+    if (!url.includes("/api/webhooks/chatwoot/agent-bot")) continue;
+
+    const cleared = await client.updateAgentBot(accountId, String(bot.id), {
+      outgoingUrl: "",
+      name: sanitizeAgentBotName(),
+    });
+    if (!cleared.ok) {
+      logger.warn("Failed to clear orphan bot outgoing_url", {
+        ...ctx,
+        botId: bot.id,
+        error: cleared.error,
+      });
+      continue;
+    }
+
+    const deleted = await client.deleteAgentBot(accountId, bot.id);
+    if (!deleted.ok) {
+      logger.warn("Failed to delete orphan agent bot", {
+        ...ctx,
+        botId: bot.id,
+        error: deleted.error,
+      });
+      continue;
+    }
+
+    logger.info("Deleted orphan Inboxy agent bot", { ...ctx, botId: bot.id });
+  }
+}
+
 /** Updates outgoing URL + display name and re-links all inboxes (reconnect). */
 export async function refreshChatwootAgentBot(
   client: ChatwootClient,

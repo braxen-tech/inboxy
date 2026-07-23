@@ -4,6 +4,7 @@ import { Ok, Err, type Result } from "@/domain/errors";
 import { DomainError } from "@/domain/errors";
 import { ChatwootClient, unwrapChatwootList } from "@/infrastructure/adapters/chatwoot/client";
 import {
+  cleanupOrphanInboxyAgentBots,
   provisionChatwootAgentBot,
   refreshChatwootAgentBot,
   type InboxLinkFailure,
@@ -142,18 +143,42 @@ export async function connectChatwoot(
       ctx,
       orgName,
     );
-    if (!refresh.ok) {
-      return Err(
-        new DomainError(
-          "CHATWOOT_CONNECT_FAILED",
-          `Falha ao atualizar Agent Bot: ${refresh.error}`,
-        ),
+    if (refresh.ok) {
+      botId = refresh.result.botId;
+      botAccessToken = refresh.result.botAccessToken;
+      linkedInboxes = refresh.result.linkedInboxes;
+      failedInboxes = refresh.result.failedInboxes;
+    } else {
+      // Bot was deleted in Chatwoot UI but DB still had the id — create a fresh one.
+      logger.warn("Agent bot refresh failed; provisioning a new bot", {
+        ...ctx,
+        existingBotId,
+        error: refresh.error,
+      });
+      const provision = await provisionChatwootAgentBot(
+        client,
+        accountId,
+        orgName,
+        agentBotWebhookUrl,
+        ctx,
       );
+      if (!provision.ok) {
+        const hint =
+          provision.error.includes("403") || provision.error.toLowerCase().includes("access")
+            ? " O token precisa ser de um administrador da conta Chatwoot."
+            : "";
+        return Err(
+          new DomainError(
+            "CHATWOOT_CONNECT_FAILED",
+            `Falha ao criar Agent Bot: ${provision.error}.${hint}`,
+          ),
+        );
+      }
+      botId = provision.result.botId;
+      botAccessToken = provision.result.botAccessToken;
+      linkedInboxes = provision.result.linkedInboxes;
+      failedInboxes = provision.result.failedInboxes;
     }
-    botId = refresh.result.botId;
-    botAccessToken = refresh.result.botAccessToken;
-    linkedInboxes = refresh.result.linkedInboxes;
-    failedInboxes = refresh.result.failedInboxes;
   } else {
     const provision = await provisionChatwootAgentBot(
       client,
@@ -179,6 +204,8 @@ export async function connectChatwoot(
     linkedInboxes = provision.result.linkedInboxes;
     failedInboxes = provision.result.failedInboxes;
   }
+
+  await cleanupOrphanInboxyAgentBots(client, accountId, botId, ctx);
 
   if (!botAccessToken) {
     logger.warn("Agent bot access token not returned; outgoing messages may use user token", ctx);

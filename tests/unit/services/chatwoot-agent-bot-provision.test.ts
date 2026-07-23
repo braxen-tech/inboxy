@@ -81,4 +81,48 @@ describe("chatwoot-agent-bot-provision", () => {
     expect(linkedInboxes).toHaveLength(1);
     expect(failedInboxes).toHaveLength(1);
   });
+
+  it("cleanupOrphanInboxyAgentBots clears and deletes other Inboxy bots", async () => {
+    const { cleanupOrphanInboxyAgentBots } = await import(
+      "@/application/services/chatwoot-agent-bot-provision"
+    );
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? "GET";
+        calls.push(`${method} ${url}`);
+        if (url.endsWith("/agent_bots") && method === "GET") {
+          return new Response(
+            JSON.stringify([
+              {
+                id: 5,
+                name: "Keep",
+                outgoing_url: "https://inboxy.test/api/webhooks/chatwoot/agent-bot?secret=a",
+              },
+              {
+                id: 9,
+                name: "Orphan",
+                outgoing_url: "https://inboxy.test/api/webhooks/chatwoot/agent-bot?secret=b",
+              },
+            ]),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/agent_bots/9") && method === "PATCH") {
+          return new Response(JSON.stringify({ id: 9, outgoing_url: "" }), { status: 200 });
+        }
+        if (url.includes("/agent_bots/9") && method === "DELETE") {
+          return new Response(null, { status: 200 });
+        }
+        return new Response("{}", { status: 200 });
+      }),
+    );
+
+    const client = new ChatwootClient("https://cw.test", "tok");
+    await cleanupOrphanInboxyAgentBots(client, "1", 5);
+    expect(calls.some((c) => c.startsWith("PATCH ") && c.includes("/agent_bots/9"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("DELETE ") && c.includes("/agent_bots/9"))).toBe(true);
+    expect(calls.some((c) => c.includes("/agent_bots/5") && c.startsWith("DELETE "))).toBe(false);
+  });
 });

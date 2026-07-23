@@ -223,6 +223,27 @@ export class ChatwootClient {
     );
   }
 
+  async listAgentBots(accountId: string): Promise<ChatwootResult<ChatwootAgentBot[]>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/agent_bots`,
+      this.apiToken,
+    );
+    if (!result.ok) return result;
+    return { ok: true, data: unwrapChatwootList<ChatwootAgentBot>(result.data) };
+  }
+
+  async deleteAgentBot(accountId: string, botId: string | number): Promise<ChatwootResult<void>> {
+    const result = await chatwootFetch<unknown>(
+      this.apiUrl,
+      `/api/v1/accounts/${accountId}/agent_bots/${botId}`,
+      this.apiToken,
+      { method: "DELETE" },
+    );
+    if (!result.ok) return result;
+    return { ok: true, data: undefined };
+  }
+
   async updateAgentBot(
     accountId: string,
     botId: string,
