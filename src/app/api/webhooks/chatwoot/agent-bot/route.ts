@@ -39,20 +39,56 @@ export async function POST(request: Request) {
 
   const { data: org } = await db
     .from("organizations")
-    .select("id, chatwoot_agent_bot_webhook_secret")
+    .select("id, chatwoot_account_id, chatwoot_agent_bot_webhook_secret")
     .eq("chatwoot_account_id", accountId)
     .eq("chatwoot_status", "active")
-    .single();
+    .maybeSingle();
 
-  if (!org?.chatwoot_agent_bot_webhook_secret) {
-    logWebhookIgnored(WEBHOOK, "agent_bot_webhook_not_configured", { accountId });
-    return NextResponse.json({ status: "ignored", reason: "agent bot webhook not configured" });
+  // Fallback: secret uniquely identifies the Inboxy org (helps diagnose account mismatches).
+  let resolvedOrg = org;
+  if (!resolvedOrg && querySecret) {
+    const { data: bySecret } = await db
+      .from("organizations")
+      .select("id, chatwoot_account_id, chatwoot_agent_bot_webhook_secret")
+      .eq("chatwoot_agent_bot_webhook_secret", querySecret)
+      .eq("chatwoot_status", "active")
+      .maybeSingle();
+    if (bySecret) {
+      logger.warn("Agent bot webhook account mismatch", {
+        webhook: WEBHOOK,
+        incomingAccountId: accountId,
+        linkedAccountId: bySecret.chatwoot_account_id,
+        orgId: bySecret.id,
+      });
+      // Do not process under the wrong Chatwoot account — replies would fail.
+      logWebhookIgnored(WEBHOOK, "account_mismatch", {
+        accountId,
+        orgId: bySecret.id,
+        linkedAccountId: bySecret.chatwoot_account_id ?? "",
+      });
+      return NextResponse.json({
+        status: "ignored",
+        reason: "account_mismatch",
+        hint: `Webhook veio da conta Chatwoot ${accountId}, mas a org Inboxy está ligada à conta ${bySecret.chatwoot_account_id}. Reconecte o Chatwoot com a conta correta em Integrações.`,
+      });
+    }
   }
 
-  if (querySecret !== org.chatwoot_agent_bot_webhook_secret) {
-    logger.warn("Agent bot webhook secret mismatch", { accountId, orgId: org.id });
+  if (!resolvedOrg?.chatwoot_agent_bot_webhook_secret) {
+    logWebhookIgnored(WEBHOOK, "unknown_account", { accountId });
+    return NextResponse.json({
+      status: "ignored",
+      reason: "unknown_account",
+      hint: `Nenhuma org Inboxy ativa com chatwoot_account_id=${accountId}. Conecte essa conta em Integrações.`,
+    });
+  }
+
+  if (querySecret !== resolvedOrg.chatwoot_agent_bot_webhook_secret) {
+    logger.warn("Agent bot webhook secret mismatch", { accountId, orgId: resolvedOrg.id });
     return NextResponse.json({ error: "Invalid secret" }, { status: 403 });
   }
+
+  const orgForProcessing = resolvedOrg;
 
   const event = parseChatwootWebhookPayload(
     payload as unknown as Parameters<typeof parseChatwootWebhookPayload>[0],
@@ -60,27 +96,27 @@ export async function POST(request: Request) {
 
   try {
     if (event.type === "ignored") {
-      logWebhookIgnored(WEBHOOK, event.reason, { accountId, orgId: org.id });
+      logWebhookIgnored(WEBHOOK, event.reason, { accountId, orgId: orgForProcessing.id });
       return NextResponse.json({ status: "ignored", reason: event.reason });
     }
 
     if (event.type === "conversation_updated") {
       await syncConversationStatusByChatwootId(
         db,
-        org.id,
+        orgForProcessing.id,
         event.chatwootConversationId,
         event.status,
       );
       logWebhookHandled(WEBHOOK, "conversation_updated", {
         accountId,
-        orgId: org.id,
+        orgId: orgForProcessing.id,
         chatwootConversationId: event.chatwootConversationId,
         status: event.status,
       });
       return NextResponse.json({ status: "ok" });
     }
 
-    await processChatwootInboundMessage(db, org.id, event.message, {
+    await processChatwootInboundMessage(db, orgForProcessing.id, event.message, {
       initialConversationStatus: event.conversationStatus,
       requirePending: true,
       trustDbBotQueue: true,
@@ -88,7 +124,7 @@ export async function POST(request: Request) {
 
     logWebhookHandled(WEBHOOK, "message_received", {
       accountId,
-      orgId: org.id,
+      orgId: orgForProcessing.id,
       externalMessageId: event.message.externalMessageId,
       chatwootConversationId: event.message.chatwootConversationId,
       ...(event.message.chatwootChannel ? { chatwootChannel: event.message.chatwootChannel } : {}),
@@ -98,8 +134,12 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ status: "ok" });
   } catch (err) {
-    logger.error("Agent bot webhook error", { accountId, orgId: org.id, error: String(err) });
-    captureServerException(err, { orgId: org.id });
+    logger.error("Agent bot webhook error", {
+      accountId,
+      orgId: orgForProcessing.id,
+      error: String(err),
+    });
+    captureServerException(err, { orgId: orgForProcessing.id });
     await db.from("webhook_failures").insert({
       payload,
       error: String(err),

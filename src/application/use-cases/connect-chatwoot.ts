@@ -140,6 +140,7 @@ export async function connectChatwoot(
       existingBotId,
       agentBotWebhookUrl,
       ctx,
+      orgName,
     );
     if (!refresh.ok) {
       return Err(

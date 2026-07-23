@@ -4,7 +4,10 @@ import {
   ChatwootClient,
   type ChatwootInboxSummary,
 } from "@/infrastructure/adapters/chatwoot/client";
-import { sanitizeAgentBotName } from "@/lib/chatwoot-agent-bot";
+import {
+  INBOXY_AGENT_BOT_DESCRIPTION,
+  sanitizeAgentBotName,
+} from "@/lib/chatwoot-agent-bot";
 import { logger } from "@/lib/logger";
 
 export interface InboxLinkResult {
@@ -165,7 +168,7 @@ export async function provisionChatwootAgentBot(
   const createResult = await client.createAgentBot(accountId, {
     name: sanitizeAgentBotName(orgName),
     outgoingUrl,
-    description: "Agente IA Inboxy (handoff pending/open)",
+    description: INBOXY_AGENT_BOT_DESCRIPTION,
   });
 
   if (!createResult.ok) {
@@ -205,18 +208,22 @@ export async function provisionChatwootAgentBot(
   };
 }
 
-/** Updates outgoing URL and re-links all inboxes (reconnect). */
+/** Updates outgoing URL + display name and re-links all inboxes (reconnect). */
 export async function refreshChatwootAgentBot(
   client: ChatwootClient,
   accountId: string,
   botId: string,
   outgoingUrl: string,
   ctx: Record<string, string> = {},
+  orgName?: string,
 ): Promise<
   | { ok: true; result: Omit<ProvisionAgentBotResult, "botId"> & { botId: number } }
   | { ok: false; error: string }
 > {
-  const updateResult = await client.updateAgentBot(accountId, botId, { outgoingUrl });
+  const updateResult = await client.updateAgentBot(accountId, botId, {
+    outgoingUrl,
+    name: sanitizeAgentBotName(orgName),
+  });
   if (!updateResult.ok) {
     return { ok: false, error: updateResult.error };
   }
