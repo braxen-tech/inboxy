@@ -9,7 +9,7 @@ import {
   isReservedAppSlug,
 } from "@/lib/auth-routes";
 
-const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings"]);
+const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings", "store"]);
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

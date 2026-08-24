@@ -1,5 +1,5 @@
 export type PlanId = "starter" | "professional" | "business";
-export type PlanIntegration = "cal" | "stripe";
+export type PlanIntegration = "cal" | "stripe" | "store";
 
 export const PLANS = {
   starter: {
@@ -17,11 +17,12 @@ export const PLANS = {
     name: "Professional",
     price: 297,
     messageQuota: 2000,
-    allowedIntegrations: ["cal", "stripe"] as PlanIntegration[],
+    allowedIntegrations: ["cal", "stripe", "store"] as PlanIntegration[],
     features: [
       "Tudo do Starter",
       "Cal.com (agendamento)",
       "Stripe (vendas no chat)",
+      "Loja do criador (página pública com chat IA)",
       "2.000 mensagens de saída/mês",
     ],
   },
@@ -29,7 +30,7 @@ export const PLANS = {
     name: "Business",
     price: 697,
     messageQuota: 10000,
-    allowedIntegrations: ["cal", "stripe"] as PlanIntegration[],
+    allowedIntegrations: ["cal", "stripe", "store"] as PlanIntegration[],
     features: [
       "Tudo do Professional",
       "10.000 mensagens de saída/mês",
@@ -87,6 +88,7 @@ export const LOOKUP_KNOWLEDGE_TOOL = "lookup_knowledge";
 
 export const INTEGRATION_TOOLS: Record<PlanIntegration, string[]> = {
   cal: ["check_calendar_availability", "book_calendar_appointment"],
+  store: [],
   stripe: [
     "search_products",
     "get_product_details",

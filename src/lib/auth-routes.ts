@@ -7,6 +7,8 @@ export const AUTH_PUBLIC_PATH_PREFIXES = [
   "/api/webhooks",
   "/api/health",
   "/api/inngest",
+  "/s/",
+  "/api/store",
 ] as const;
 
 /** Top-level routes that must not be treated as organization slugs. */
@@ -16,6 +18,8 @@ export const AUTH_RESERVED_SLUGS = new Set([
   "api",
   "forgot-password",
   "reset-password",
+  "s",
+  "checkout",
 ]);
 
 export function isAuthPublicPath(pathname: string): boolean {

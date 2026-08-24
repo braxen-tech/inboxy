@@ -12,6 +12,7 @@ import {
   CreditCard,
   Plug,
   Settings,
+  Store,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const baseNavItems = [
   { href: "kb", label: "Base de conhecimento", icon: BookOpen },
   { href: "agent", label: "Agente", icon: Bot },
   { href: "integrations", label: "Integrações", icon: Plug },
+  { href: "store", label: "Minha Loja", icon: Store },
   { href: "billing", label: "Assinatura", icon: CreditCard },
   { href: "settings", label: "Configurações", icon: Settings },
 ] as const;
