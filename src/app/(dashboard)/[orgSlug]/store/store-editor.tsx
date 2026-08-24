@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useId } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,12 +14,29 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  ArrowUp,
-  ArrowDown,
+  GripVertical,
+  Pencil,
   ShoppingBag,
   Calendar,
   Link2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +113,152 @@ const BLOCK_TYPES = [
   { type: "link" as const, label: "Link", icon: Link2, description: "Podcast, YouTube, afiliados" },
 ];
 
+function SortableBlockCard({
+  block,
+  isEditing,
+  pending,
+  blockType,
+  editTitle,
+  editDescription,
+  editImageUrl,
+  editCtaText,
+  editExternalUrl,
+  editPriceDisplay,
+  editDuration,
+  editLinkIcon,
+  onSetEditTitle,
+  onSetEditDescription,
+  onSetEditImageUrl,
+  onSetEditCtaText,
+  onSetEditExternalUrl,
+  onSetEditPriceDisplay,
+  onSetEditDuration,
+  onSetEditLinkIcon,
+  onToggleVisibility,
+  onDelete,
+  onEdit,
+  onSave,
+  onCancelEdit,
+}: {
+  block: StoreBlock;
+  isEditing: boolean;
+  pending: boolean;
+  blockType: StoreBlock["type"];
+  editTitle: string;
+  editDescription: string;
+  editImageUrl: string;
+  editCtaText: string;
+  editExternalUrl: string;
+  editPriceDisplay: string;
+  editDuration: string;
+  editLinkIcon: string;
+  onSetEditTitle: (v: string) => void;
+  onSetEditDescription: (v: string) => void;
+  onSetEditImageUrl: (v: string) => void;
+  onSetEditCtaText: (v: string) => void;
+  onSetEditExternalUrl: (v: string) => void;
+  onSetEditPriceDisplay: (v: string) => void;
+  onSetEditDuration: (v: string) => void;
+  onSetEditLinkIcon: (v: string) => void;
+  onToggleVisibility: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancelEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className={`p-4 ${!block.visible ? "opacity-50" : ""}`}>
+      <div className="flex items-center gap-3">
+        <button type="button" className="cursor-grab touch-none text-muted-foreground hover:text-foreground" {...attributes} {...listeners}>
+          <GripVertical className="size-5" />
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {block.type === "product" ? "Produto" : block.type === "booking" ? "Mentoria" : "Link"}
+            </Badge>
+            <span className="font-medium truncate">{block.title || "Sem título"}</span>
+          </div>
+          {block.external_url && (
+            <p className="mt-1 text-xs text-muted-foreground truncate">{block.external_url}</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={onEdit} disabled={pending}>
+            <Pencil className="size-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onToggleVisibility} disabled={pending}>
+            {block.visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onDelete} disabled={pending}>
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      {isEditing && (
+        <div className="mt-4 space-y-3 border-t pt-4">
+          <div className="space-y-2">
+            <Label>Título</Label>
+            <Input value={editTitle} onChange={(e) => onSetEditTitle(e.target.value)} />
+          </div>
+          {blockType !== "link" && (
+            <>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Textarea value={editDescription} onChange={(e) => onSetEditDescription(e.target.value)} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>URL da imagem</Label>
+                <Input value={editImageUrl} onChange={(e) => onSetEditImageUrl(e.target.value)} placeholder="https://..." />
+              </div>
+            </>
+          )}
+          {blockType === "product" && (
+            <div className="space-y-2">
+              <Label>Preço (texto)</Label>
+              <Input value={editPriceDisplay} onChange={(e) => onSetEditPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
+            </div>
+          )}
+          {blockType === "booking" && (
+            <div className="space-y-2">
+              <Label>Duração (minutos)</Label>
+              <Input type="number" value={editDuration} onChange={(e) => onSetEditDuration(e.target.value)} placeholder="60" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>{blockType === "link" ? "URL do link" : "Link de checkout / agendamento"}</Label>
+            <Input value={editExternalUrl} onChange={(e) => onSetEditExternalUrl(e.target.value)} placeholder="https://..." />
+          </div>
+          {blockType !== "link" && (
+            <div className="space-y-2">
+              <Label>Texto do botão</Label>
+              <Input value={editCtaText} onChange={(e) => onSetEditCtaText(e.target.value)} />
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button onClick={onSave} disabled={pending} size="sm">
+              {pending ? "Salvando..." : "Salvar"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function StoreEditor({
   orgSlug,
   orgId,
@@ -132,6 +295,8 @@ export function StoreEditor({
   const [addingBlockType, setAddingBlockType] = useState<"product" | "booking" | "link" | null>(null);
   const [editingBlock, setEditingBlock] = useState<string | null>(null);
 
+  useEffect(() => { setBlocks(initialBlocks); }, [initialBlocks]);
+
   // New block form state
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -151,6 +316,23 @@ export function StoreEditor({
 
   // Theme state
   const [theme, setTheme] = useState(initialTheme);
+
+  // Edit block form state
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editCtaText, setEditCtaText] = useState("");
+  const [editExternalUrl, setEditExternalUrl] = useState("");
+  const [editPriceDisplay, setEditPriceDisplay] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editLinkIcon, setEditLinkIcon] = useState("");
+
+  // Drag and drop
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const isAllowedPlan = subscriptionPlan === "professional" || subscriptionPlan === "business";
 
@@ -229,34 +411,82 @@ export function StoreEditor({
   }
 
   function handleToggleBlockVisibility(block: StoreBlock) {
+    const newVisible = !block.visible;
+    setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, visible: newVisible } : b)));
     startTransition(async () => {
-      const r = await updateStoreBlock({ orgSlug, blockId: block.id, visible: !block.visible });
-      if (r.error) showMessage("err", r.error);
-      else router.refresh();
-    });
-  }
-
-  function handleDeleteBlock(blockId: string) {
-    startTransition(async () => {
-      const r = await deleteStoreBlock(orgSlug, blockId);
-      if (r.error) showMessage("err", r.error);
-      else {
-        showMessage("ok", "Bloco removido.");
-        router.refresh();
+      const r = await updateStoreBlock({ orgSlug, blockId: block.id, visible: newVisible });
+      if (r.error) {
+        setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, visible: !newVisible } : b)));
+        showMessage("err", r.error);
       }
     });
   }
 
-  function handleMoveBlock(index: number, direction: "up" | "down") {
-    const newBlocks = [...blocks];
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= newBlocks.length) return;
-    [newBlocks[index], newBlocks[swapIndex]] = [newBlocks[swapIndex], newBlocks[index]];
-    setBlocks(newBlocks);
+  function handleDeleteBlock(blockId: string) {
+    const prev = blocks;
+    setBlocks((b) => b.filter((x) => x.id !== blockId));
+    startTransition(async () => {
+      const r = await deleteStoreBlock(orgSlug, blockId);
+      if (r.error) {
+        setBlocks(prev);
+        showMessage("err", r.error);
+      } else {
+        showMessage("ok", "Bloco removido.");
+      }
+    });
+  }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+    setBlocks(newBlocks);
     startTransition(async () => {
       const r = await reorderStoreBlocks(orgSlug, newBlocks.map((b) => b.id));
       if (r.error) showMessage("err", r.error);
+    });
+  }
+
+  function startEditingBlock(block: StoreBlock) {
+    setEditingBlock(block.id);
+    setEditTitle(block.title ?? "");
+    setEditDescription(block.description ?? "");
+    setEditImageUrl(block.image_url ?? "");
+    setEditCtaText(block.cta_text);
+    setEditExternalUrl(block.external_url ?? "");
+    setEditPriceDisplay(block.price_display ?? "");
+    setEditDuration(block.duration_minutes?.toString() ?? "");
+    setEditLinkIcon(block.link_icon ?? "");
+  }
+
+  function cancelEditingBlock() {
+    setEditingBlock(null);
+  }
+
+  function handleSaveBlock(block: StoreBlock) {
+    startTransition(async () => {
+      const r = await updateStoreBlock({
+        orgSlug,
+        blockId: block.id,
+        title: editTitle,
+        description: editDescription,
+        imageUrl: editImageUrl,
+        ctaText: editCtaText,
+        externalUrl: editExternalUrl,
+        priceDisplay: editPriceDisplay,
+        durationMinutes: editDuration ? parseInt(editDuration) : null,
+        linkIcon: editLinkIcon,
+      });
+      if (r.error) {
+        showMessage("err", r.error);
+      } else {
+        showMessage("ok", "Bloco atualizado!");
+        setEditingBlock(null);
+        router.refresh();
+      }
     });
   }
 
@@ -490,41 +720,42 @@ export function StoreEditor({
               </Card>
             )}
 
-            <div className="space-y-2">
-              {blocks.map((block, index) => (
-                <Card key={block.id} className={`p-4 flex items-center gap-3 ${!block.visible ? "opacity-50" : ""}`}>
-                  <div className="flex flex-col gap-1">
-                    <Button variant="ghost" size="icon" className="size-6" onClick={() => handleMoveBlock(index, "up")} disabled={index === 0 || pending}>
-                      <ArrowUp className="size-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="size-6" onClick={() => handleMoveBlock(index, "down")} disabled={index === blocks.length - 1 || pending}>
-                      <ArrowDown className="size-3" />
-                    </Button>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {block.type === "product" ? "Produto" : block.type === "booking" ? "Mentoria" : "Link"}
-                      </Badge>
-                      <span className="font-medium truncate">{block.title || "Sem título"}</span>
-                    </div>
-                    {block.external_url && (
-                      <p className="mt-1 text-xs text-muted-foreground truncate">{block.external_url}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleToggleBlockVisibility(block)} disabled={pending}>
-                      {block.visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteBlock(block.id)} disabled={pending}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {blocks.map((block) => (
+                    <SortableBlockCard
+                      key={block.id}
+                      block={block}
+                      isEditing={editingBlock === block.id}
+                      pending={pending}
+                      blockType={block.type}
+                      editTitle={editTitle}
+                      editDescription={editDescription}
+                      editImageUrl={editImageUrl}
+                      editCtaText={editCtaText}
+                      editExternalUrl={editExternalUrl}
+                      editPriceDisplay={editPriceDisplay}
+                      editDuration={editDuration}
+                      editLinkIcon={editLinkIcon}
+                      onSetEditTitle={setEditTitle}
+                      onSetEditDescription={setEditDescription}
+                      onSetEditImageUrl={setEditImageUrl}
+                      onSetEditCtaText={setEditCtaText}
+                      onSetEditExternalUrl={setEditExternalUrl}
+                      onSetEditPriceDisplay={setEditPriceDisplay}
+                      onSetEditDuration={setEditDuration}
+                      onSetEditLinkIcon={setEditLinkIcon}
+                      onToggleVisibility={() => handleToggleBlockVisibility(block)}
+                      onDelete={() => handleDeleteBlock(block.id)}
+                      onEdit={() => startEditingBlock(block)}
+                      onSave={() => handleSaveBlock(block)}
+                      onCancelEdit={cancelEditingBlock}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         </TabsContent>
 
