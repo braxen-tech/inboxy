@@ -317,6 +317,32 @@ export function StoreEditor({
   // Theme state
   const [theme, setTheme] = useState(initialTheme);
 
+  // Analytics state
+  const [analyticsDays, setAnalyticsDays] = useState(7);
+  const [analyticsData, setAnalyticsData] = useState<{
+    totalViews: number;
+    totalClicks: number;
+    totalChats: number;
+    ctr: number;
+    blockClicks: { blockId: string; blockTitle: string; blockType: string; clicks: number; ctr: number }[];
+    dailyViews: { day: string; views: number }[];
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  function loadAnalytics(days: number) {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    fetch(`/api/store/analytics?orgSlug=${orgSlug}&days=${days}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setAnalyticsError(data.error);
+        else setAnalyticsData(data);
+      })
+      .catch(() => setAnalyticsError("Erro ao carregar analytics."))
+      .finally(() => setAnalyticsLoading(false));
+  }
+
   // Edit block form state
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -851,15 +877,103 @@ export function StoreEditor({
 
         {/* Tab 4 — Analytics */}
         <TabsContent value="analytics">
-          <div className="mt-6">
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-6 text-center">
-              <BarChart3 className="mx-auto size-10 text-blue-500/50" />
-              <h3 className="mt-3 font-semibold">Analytics em breve</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Visualize page views, cliques por bloco, chats iniciados e taxas de conversão.
-                Os eventos já estão sendo rastreados via PostHog.
-              </p>
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Analytics da loja</h3>
+              <div className="flex items-center gap-2">
+                <select
+                  value={analyticsDays}
+                  onChange={(e) => {
+                    const d = parseInt(e.target.value);
+                    setAnalyticsDays(d);
+                    loadAnalytics(d);
+                  }}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value={7}>Últimos 7 dias</option>
+                  <option value={30}>Últimos 30 dias</option>
+                </select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadAnalytics(analyticsDays)}
+                  disabled={analyticsLoading}
+                >
+                  {analyticsLoading ? "Carregando..." : "Atualizar"}
+                </Button>
+              </div>
             </div>
+
+            {!analyticsData && !analyticsLoading && !analyticsError && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-6 text-center">
+                <BarChart3 className="mx-auto size-10 text-blue-500/50" />
+                <p className="mt-2 text-sm text-muted-foreground">Clique em "Atualizar" para carregar os dados.</p>
+              </div>
+            )}
+
+            {analyticsError && (
+              <p className="text-sm text-destructive">{analyticsError}</p>
+            )}
+
+            {analyticsData && (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: "Page views", value: analyticsData.totalViews },
+                    { label: "Cliques", value: analyticsData.totalClicks },
+                    { label: "Chats abertos", value: analyticsData.totalChats },
+                    { label: "CTR médio", value: `${analyticsData.ctr}%` },
+                  ].map((stat) => (
+                    <Card key={stat.label} className="p-4 text-center">
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
+                    </Card>
+                  ))}
+                </div>
+
+                {analyticsData.dailyViews.length > 0 && (
+                  <Card className="p-4">
+                    <p className="mb-3 text-sm font-medium">Views diárias</p>
+                    <div className="flex items-end gap-1" style={{ height: 80 }}>
+                      {analyticsData.dailyViews.map((d) => {
+                        const max = Math.max(...analyticsData.dailyViews.map((x) => x.views), 1);
+                        const h = Math.round((d.views / max) * 100);
+                        return (
+                          <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
+                            <div
+                              className="w-full rounded-sm bg-primary/70"
+                              style={{ height: `${h}%`, minHeight: d.views > 0 ? 4 : 0 }}
+                              title={`${d.day}: ${d.views} views`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>{analyticsData.dailyViews[0]?.day}</span>
+                      <span>{analyticsData.dailyViews[analyticsData.dailyViews.length - 1]?.day}</span>
+                    </div>
+                  </Card>
+                )}
+
+                {analyticsData.blockClicks.length > 0 && (
+                  <Card className="p-4">
+                    <p className="mb-3 text-sm font-medium">Cliques por bloco</p>
+                    <div className="space-y-2">
+                      {analyticsData.blockClicks.map((b) => (
+                        <div key={b.blockId} className="flex items-center justify-between text-sm">
+                          <span className="truncate flex-1">{b.blockTitle || "Sem título"}</span>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span>{b.clicks} cliques</span>
+                            <span>{b.ctr}% CTR</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
           </div>
         </TabsContent>
 
