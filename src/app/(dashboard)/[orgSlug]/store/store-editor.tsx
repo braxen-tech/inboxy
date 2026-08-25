@@ -45,6 +45,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { StoreTheme } from "@/lib/store-theme";
+import { ImageUpload } from "@/components/store/image-upload";
 import {
   saveStoreProfile,
   toggleStoreEnabled,
@@ -115,6 +116,7 @@ const BLOCK_TYPES = [
 
 function SortableBlockCard({
   block,
+  orgSlug,
   isEditing,
   pending,
   blockType,
@@ -141,6 +143,7 @@ function SortableBlockCard({
   onCancelEdit,
 }: {
   block: StoreBlock;
+  orgSlug: string;
   isEditing: boolean;
   pending: boolean;
   blockType: StoreBlock["type"];
@@ -217,10 +220,7 @@ function SortableBlockCard({
                 <Label>Descrição</Label>
                 <Textarea value={editDescription} onChange={(e) => onSetEditDescription(e.target.value)} rows={2} />
               </div>
-              <div className="space-y-2">
-                <Label>URL da imagem</Label>
-                <Input value={editImageUrl} onChange={(e) => onSetEditImageUrl(e.target.value)} placeholder="https://..." />
-              </div>
+              <ImageUpload value={editImageUrl} onChange={onSetEditImageUrl} orgSlug={orgSlug} />
             </>
           )}
           {blockType === "product" && (
@@ -620,13 +620,7 @@ export function StoreEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="photoUrl">URL da foto de perfil</Label>
-              <Input
-                id="photoUrl"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
+              <ImageUpload value={photoUrl} onChange={setPhotoUrl} orgSlug={orgSlug} label="Foto de perfil" />
             </div>
 
             <div className="space-y-3">
@@ -708,10 +702,7 @@ export function StoreEditor({
                       <Label>Descrição</Label>
                       <Textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Descrição curta" rows={2} />
                     </div>
-                    <div className="space-y-2">
-                      <Label>URL da imagem</Label>
-                      <Input value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="https://..." />
-                    </div>
+                    <ImageUpload value={newImageUrl} onChange={setNewImageUrl} orgSlug={orgSlug} />
                   </>
                 )}
                 {addingBlockType === "product" && (
@@ -753,6 +744,7 @@ export function StoreEditor({
                     <SortableBlockCard
                       key={block.id}
                       block={block}
+                      orgSlug={orgSlug}
                       isEditing={editingBlock === block.id}
                       pending={pending}
                       blockType={block.type}
@@ -1063,14 +1055,12 @@ export function StoreEditor({
               </select>
             </div>
 
-            <div className="space-y-2">
-              <Label>URL da foto de capa/banner</Label>
-              <Input
-                value={theme.coverImageUrl ?? ""}
-                onChange={(e) => setTheme({ ...theme, coverImageUrl: e.target.value || null })}
-                placeholder="https://..."
-              />
-            </div>
+            <ImageUpload
+              value={theme.coverImageUrl ?? ""}
+              onChange={(url) => setTheme({ ...theme, coverImageUrl: url || null })}
+              orgSlug={orgSlug}
+              label="Foto de capa/banner"
+            />
 
             <Button onClick={handleSaveTheme} disabled={pending}>
               {pending ? "Salvando..." : "Salvar tema"}
