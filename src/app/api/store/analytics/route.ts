@@ -4,9 +4,11 @@ import { getServerClientFromCookies } from "@/infrastructure/repositories/supaba
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
 const POSTHOG_PERSONAL_API_KEY = process.env.POSTHOG_PERSONAL_API_KEY ?? "";
+const POSTHOG_PROJECT_ID = process.env.POSTHOG_PROJECT_ID ?? "";
 
 async function hogql(query: string) {
-  const res = await fetch(`${POSTHOG_HOST}/api/query/`, {
+  const url = `${POSTHOG_HOST}/api/projects/${POSTHOG_PROJECT_ID}/query/`;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -14,14 +16,17 @@ async function hogql(query: string) {
     },
     body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
   });
-  if (!res.ok) throw new Error(`PostHog query failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`PostHog query failed: ${res.status} — ${body.slice(0, 200)}`);
+  }
   const json = await res.json();
   return json.results as unknown[][];
 }
 
 export async function GET(req: NextRequest) {
-  if (!POSTHOG_KEY || !POSTHOG_PERSONAL_API_KEY) {
-    return NextResponse.json({ error: "PostHog não configurado." }, { status: 503 });
+  if (!POSTHOG_KEY || !POSTHOG_PERSONAL_API_KEY || !POSTHOG_PROJECT_ID) {
+    return NextResponse.json({ error: "PostHog não configurado. Verifique POSTHOG_PERSONAL_API_KEY e POSTHOG_PROJECT_ID." }, { status: 503 });
   }
 
   const supabase = await getServerClientFromCookies();
