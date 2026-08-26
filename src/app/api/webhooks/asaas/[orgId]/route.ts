@@ -133,9 +133,10 @@ export async function POST(
 }
 
 /**
- * Activates the purchase, then gets the buyer straight into their library with no manual
- * signup: generates a Supabase magic link for their email (creating the end_user account if
- * needed) and emails it. If they already have an account, this is just a passwordless login link.
+ * Activates the purchase and emails the buyer a link to create their own password-protected
+ * account (or log in, if they already have one). No magic link / passwordless auto-login —
+ * the account creation flow already backfills end_user_id by matching buyer_email on signup
+ * (see handle_new_auth_user trigger), so linking happens automatically once they sign up.
  */
 async function handleDigitalPurchaseConfirmed(
   db: ReturnType<typeof getAdminClient>,
@@ -162,41 +163,26 @@ async function handleDigitalPurchaseConfirmed(
   const productTitle = (product as { title?: string } | null)?.title ?? "seu produto";
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const libraryUrl = `${appUrl}/portal/${org.slug}/library`;
+  const emailParam = encodeURIComponent(purchase.buyer_email);
 
-  let accessLink = libraryUrl;
-  let endUserId: string | null = null;
+  const { data: existingAccount } = await db
+    .from("users")
+    .select("id")
+    .eq("email", purchase.buyer_email)
+    .eq("role", "end_user")
+    .maybeSingle();
 
-  try {
-    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
-      type: "magiclink",
-      email: purchase.buyer_email,
-      options: {
-        data: {
-          role: "end_user",
-          org_slug: org.slug,
-          full_name: purchase.buyer_name ?? undefined,
-        },
-        redirectTo: libraryUrl,
-      },
-    });
-
-    if (linkError) {
-      logger.error("Digital purchase webhook: generateLink failed", { ...ctx, purchaseId, error: linkError.message });
-    } else {
-      accessLink = linkData.properties.action_link;
-      endUserId = linkData.user.id;
-    }
-  } catch (error) {
-    logger.error("Digital purchase webhook: generateLink threw", { ...ctx, purchaseId, error: String(error) });
-  }
+  const accessLink = existingAccount
+    ? `${appUrl}/portal/${org.slug}/login?email=${emailParam}`
+    : `${appUrl}/portal/${org.slug}/signup?email=${emailParam}`;
+  const accessCta = existingAccount ? "Entrar na minha conta" : "Criar minha conta";
 
   const { error: updateErr } = await db
     .from("digital_product_purchases")
     .update({
       status: "active",
       asaas_payment_id: payment.id,
-      end_user_id: endUserId,
+      end_user_id: existingAccount?.id ?? null,
     })
     .eq("id", purchaseId);
 
@@ -211,12 +197,12 @@ async function handleDigitalPurchaseConfirmed(
     html: `
       <p>Olá${purchase.buyer_name ? `, ${purchase.buyer_name}` : ""}!</p>
       <p>Seu pagamento foi confirmado e <strong>${productTitle}</strong> já está disponível.</p>
-      <p><a href="${accessLink}">Clique aqui para acessar sua biblioteca</a></p>
-      <p>Esse link já faz seu login automaticamente — não é preciso criar senha.</p>
+      <p><a href="${accessLink}">${accessCta}</a></p>
+      ${existingAccount ? "" : "<p>Use este mesmo e-mail para criar sua conta — sua compra já estará vinculada automaticamente.</p>"}
     `,
   });
 
-  logger.info("Digital purchase activated", { ...ctx, purchaseId, endUserId });
+  logger.info("Digital purchase activated", { ...ctx, purchaseId, hasExistingAccount: !!existingAccount });
   captureServerEvent("digital_purchase_activated", { ...ctx, purchase_id: purchaseId });
 }
 
