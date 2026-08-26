@@ -19,6 +19,10 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // getOrgBySlug uses the admin client (bypasses RLS) — without this check, any
+  // authenticated user (including portal end_users) could view any org's dashboard.
+  if (!user || org.owner_user_id !== user.id) notFound();
+
   return (
     <>
       {user && (

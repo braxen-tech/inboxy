@@ -15,6 +15,31 @@ export default async function HomePage() {
     return <LandingPage />;
   }
 
+  // End users (portal customers) never get an org-owner dashboard or an
+  // auto-provisioned organization — send them to their own portal instead.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role, organizations:organization_id (slug)")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role === "end_user") {
+    const org = Array.isArray(profile.organizations) ? profile.organizations[0] : profile.organizations;
+    if (org?.slug) {
+      redirect(`/portal/${org.slug}/library`);
+    }
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+        <h1 className="text-xl font-semibold">Não foi possível encontrar sua loja</h1>
+        <p className="text-muted-foreground max-w-md text-center text-sm">
+          Sua conta está ativa (<code className="text-xs">{user.email}</code>), mas não conseguimos
+          identificar a loja associada a ela. Entre em contato com o suporte.
+        </p>
+        <SignOutButton variant="outline" />
+      </div>
+    );
+  }
+
   const org = await ensureUserOrganization(user);
 
   if (org?.slug) {
