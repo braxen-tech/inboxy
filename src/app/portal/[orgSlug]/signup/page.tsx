@@ -18,6 +18,7 @@ export default function PortalSignupPage() {
   const [password, setPassword] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [checkEmail, setCheckEmail] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +30,7 @@ export default function PortalSignupPage() {
     );
 
     startTransition(async () => {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -38,6 +39,7 @@ export default function PortalSignupPage() {
             org_slug: orgSlug,
             full_name: name,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/portal/${orgSlug}/library`)}`,
         },
       });
 
@@ -46,8 +48,26 @@ export default function PortalSignupPage() {
         return;
       }
 
-      router.push(`/portal/${orgSlug}/library`);
+      if (data.session) {
+        router.push(`/portal/${orgSlug}/library`);
+      } else {
+        setCheckEmail(true);
+      }
     });
+  }
+
+  if (checkEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <h1 className="text-2xl font-bold">Confirme seu e-mail</h1>
+          <p className="text-sm text-muted-foreground">
+            Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para
+            ativar sua conta e acessar sua biblioteca.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

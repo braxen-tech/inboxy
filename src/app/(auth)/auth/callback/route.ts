@@ -33,7 +33,9 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      // End users (portal customers) never get an auto-provisioned organization —
+      // that flow is only for org owners signing up for the platform itself.
+      if (user && user.user_metadata?.role !== "end_user") {
         await ensureUserOrganization(user);
       }
       return response;
