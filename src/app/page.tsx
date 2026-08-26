@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/sign-out-button";
 import { LandingPage } from "@/components/marketing/landing-page";
-import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
+import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { ensureUserOrganization } from "@/lib/ensure-user-organization";
 import { getOrgBySlug } from "@/lib/get-org";
 import { needsBillingSetup } from "@/lib/billing-setup";
@@ -17,7 +17,9 @@ export default async function HomePage() {
 
   // End users (portal customers) never get an org-owner dashboard or an
   // auto-provisioned organization — send them to their own portal instead.
-  const { data: profile } = await supabase
+  // RLS only lets an org's owner read `organizations`, so an end_user's own
+  // client can't join to it — use the admin client for this narrow lookup.
+  const { data: profile } = await getAdminClient()
     .from("users")
     .select("role, organizations:organization_id (slug)")
     .eq("id", user.id)
