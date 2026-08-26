@@ -9,8 +9,8 @@ import {
 } from "@/infrastructure/crypto/aes-secret-store";
 import { connectChatwoot, disconnectChatwoot } from "@/application/use-cases/connect-chatwoot";
 import { connectCalCom, disconnectCalCom } from "@/application/use-cases/connect-cal-com";
-import { connectStripe, disconnectStripe } from "@/application/use-cases/connect-stripe";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
+import { provisionAsaasSubaccount, disconnectAsaas } from "@/application/use-cases/connect-asaas";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 // --- Chatwoot ---
@@ -111,7 +111,6 @@ const calSchema = z.object({
   apiKey: z.string().min(5).max(512),
   eventTypeId: z.string().min(1).max(32),
   timezone: z.string().min(1).max(64),
-  bookingUrl: z.string().max(512).optional().default(""),
 });
 
 export async function saveCalComCredentials(raw: z.infer<typeof calSchema>) {
@@ -121,7 +120,7 @@ export async function saveCalComCredentials(raw: z.infer<typeof calSchema>) {
     return { error: "Dados inválidos. Verifique os campos." };
   }
 
-  const { orgSlug, apiKey, eventTypeId, timezone, bookingUrl } = parsed.data;
+  const { orgSlug, apiKey, eventTypeId, timezone } = parsed.data;
   const supabase = await getServerClientFromCookies();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -152,7 +151,6 @@ export async function saveCalComCredentials(raw: z.infer<typeof calSchema>) {
     apiKey,
     eventTypeId,
     timezone,
-    bookingUrl,
   });
 
   if (!result.ok) {
@@ -190,21 +188,30 @@ export async function disconnectCalComAction(orgSlug: string) {
   return { success: true as const };
 }
 
-// --- Stripe ---
+// --- Asaas ---
 
-const stripeSchema = z.object({
+const asaasSchema = z.object({
   orgSlug: z.string().min(1),
-  secretKey: z.string().min(7).max(512),
+  name: z.string().min(1).max(200),
+  email: z.email(),
+  cpfCnpj: z.string().min(11).max(18),
+  companyType: z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]),
+  mobilePhone: z.string().min(10).max(20),
+  incomeValue: z.number().min(0),
+  address: z.string().min(1).max(200),
+  addressNumber: z.string().min(1).max(20),
+  province: z.string().min(1).max(100),
+  postalCode: z.string().min(8).max(9),
 });
 
-export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
+export async function activateAsaas(raw: z.infer<typeof asaasSchema>) {
   scheduleTelemetryFlush();
-  const parsed = stripeSchema.safeParse(raw);
+  const parsed = asaasSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: "Dados inválidos. Verifique os campos." };
   }
 
-  const { orgSlug, secretKey } = parsed.data;
+  const { orgSlug, ...accountInput } = parsed.data;
   const supabase = await getServerClientFromCookies();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -228,12 +235,10 @@ export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
   }
 
   const secretStore = new AesSecretStore(key);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const result = await connectStripe(supabase, secretStore, {
+  const result = await provisionAsaasSubaccount(supabase, secretStore, {
     orgId: org.id,
-    secretKey,
-    appUrl,
+    ...accountInput,
   });
 
   if (!result.ok) {
@@ -244,7 +249,7 @@ export async function saveStripeCredentials(raw: z.infer<typeof stripeSchema>) {
   return { success: true as const };
 }
 
-export async function disconnectStripeAction(orgSlug: string) {
+export async function disconnectAsaasAction(orgSlug: string) {
   scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
@@ -262,7 +267,7 @@ export async function disconnectStripeAction(orgSlug: string) {
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const result = await disconnectStripe(supabase, org.id);
+  const result = await disconnectAsaas(supabase, org.id);
   if (!result.ok) {
     return { error: result.error.message };
   }
@@ -270,3 +275,4 @@ export async function disconnectStripeAction(orgSlug: string) {
   revalidatePath(`/${orgSlug}/integrations`);
   return { success: true as const };
 }
+

@@ -1,22 +1,21 @@
 import type { Result } from "../errors";
 
 export interface CheckoutLineItem {
-  priceId: string;
+  productId: string;
+  productName: string;
   quantity: number;
+  unitAmountBrl: number; // in BRL, e.g. 97.50
 }
 
 export interface CheckoutInput {
   apiKey: string;
   lineItems: CheckoutLineItem[];
   metadata: Record<string, string>;
-  successUrl: string;
-  cancelUrl?: string;
-  customerEmail?: string;
 }
 
 export interface CheckoutResult {
   url: string;
-  sessionId: string;
+  paymentId: string;
 }
 
 export type PaymentError = {
@@ -24,16 +23,6 @@ export type PaymentError = {
   message: string;
 };
 
-export interface StripeWebhookEvent {
-  id: string;
-  type: string;
-  data: {
-    object: Record<string, unknown>;
-  };
-}
-
 export interface PaymentGateway {
   createCheckoutSession(input: CheckoutInput): Promise<Result<CheckoutResult, PaymentError>>;
-  createPaymentLink(apiKey: string, lineItems: CheckoutLineItem[]): Promise<Result<string, PaymentError>>;
-  verifyWebhookSignature(payload: string, signature: string, secret: string): Result<StripeWebhookEvent, PaymentError>;
 }

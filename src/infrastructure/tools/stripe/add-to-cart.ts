@@ -6,14 +6,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
 const inputSchema = z.object({
-  productId: z.string().describe("ID do produto no Stripe (prod_xxx)"),
+  productId: z.string().describe("ID do produto (UUID do bloco da loja)"),
   quantity: z.number().int().min(1).default(1).describe("Quantidade desejada"),
 });
 
 export class AddToCartTool implements AgentTool {
   name = "add_to_cart";
   description =
-    "Adiciona um produto ao carrinho do cliente. Informe apenas o product_id (prod_xxx) e a quantidade. O preço é obtido automaticamente do Stripe.";
+    "Adiciona um produto ao carrinho do cliente. Informe o product_id (UUID) e a quantidade. O preço é obtido automaticamente do catálogo.";
   inputSchema = inputSchema;
 
   constructor(
@@ -22,7 +22,7 @@ export class AddToCartTool implements AgentTool {
   ) {}
 
   async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
-    if (!ctx.stripe) {
+    if (!ctx.asaas) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 
@@ -36,7 +36,7 @@ export class AddToCartTool implements AgentTool {
 
     logger.info("add_to_cart: looking up product", { ...logCtx, productId });
 
-    const productResult = await this.catalog.getProduct(ctx.stripe.apiKey, productId);
+    const productResult = await this.catalog.getProduct(ctx.orgId, productId);
     if (!productResult.ok) {
       logger.error("add_to_cart: product lookup failed", { ...logCtx, productId, error: productResult.error });
       return Err({ code: "EXECUTION_FAILED", message: `Produto não encontrado: ${productResult.error.message}` });
@@ -44,14 +44,11 @@ export class AddToCartTool implements AgentTool {
 
     const product = productResult.value;
     if (!product.defaultPrice) {
-      logger.error("add_to_cart: product has no default price", { ...logCtx, productId });
       return Err({ code: "EXECUTION_FAILED", message: "Produto sem preço configurado." });
     }
 
-    const priceId = product.defaultPrice.id;
-    const unitAmount = product.defaultPrice.unitAmount;
+    const unitAmount = product.defaultPrice.unitAmount; // in cents
     const productName = product.name;
-    logger.info("add_to_cart: resolved price", { ...logCtx, productId, priceId, unitAmount, productName });
 
     const { data: existingOrder } = await this.db
       .from("orders")
@@ -72,7 +69,6 @@ export class AddToCartTool implements AgentTool {
         .single();
 
       if (convErr || !conversation) {
-        logger.error("add_to_cart: conversation not found", { ...logCtx, error: convErr });
         return Err({ code: "EXECUTION_FAILED", message: "Conversa não encontrada." });
       }
 
@@ -98,7 +94,7 @@ export class AddToCartTool implements AgentTool {
       .from("order_items")
       .select("id, quantity")
       .eq("order_id", orderId)
-      .eq("stripe_price_id", priceId)
+      .eq("product_id", productId)
       .maybeSingle();
 
     if (existingItem) {
@@ -109,8 +105,8 @@ export class AddToCartTool implements AgentTool {
     } else {
       const { error: itemErr } = await this.db.from("order_items").insert({
         order_id: orderId,
-        stripe_product_id: productId,
-        stripe_price_id: priceId,
+        product_id: productId,
+        price_id: productId,
         product_name: productName,
         unit_amount: unitAmount,
         quantity,

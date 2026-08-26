@@ -50,8 +50,7 @@ export async function dispatchFollowups(deps: Deps): Promise<void> {
   const { data: orgs } = await db
     .from("organizations")
     .select("id, followup_idle_minutes")
-    .eq("followup_enabled", true)
-    .eq("chatwoot_status", "active");
+    .eq("followup_enabled", true);
 
   for (const org of orgs ?? []) {
     const idleMinutes = org.followup_idle_minutes ?? 60;

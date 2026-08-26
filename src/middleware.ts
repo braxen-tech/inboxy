@@ -9,7 +9,7 @@ import {
   isReservedAppSlug,
 } from "@/lib/auth-routes";
 
-const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings", "store"]);
+const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings", "store", "products"]);
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
         const db = getAdminClient();
         const { data: org } = await db
           .from("organizations")
-          .select("id, subscription_id, owner_user_id")
+          .select("id, subscription_status, owner_user_id")
           .eq("slug", orgSlug)
           .maybeSingle();
 

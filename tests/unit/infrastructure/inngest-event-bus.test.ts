@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InngestEventBus } from "@/infrastructure/events/inngest-event-bus";
+import { toOrgId, toConversationId, toMessageId } from "@/domain/value-objects";
 
 const mockSend = vi.fn();
 const mockAssert = vi.fn();
@@ -20,9 +21,9 @@ describe("InngestEventBus", () => {
     await bus.emit({
       type: "message.received",
       payload: {
-        orgId: "org-1",
-        conversationId: "conv-1",
-        messageId: "msg-1",
+        orgId: toOrgId("org-1"),
+        conversationId: toConversationId("conv-1"),
+        messageId: toMessageId("msg-1"),
         correlationId: "corr-1",
       },
     });
@@ -44,7 +45,7 @@ describe("InngestEventBus", () => {
     const bus = new InngestEventBus();
     await bus.emit({
       type: "kb.document.uploaded",
-      payload: { orgId: "org-1", documentId: "doc-1" },
+      payload: { orgId: toOrgId("org-1"), documentId: "doc-1" },
     });
 
     expect(mockAssert).toHaveBeenCalledOnce();

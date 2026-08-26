@@ -1,14 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   PLANS,
+  LOOKUP_KNOWLEDGE_TOOL,
   CHATWOOT_HANDOFF_TOOL,
   CHATWOOT_LABEL_TOOL,
   CHATWOOT_CONTACT_TOOL,
-  LOOKUP_KNOWLEDGE_TOOL,
   resolveAllowedTools,
   resolveEnabledToolsForOrg,
-  planFromStripePriceId,
-  getStripePriceId,
 } from "@/lib/plans";
 
 describe("plans", () => {
@@ -17,7 +15,7 @@ describe("plans", () => {
     expect(resolveAllowedTools([])).toEqual([]);
   });
 
-  it("professional resolves cal and stripe tools", () => {
+  it("professional resolves cal and store tools", () => {
     const tools = resolveAllowedTools(PLANS.professional.allowedIntegrations);
     expect(tools).toContain("check_calendar_availability");
     expect(tools).toContain("create_checkout");
@@ -26,21 +24,21 @@ describe("plans", () => {
   it("resolveEnabledToolsForOrg gates by plan and connection", () => {
     const starterOnly = resolveEnabledToolsForOrg({
       subscription_plan: "starter",
-      cal_status: "active",
-      cal_api_key: "x",
+      cal_managed_user_id: 1,
+      cal_access_token_enc: "x",
       cal_event_type_id: "1",
-      stripe_status: "active",
-      stripe_secret_key: "sk",
+      asaas_status: "active",
+      asaas_api_key_enc: "enc",
     });
     expect(starterOnly).not.toContain("create_checkout");
 
     const proConnected = resolveEnabledToolsForOrg({
       subscription_plan: "professional",
-      cal_status: "active",
-      cal_api_key: "x",
+      cal_managed_user_id: 1,
+      cal_access_token_enc: "x",
       cal_event_type_id: "1",
-      stripe_status: "active",
-      stripe_secret_key: "sk",
+      asaas_status: "active",
+      asaas_api_key_enc: "enc",
     });
     expect(proConnected).toContain("create_checkout");
     expect(proConnected).toContain("book_calendar_appointment");
@@ -64,10 +62,5 @@ describe("plans", () => {
       hasKbDocuments: true,
     });
     expect(tools).toContain(LOOKUP_KNOWLEDGE_TOOL);
-  });
-
-  it("maps stripe price id to plan", () => {
-    const starterPrice = getStripePriceId("starter");
-    expect(planFromStripePriceId(starterPrice)).toBe("starter");
   });
 });

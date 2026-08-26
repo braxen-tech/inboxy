@@ -39,7 +39,7 @@ export function reportAgentRunFailed(
   );
 }
 
-/** Chatwoot send failed after agent produced a reply. */
+/** Message send failed after agent produced a reply. */
 export function reportMessageSendFailed(
   ctx: TelemetryContext,
   error: { code: string; message: string },

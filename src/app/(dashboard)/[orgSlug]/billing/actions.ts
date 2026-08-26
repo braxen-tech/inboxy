@@ -1,13 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { StripeBillingAdapter } from "@/infrastructure/adapters/stripe/billing-adapter";
-import { syncOrgFromCheckoutSessionId, syncOrgBillingFromStripe } from "@/application/services/sync-billing-from-checkout";
+import { AsaasBillingAdapter } from "@/infrastructure/adapters/asaas";
 import { toOrgId } from "@/domain/value-objects";
 import type { PlanId } from "@/lib/plans";
+import { needsBillingSetup } from "@/lib/billing-setup";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 const planSchema = z.enum(["starter", "professional", "business"]);
@@ -44,7 +43,7 @@ export async function createCheckoutSessionAction(orgSlug: string, plan: string)
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const adapter = new StripeBillingAdapter(getAdminClient());
+  const adapter = new AsaasBillingAdapter(getAdminClient());
   const result = await adapter.createCheckoutSession(
     toOrgId(org.id),
     parsed.data as PlanId,
@@ -58,7 +57,8 @@ export async function createCheckoutSessionAction(orgSlug: string, plan: string)
   return { url: result.value };
 }
 
-export async function createPortalSessionAction(orgSlug: string) {
+/** Re-reads billing state from the DB — the Asaas webhook updates it asynchronously after checkout. */
+export async function syncBillingStatusAction(orgSlug: string) {
   scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const {
@@ -73,72 +73,16 @@ export async function createPortalSessionAction(orgSlug: string) {
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const adapter = new StripeBillingAdapter(getAdminClient());
-  const result = await adapter.createPortalSession(toOrgId(org.id));
+  const db = getAdminClient();
+  const { data: fullOrg } = await db
+    .from("organizations")
+    .select("subscription_status")
+    .eq("id", org.id)
+    .single();
 
-  if (!result.ok) {
-    return { error: result.error.message };
+  if (!fullOrg) {
+    return { error: "Organização não encontrada." };
   }
 
-  revalidatePath(`/${orgSlug}/billing`);
-  return { url: result.value };
-}
-
-export async function syncCheckoutSessionAction(orgSlug: string, sessionId: string) {
-  scheduleTelemetryFlush();
-  const trimmed = sessionId.trim();
-  if (!trimmed.startsWith("cs_")) {
-    return { error: "Sessão de checkout inválida." };
-  }
-
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: "Não autenticado." };
-  }
-
-  const org = await getOwnedOrg(orgSlug, user.id);
-  if (!org) {
-    return { error: "Organização não encontrada ou sem permissão." };
-  }
-
-  try {
-    const synced = await syncOrgFromCheckoutSessionId(getAdminClient(), trimmed, org.id);
-    revalidatePath(`/${orgSlug}/billing`);
-    revalidatePath(`/${orgSlug}`);
-    return synced ? { ok: true as const } : { error: "Checkout ainda não concluído no Stripe." };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Falha ao sincronizar assinatura.",
-    };
-  }
-}
-
-export async function syncBillingFromStripeAction(orgSlug: string) {
-  scheduleTelemetryFlush();
-  const supabase = await getServerClientFromCookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: "Não autenticado." };
-  }
-
-  const org = await getOwnedOrg(orgSlug, user.id);
-  if (!org) {
-    return { error: "Organização não encontrada ou sem permissão." };
-  }
-
-  try {
-    const synced = await syncOrgBillingFromStripe(getAdminClient(), org.id);
-    revalidatePath(`/${orgSlug}/billing`);
-    revalidatePath(`/${orgSlug}`);
-    return synced ? { ok: true as const } : { error: "Nenhuma assinatura ativa encontrada no Stripe." };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Falha ao sincronizar assinatura.",
-    };
-  }
+  return { ok: !needsBillingSetup(fullOrg) };
 }

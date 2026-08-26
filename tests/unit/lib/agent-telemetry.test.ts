@@ -31,7 +31,8 @@ describe("wrapAgentModelForPostHog", () => {
     isPostHogConfigured.mockReturnValue(false);
     const { wrapAgentModelForPostHog } = await import("@/lib/agent-telemetry");
 
-    const model = { provider: "anthropic" };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const model = { provider: "anthropic" } as any;
     expect(
       wrapAgentModelForPostHog(model, {
         orgId: "org-1",
@@ -46,7 +47,8 @@ describe("wrapAgentModelForPostHog", () => {
   it("wraps the model with PostHog tracing when configured", async () => {
     const { wrapAgentModelForPostHog } = await import("@/lib/agent-telemetry");
 
-    const model = { provider: "anthropic" };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const model = { provider: "anthropic" } as any;
     wrapAgentModelForPostHog(model, {
       orgId: "org-1",
       conversationId: "conv-1",

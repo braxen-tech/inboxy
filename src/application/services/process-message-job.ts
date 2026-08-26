@@ -2,7 +2,7 @@ import { processIncomingMessage } from "@/application/use-cases/process-incoming
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
-import { StripeCatalogAdapter, StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
+import { AsaasDbCatalogAdapter, AsaasPaymentAdapter } from "@/infrastructure/adapters/asaas";
 import { createVoyageEmbeddingAdapter } from "@/infrastructure/adapters/voyage/embedding-adapter";
 import { PgVectorKnowledgeRetriever } from "@/infrastructure/adapters/pgvector/knowledge-retriever";
 import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
@@ -38,11 +38,10 @@ export async function runProcessIncomingMessageJob(
   const knowledgeRetriever = voyage ? new PgVectorKnowledgeRetriever(db, voyage) : undefined;
   const toolRegistry = createToolRegistry({
     calendarProvider: new CalComAdapter(),
-    productCatalog: new StripeCatalogAdapter(),
-    paymentGateway: new StripePaymentAdapter(),
+    productCatalog: new AsaasDbCatalogAdapter(db),
+    paymentGateway: new AsaasPaymentAdapter(),
     knowledgeRetriever,
     db,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   });
   const secretStore = new AesSecretStore(encryptionKey);
 

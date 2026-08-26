@@ -13,7 +13,6 @@ interface Props {
   isConnected: boolean;
   savedEventTypeId?: string;
   savedTimezone?: string;
-  savedBookingUrl?: string;
 }
 
 export function CalComCredentialsForm({
@@ -21,13 +20,11 @@ export function CalComCredentialsForm({
   isConnected,
   savedEventTypeId = "",
   savedTimezone = "America/Sao_Paulo",
-  savedBookingUrl = "",
 }: Props) {
   const router = useRouter();
   const [apiKey, setApiKey] = useState("");
   const [eventTypeId, setEventTypeId] = useState(savedEventTypeId);
   const [timezone, setTimezone] = useState(savedTimezone);
-  const [bookingUrl, setBookingUrl] = useState(savedBookingUrl);
   const [pending, startTransition] = useTransition();
   const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -41,7 +38,6 @@ export function CalComCredentialsForm({
         apiKey,
         eventTypeId,
         timezone,
-        bookingUrl,
       });
       if ("error" in r && r.error) {
         setMessage({ type: "err", text: r.error });
@@ -75,7 +71,6 @@ export function CalComCredentialsForm({
       setMessage({ type: "ok", text: "Cal.com desconectado." });
       setApiKey("");
       setEventTypeId("");
-      setBookingUrl("");
     }
     setDisconnecting(false);
     router.refresh();
@@ -91,10 +86,10 @@ export function CalComCredentialsForm({
           rel="noreferrer"
           className="underline"
         >
-          Cal.com Settings &rarr; API Keys
+          Cal.com Settings → API Keys
         </a>{" "}
         gere uma API key. O <strong>Event Type ID</strong> está na URL do tipo de evento
-        (ex.: <code>cal.com/event-types/123</code> &rarr; ID = 123).
+        (ex.: <code>cal.com/event-types/123</code> → ID = 123).
       </p>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-2">
@@ -116,18 +111,6 @@ export function CalComCredentialsForm({
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
             placeholder="America/Sao_Paulo"
-            autoComplete="off"
-            readOnly={isConnected}
-            className={isConnected ? "bg-muted" : ""}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="cal-booking-url">Link público de agendamento (opcional)</Label>
-          <Input
-            id="cal-booking-url"
-            value={bookingUrl}
-            onChange={(e) => setBookingUrl(e.target.value)}
-            placeholder="https://cal.com/sua-clinica/consulta"
             autoComplete="off"
             readOnly={isConnected}
             className={isConnected ? "bg-muted" : ""}

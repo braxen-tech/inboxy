@@ -74,8 +74,30 @@ interface StoreBlock {
   cta_text: string;
   external_url: string | null;
   price_display: string | null;
+  price_brl: number | null;
   duration_minutes: number | null;
   link_icon: string | null;
+  digital_product_id: string | null;
+}
+
+interface DigitalProductOption {
+  id: string;
+  title: string;
+  price_brl: number | null;
+}
+
+function externalUrlLabel(blockType: StoreBlock["type"]): string {
+  if (blockType === "link") return "URL do link";
+  if (blockType === "booking") return "Link de agendamento (opcional)";
+  return "Link de checkout externo (opcional)";
+}
+
+function externalUrlHelp(blockType: StoreBlock["type"]): string {
+  if (blockType === "link") return "Para onde o cliente vai ao clicar neste link.";
+  if (blockType === "booking") {
+    return "Só preencha se NÃO usar a integração Cal.com (em Integrações). Com o Cal.com conectado, o agendamento acontece direto pelo chat.";
+  }
+  return "Deixe em branco: com um preço definido acima, o Inboxy já gera o link de pagamento (Asaas) automaticamente ao clicar em \"Comprar\". Preencha só se quiser usar um checkout de outro lugar.";
 }
 
 interface StoreEditorProps {
@@ -87,13 +109,12 @@ interface StoreEditorProps {
   photoUrl: string;
   socialLinks: SocialLink[];
   blocks: StoreBlock[];
+  digitalProducts: DigitalProductOption[];
   theme: StoreTheme;
   chatEnabled: boolean;
-  chatWebsiteToken: string;
   chatTrigger: string;
   chatTriggerSeconds: number;
   chatGreeting: string;
-  chatwootConnected: boolean;
   subscriptionPlan: string;
 }
 
@@ -126,16 +147,21 @@ function SortableBlockCard({
   editCtaText,
   editExternalUrl,
   editPriceDisplay,
+  editPriceBrl,
   editDuration,
   editLinkIcon,
+  editDigitalProductId,
+  digitalProducts,
   onSetEditTitle,
   onSetEditDescription,
   onSetEditImageUrl,
   onSetEditCtaText,
   onSetEditExternalUrl,
   onSetEditPriceDisplay,
+  onSetEditPriceBrl,
   onSetEditDuration,
   onSetEditLinkIcon,
+  onSetEditDigitalProductId,
   onToggleVisibility,
   onDelete,
   onEdit,
@@ -153,16 +179,21 @@ function SortableBlockCard({
   editCtaText: string;
   editExternalUrl: string;
   editPriceDisplay: string;
+  editPriceBrl: string;
   editDuration: string;
   editLinkIcon: string;
+  editDigitalProductId: string;
+  digitalProducts: DigitalProductOption[];
   onSetEditTitle: (v: string) => void;
   onSetEditDescription: (v: string) => void;
   onSetEditImageUrl: (v: string) => void;
   onSetEditCtaText: (v: string) => void;
   onSetEditExternalUrl: (v: string) => void;
   onSetEditPriceDisplay: (v: string) => void;
+  onSetEditPriceBrl: (v: string) => void;
   onSetEditDuration: (v: string) => void;
   onSetEditLinkIcon: (v: string) => void;
+  onSetEditDigitalProductId: (v: string) => void;
   onToggleVisibility: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -224,10 +255,42 @@ function SortableBlockCard({
             </>
           )}
           {blockType === "product" && (
-            <div className="space-y-2">
-              <Label>Preço (texto)</Label>
-              <Input value={editPriceDisplay} onChange={(e) => onSetEditPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Vincular a um produto digital (opcional)</Label>
+                <select
+                  value={editDigitalProductId}
+                  onChange={(e) => onSetEditDigitalProductId(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Nenhum — produto físico/serviço</option>
+                  {digitalProducts.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Vincule um produto já criado em{" "}
+                  <Link href={`/${orgSlug}/products`} className="underline">Produtos Digitais</Link>
+                  {" "}para entrega automática por e-mail. Sem vínculo, o bloco é físico/serviço e você
+                  combina a entrega direto com o cliente.
+                </p>
+              </div>
+              {!editDigitalProductId && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Preço (R$)</Label>
+                    <Input type="number" step="0.01" min="0" value={editPriceBrl} onChange={(e) => onSetEditPriceBrl(e.target.value)} placeholder="97.00" />
+                    <p className="text-xs text-muted-foreground">
+                      Com um preço aqui, o botão "Comprar" já gera o link de pagamento (Asaas) sozinho.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Preço (texto para exibição)</Label>
+                    <Input value={editPriceDisplay} onChange={(e) => onSetEditPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
+                  </div>
+                </>
+              )}
+            </>
           )}
           {blockType === "booking" && (
             <div className="space-y-2">
@@ -235,10 +298,13 @@ function SortableBlockCard({
               <Input type="number" value={editDuration} onChange={(e) => onSetEditDuration(e.target.value)} placeholder="60" />
             </div>
           )}
-          <div className="space-y-2">
-            <Label>{blockType === "link" ? "URL do link" : "Link de checkout / agendamento"}</Label>
-            <Input value={editExternalUrl} onChange={(e) => onSetEditExternalUrl(e.target.value)} placeholder="https://..." />
-          </div>
+          {!editDigitalProductId && !(blockType === "product" && Number(editPriceBrl) > 0) && (
+            <div className="space-y-2">
+              <Label>{externalUrlLabel(blockType)}</Label>
+              <Input value={editExternalUrl} onChange={(e) => onSetEditExternalUrl(e.target.value)} placeholder="https://..." />
+              <p className="text-xs text-muted-foreground">{externalUrlHelp(blockType)}</p>
+            </div>
+          )}
           {blockType !== "link" && (
             <div className="space-y-2">
               <Label>Texto do botão</Label>
@@ -268,13 +334,12 @@ export function StoreEditor({
   photoUrl: initialPhotoUrl,
   socialLinks: initialSocialLinks,
   blocks: initialBlocks,
+  digitalProducts,
   theme: initialTheme,
   chatEnabled: initialChatEnabled,
-  chatWebsiteToken: initialChatToken,
   chatTrigger: initialChatTrigger,
   chatTriggerSeconds: initialTriggerSeconds,
   chatGreeting: initialChatGreeting,
-  chatwootConnected,
   subscriptionPlan,
 }: StoreEditorProps) {
   const router = useRouter();
@@ -304,12 +369,13 @@ export function StoreEditor({
   const [newCtaText, setNewCtaText] = useState("");
   const [newExternalUrl, setNewExternalUrl] = useState("");
   const [newPriceDisplay, setNewPriceDisplay] = useState("");
+  const [newPriceBrl, setNewPriceBrl] = useState("");
   const [newDuration, setNewDuration] = useState("");
   const [newLinkIcon, setNewLinkIcon] = useState("");
+  const [newDigitalProductId, setNewDigitalProductId] = useState("");
 
   // Chat state
   const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
-  const [chatToken, setChatToken] = useState(initialChatToken);
   const [chatTrigger, setChatTrigger] = useState(initialChatTrigger);
   const [triggerSeconds, setTriggerSeconds] = useState(initialTriggerSeconds);
   const [chatGreeting, setChatGreeting] = useState(initialChatGreeting);
@@ -350,8 +416,10 @@ export function StoreEditor({
   const [editCtaText, setEditCtaText] = useState("");
   const [editExternalUrl, setEditExternalUrl] = useState("");
   const [editPriceDisplay, setEditPriceDisplay] = useState("");
+  const [editPriceBrl, setEditPriceBrl] = useState("");
   const [editDuration, setEditDuration] = useState("");
   const [editLinkIcon, setEditLinkIcon] = useState("");
+  const [editDigitalProductId, setEditDigitalProductId] = useState("");
 
   // Drag and drop
   const dndId = useId();
@@ -407,8 +475,10 @@ export function StoreEditor({
     setNewCtaText("");
     setNewExternalUrl("");
     setNewPriceDisplay("");
+    setNewPriceBrl("");
     setNewDuration("");
     setNewLinkIcon("");
+    setNewDigitalProductId("");
     setAddingBlockType(null);
   }
 
@@ -424,8 +494,10 @@ export function StoreEditor({
         ctaText: newCtaText || (addingBlockType === "booking" ? "Agendar" : "Comprar"),
         externalUrl: newExternalUrl,
         priceDisplay: newPriceDisplay,
+        priceBrl: newPriceBrl ? parseFloat(newPriceBrl) : undefined,
         durationMinutes: newDuration ? parseInt(newDuration) : undefined,
         linkIcon: newLinkIcon,
+        digitalProductId: newDigitalProductId || undefined,
       });
       if (r.error) showMessage("err", r.error);
       else {
@@ -484,8 +556,10 @@ export function StoreEditor({
     setEditCtaText(block.cta_text);
     setEditExternalUrl(block.external_url ?? "");
     setEditPriceDisplay(block.price_display ?? "");
+    setEditPriceBrl(block.price_brl?.toString() ?? "");
     setEditDuration(block.duration_minutes?.toString() ?? "");
     setEditLinkIcon(block.link_icon ?? "");
+    setEditDigitalProductId(block.digital_product_id ?? "");
   }
 
   function cancelEditingBlock() {
@@ -503,8 +577,10 @@ export function StoreEditor({
         ctaText: editCtaText,
         externalUrl: editExternalUrl,
         priceDisplay: editPriceDisplay,
+        priceBrl: editPriceBrl ? parseFloat(editPriceBrl) : null,
         durationMinutes: editDuration ? parseInt(editDuration) : null,
         linkIcon: editLinkIcon,
+        digitalProductId: editDigitalProductId || null,
       });
       if (r.error) {
         showMessage("err", r.error);
@@ -521,7 +597,6 @@ export function StoreEditor({
       const r = await saveStoreChatConfig({
         orgSlug,
         chatEnabled,
-        websiteToken: chatToken,
         trigger: chatTrigger as "none" | "timer" | "scroll" | "exit_intent",
         triggerSeconds,
         greeting: chatGreeting,
@@ -706,10 +781,42 @@ export function StoreEditor({
                   </>
                 )}
                 {addingBlockType === "product" && (
-                  <div className="space-y-2">
-                    <Label>Preço (texto)</Label>
-                    <Input value={newPriceDisplay} onChange={(e) => setNewPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label>Vincular a um produto digital (opcional)</Label>
+                      <select
+                        value={newDigitalProductId}
+                        onChange={(e) => setNewDigitalProductId(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="">Nenhum — produto físico/serviço</option>
+                        {digitalProducts.map((p) => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        Vincule um produto já criado em{" "}
+                        <Link href={`/${orgSlug}/products`} className="underline">Produtos Digitais</Link>
+                        {" "}para entrega automática por e-mail. Sem vínculo, o bloco é físico/serviço e
+                        você combina a entrega direto com o cliente.
+                      </p>
+                    </div>
+                    {!newDigitalProductId && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Preço (R$)</Label>
+                          <Input type="number" step="0.01" min="0" value={newPriceBrl} onChange={(e) => setNewPriceBrl(e.target.value)} placeholder="97.00" />
+                          <p className="text-xs text-muted-foreground">
+                            Com um preço aqui, o botão "Comprar" já gera o link de pagamento (Asaas) sozinho.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Preço (texto para exibição)</Label>
+                          <Input value={newPriceDisplay} onChange={(e) => setNewPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
                 {addingBlockType === "booking" && (
                   <div className="space-y-2">
@@ -717,10 +824,13 @@ export function StoreEditor({
                     <Input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="60" />
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label>{addingBlockType === "link" ? "URL do link" : "Link de checkout / agendamento"}</Label>
-                  <Input value={newExternalUrl} onChange={(e) => setNewExternalUrl(e.target.value)} placeholder="https://..." />
-                </div>
+                {!newDigitalProductId && !(addingBlockType === "product" && Number(newPriceBrl) > 0) && (
+                  <div className="space-y-2">
+                    <Label>{externalUrlLabel(addingBlockType)}</Label>
+                    <Input value={newExternalUrl} onChange={(e) => setNewExternalUrl(e.target.value)} placeholder="https://..." />
+                    <p className="text-xs text-muted-foreground">{externalUrlHelp(addingBlockType)}</p>
+                  </div>
+                )}
                 {addingBlockType !== "link" && (
                   <div className="space-y-2">
                     <Label>Texto do botão</Label>
@@ -754,16 +864,21 @@ export function StoreEditor({
                       editCtaText={editCtaText}
                       editExternalUrl={editExternalUrl}
                       editPriceDisplay={editPriceDisplay}
+                      editPriceBrl={editPriceBrl}
                       editDuration={editDuration}
                       editLinkIcon={editLinkIcon}
+                      editDigitalProductId={editDigitalProductId}
+                      digitalProducts={digitalProducts}
                       onSetEditTitle={setEditTitle}
                       onSetEditDescription={setEditDescription}
                       onSetEditImageUrl={setEditImageUrl}
                       onSetEditCtaText={setEditCtaText}
                       onSetEditExternalUrl={setEditExternalUrl}
                       onSetEditPriceDisplay={setEditPriceDisplay}
+                      onSetEditPriceBrl={setEditPriceBrl}
                       onSetEditDuration={setEditDuration}
                       onSetEditLinkIcon={setEditLinkIcon}
+                      onSetEditDigitalProductId={setEditDigitalProductId}
                       onToggleVisibility={() => handleToggleBlockVisibility(block)}
                       onDelete={() => handleDeleteBlock(block.id)}
                       onEdit={() => startEditingBlock(block)}
@@ -780,16 +895,6 @@ export function StoreEditor({
         {/* Tab 3 — Chat */}
         <TabsContent value="chat">
           <div className="mt-6 space-y-4 max-w-lg">
-            {!chatwootConnected && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                <p className="font-medium text-amber-950 dark:text-amber-100">Chatwoot não conectado</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Para usar o chat na loja, primeiro conecte o Chatwoot em{" "}
-                  <Link href={`/${orgSlug}/integrations`} className="underline">Integrações</Link>.
-                </p>
-              </div>
-            )}
-
             <div className="flex items-center justify-between">
               <div>
                 <Label>Chat na loja</Label>
@@ -806,19 +911,6 @@ export function StoreEditor({
 
             {chatEnabled && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="chatToken">Website Token do Chatwoot</Label>
-                  <Input
-                    id="chatToken"
-                    value={chatToken}
-                    onChange={(e) => setChatToken(e.target.value)}
-                    placeholder="Token do inbox tipo 'Website'"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    No Chatwoot, crie um inbox tipo &quot;Website&quot; e cole o Website Token aqui.
-                  </p>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="chatTrigger">Trigger do chat</Label>
                   <select

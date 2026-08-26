@@ -14,7 +14,7 @@ export class ViewCartTool implements AgentTool {
   constructor(private db: SupabaseClient) {}
 
   async execute(ctx: ToolContext): Promise<Result<string, ToolError>> {
-    if (!ctx.stripe) {
+    if (!ctx.asaas) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 
@@ -31,7 +31,7 @@ export class ViewCartTool implements AgentTool {
 
     const { data: items } = await this.db
       .from("order_items")
-      .select("product_name, quantity, unit_amount, stripe_price_id")
+      .select("product_name, quantity, unit_amount")
       .eq("order_id", order.id);
 
     if (!items || items.length === 0) {

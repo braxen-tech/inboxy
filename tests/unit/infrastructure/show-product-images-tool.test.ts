@@ -4,33 +4,17 @@ import { Ok, Err } from "@/domain/errors";
 import type { ProductCatalog, ToolContext } from "@/domain/ports";
 import type { OrgId } from "@/domain/value-objects";
 
-const mockSendAttachment = vi.fn().mockResolvedValue({ ok: true, data: { id: 1 } });
-
-vi.mock("@/infrastructure/adapters/chatwoot/client", () => {
-  return {
-    ChatwootClient: class {
-      sendMessageWithAttachment = mockSendAttachment;
-    },
-  };
-});
-
 function makeCtx(overrides?: Partial<ToolContext>): ToolContext {
   return {
     orgId: "org-1" as OrgId,
     contactPhone: "+5511999999999",
     conversationId: "conv-1",
-    stripe: { apiKey: "sk_test_xxx" },
-    chatwoot: {
-      apiUrl: "https://chatwoot.example.com",
-      apiToken: "token-123",
-      accountId: "1",
-      conversationId: 42,
-    },
+    asaas: { apiKey: "asaas-key-xxx" },
     ...overrides,
   };
 }
 
-function makeMockCatalog(images: string[] = ["https://img.stripe.com/product1.jpg"]): ProductCatalog {
+function makeMockCatalog(images: string[] = ["https://storage.example.com/product1.jpg"]): ProductCatalog {
   return {
     listProducts: vi.fn(),
     getProduct: vi.fn().mockResolvedValue(
@@ -48,21 +32,10 @@ function makeMockCatalog(images: string[] = ["https://img.stripe.com/product1.jp
 }
 
 describe("ShowProductImagesTool", () => {
-  it("returns error when stripe context is missing", async () => {
+  it("returns error when asaas context is missing", async () => {
     const catalog = makeMockCatalog();
     const tool = new ShowProductImagesTool(catalog);
-    const ctx = makeCtx({ stripe: undefined });
-
-    const result = await tool.execute(ctx, { productId: "prod_123" });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("EXECUTION_FAILED");
-  });
-
-  it("returns error when chatwoot context is missing", async () => {
-    const catalog = makeMockCatalog();
-    const tool = new ShowProductImagesTool(catalog);
-    const ctx = makeCtx({ chatwoot: undefined });
+    const ctx = makeCtx({ asaas: undefined });
 
     const result = await tool.execute(ctx, { productId: "prod_123" });
 
@@ -92,8 +65,8 @@ describe("ShowProductImagesTool", () => {
     if (result.ok) expect(result.value).toContain("não possui imagens");
   });
 
-  it("sends images and returns success count", async () => {
-    const images = ["https://img.stripe.com/a.jpg", "https://img.stripe.com/b.jpg"];
+  it("returns image URLs and product name", async () => {
+    const images = ["https://storage.example.com/a.jpg", "https://storage.example.com/b.jpg"];
     const catalog = makeMockCatalog(images);
     const tool = new ShowProductImagesTool(catalog);
     const ctx = makeCtx();
@@ -102,26 +75,20 @@ describe("ShowProductImagesTool", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toContain("2 imagem(ns)");
       expect(result.value).toContain("Camiseta Azul");
+      expect(result.value).toContain("https://storage.example.com/a.jpg");
     }
   });
 
-  it("forwards caption on first image", async () => {
-    mockSendAttachment.mockClear();
-
-    const catalog = makeMockCatalog(["https://img.stripe.com/a.jpg"]);
+  it("includes caption when provided", async () => {
+    const catalog = makeMockCatalog(["https://storage.example.com/a.jpg"]);
     const tool = new ShowProductImagesTool(catalog);
     const ctx = makeCtx();
 
-    await tool.execute(ctx, { productId: "prod_123", caption: "Confira!" });
+    const result = await tool.execute(ctx, { productId: "prod_123", caption: "Confira!" });
 
-    expect(mockSendAttachment).toHaveBeenCalledWith(
-      "1",
-      42,
-      "Confira!",
-      "https://img.stripe.com/a.jpg",
-    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toContain("Confira!");
   });
 
   it("returns error when catalog auth fails", async () => {

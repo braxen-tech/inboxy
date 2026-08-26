@@ -138,7 +138,6 @@ export async function saveStoreTheme(raw: z.infer<typeof themeSchema>) {
 const chatConfigSchema = z.object({
   orgSlug: z.string().min(1),
   chatEnabled: z.boolean(),
-  websiteToken: z.string().max(255).optional().or(z.literal("")),
   trigger: z.enum(["none", "timer", "scroll", "exit_intent"]),
   triggerSeconds: z.number().int().min(5).max(300),
   greeting: z.string().max(500).optional().or(z.literal("")),
@@ -148,7 +147,7 @@ export async function saveStoreChatConfig(raw: z.infer<typeof chatConfigSchema>)
   const parsed = chatConfigSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { orgSlug, chatEnabled, websiteToken, trigger, triggerSeconds, greeting } = parsed.data;
+  const { orgSlug, chatEnabled, trigger, triggerSeconds, greeting } = parsed.data;
   const result = await getOrgForOwner(orgSlug);
   if ("error" in result) return { error: result.error };
   const { org, supabase } = result;
@@ -157,7 +156,6 @@ export async function saveStoreChatConfig(raw: z.infer<typeof chatConfigSchema>)
     .from("organizations")
     .update({
       store_chat_enabled: chatEnabled,
-      store_chatwoot_website_token: websiteToken || null,
       store_chat_trigger: trigger,
       store_chat_trigger_seconds: triggerSeconds,
       store_chat_greeting: greeting || null,
@@ -181,15 +179,17 @@ const addBlockSchema = z.object({
   ctaText: z.string().max(50).optional(),
   externalUrl: z.string().url().max(2048).optional().or(z.literal("")),
   priceDisplay: z.string().max(50).optional(),
+  priceBrl: z.number().min(0).max(999999).optional(),
   durationMinutes: z.number().int().min(1).max(480).optional(),
   linkIcon: z.string().max(50).optional(),
+  digitalProductId: z.string().uuid().optional().nullable(),
 });
 
 export async function addStoreBlock(raw: z.infer<typeof addBlockSchema>) {
   const parsed = addBlockSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { orgSlug, type, title, description, imageUrl, ctaText, externalUrl, priceDisplay, durationMinutes, linkIcon } = parsed.data;
+  const { orgSlug, type, title, description, imageUrl, ctaText, externalUrl, priceDisplay, priceBrl, durationMinutes, linkIcon, digitalProductId } = parsed.data;
   const result = await getOrgForOwner(orgSlug);
   if ("error" in result) return { error: result.error };
   const { org, supabase } = result;
@@ -214,8 +214,10 @@ export async function addStoreBlock(raw: z.infer<typeof addBlockSchema>) {
     cta_text: ctaText || (type === "booking" ? "Agendar" : "Comprar"),
     external_url: externalUrl || null,
     price_display: priceDisplay || null,
+    price_brl: priceBrl ?? null,
     duration_minutes: durationMinutes || null,
     link_icon: linkIcon || null,
+    digital_product_id: digitalProductId || null,
   });
 
   if (error) return { error: "Erro ao adicionar bloco." };
@@ -233,9 +235,11 @@ const updateBlockSchema = z.object({
   ctaText: z.string().max(50).optional(),
   externalUrl: z.string().max(2048).optional().or(z.literal("")),
   priceDisplay: z.string().max(50).optional(),
+  priceBrl: z.number().min(0).max(999999).optional().nullable(),
   durationMinutes: z.number().int().min(1).max(480).optional().nullable(),
   linkIcon: z.string().max(50).optional(),
   visible: z.boolean().optional(),
+  digitalProductId: z.string().uuid().optional().nullable(),
 });
 
 export async function updateStoreBlock(raw: z.infer<typeof updateBlockSchema>) {
@@ -254,9 +258,11 @@ export async function updateStoreBlock(raw: z.infer<typeof updateBlockSchema>) {
   if (updates.ctaText !== undefined) dbUpdates.cta_text = updates.ctaText;
   if (updates.externalUrl !== undefined) dbUpdates.external_url = updates.externalUrl || null;
   if (updates.priceDisplay !== undefined) dbUpdates.price_display = updates.priceDisplay || null;
+  if (updates.priceBrl !== undefined) dbUpdates.price_brl = updates.priceBrl;
   if (updates.durationMinutes !== undefined) dbUpdates.duration_minutes = updates.durationMinutes;
   if (updates.linkIcon !== undefined) dbUpdates.link_icon = updates.linkIcon || null;
   if (updates.visible !== undefined) dbUpdates.visible = updates.visible;
+  if (updates.digitalProductId !== undefined) dbUpdates.digital_product_id = updates.digitalProductId || null;
 
   const { error } = await supabase
     .from("store_blocks")

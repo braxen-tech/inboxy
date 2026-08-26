@@ -23,11 +23,15 @@ export interface Organization {
   chatwootAgentBotWebhookSecret: string | null;
   chatwootStatus: ChatwootStatus;
 
-  calApiKey: string | null;
+  calManagedUserId: number | null;
+  calAccessTokenEnc: string | null;
+  calRefreshTokenEnc: string | null;
   calEventTypeId: string | null;
   calTimezone: string;
-  calBookingUrl: string | null;
-  calStatus: CalStatus;
+
+  asaasSubcontaId: string | null;
+  asaasApiKeyEnc: string | null;
+  asaasStatus: string | null;
 
   createdAt: Date;
   updatedAt: Date;

@@ -27,6 +27,13 @@ export default async function StoreEditorPage({ params }: Props) {
     .eq("organization_id", org.id)
     .order("position", { ascending: true });
 
+  const { data: digitalProducts } = await db
+    .from("digital_products")
+    .select("id, title, price_brl")
+    .eq("organization_id", org.id)
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+
   const theme = parseStoreTheme(org.store_theme);
 
   return (
@@ -39,13 +46,12 @@ export default async function StoreEditorPage({ params }: Props) {
       photoUrl={org.store_photo_url ?? ""}
       socialLinks={socialLinks ?? []}
       blocks={blocks ?? []}
+      digitalProducts={digitalProducts ?? []}
       theme={theme}
       chatEnabled={org.store_chat_enabled ?? false}
-      chatWebsiteToken={org.store_chatwoot_website_token ?? ""}
       chatTrigger={org.store_chat_trigger ?? "none"}
       chatTriggerSeconds={org.store_chat_trigger_seconds ?? 60}
       chatGreeting={org.store_chat_greeting ?? ""}
-      chatwootConnected={org.chatwoot_status === "active"}
       subscriptionPlan={org.subscription_plan ?? "starter"}
     />
   );

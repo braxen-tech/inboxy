@@ -10,13 +10,13 @@ const inputSchema = z.object({
 export class SearchProductsTool implements AgentTool {
   name = "search_products";
   description =
-    "Busca produtos disponíveis no catálogo da loja. Retorna até 10 produtos com nome, preço e descrição curta. Use sem query para listar todos ou com query para filtrar.";
+    "Busca produtos disponíveis no catálogo da loja. Retorna até 20 produtos com nome, preço e descrição curta. Use sem query para listar todos ou com query para filtrar.";
   inputSchema = inputSchema;
 
   constructor(private catalog: ProductCatalog) {}
 
   async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
-    if (!ctx.stripe) {
+    if (!ctx.asaas) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada para esta organização." });
     }
 
@@ -25,15 +25,12 @@ export class SearchProductsTool implements AgentTool {
       return Err({ code: "VALIDATION_FAILED", message: "Parâmetros inválidos." });
     }
 
-    const result = await this.catalog.listProducts(ctx.stripe.apiKey, {
+    const result = await this.catalog.listProducts(ctx.orgId, {
       query: parsed.data.query,
-      limit: 10,
+      limit: 20,
     });
 
     if (!result.ok) {
-      if (result.error.code === "AUTH_FAILED") {
-        return Err({ code: "EXECUTION_FAILED", message: "Credencial da loja expirada. Entre em contato com o suporte." });
-      }
       return Err({ code: "EXECUTION_FAILED", message: "Não foi possível consultar os produtos no momento." });
     }
 
@@ -44,7 +41,7 @@ export class SearchProductsTool implements AgentTool {
     const lines: string[] = [`${result.value.length} produto(s) encontrado(s):\n`];
     for (const p of result.value) {
       const price = p.defaultPrice
-        ? formatPrice(p.defaultPrice.unitAmount, p.defaultPrice.currency)
+        ? `R$ ${(p.defaultPrice.unitAmount / 100).toFixed(2).replace(".", ",")}`
         : "Preço sob consulta";
       const desc = p.description ? ` — ${p.description.slice(0, 80)}` : "";
       lines.push(`• ${p.name} | product_id: ${p.id} | ${price}${desc}`);
@@ -52,10 +49,4 @@ export class SearchProductsTool implements AgentTool {
 
     return Ok(lines.join("\n"));
   }
-}
-
-function formatPrice(amountCents: number, currency: string): string {
-  const amount = amountCents / 100;
-  if (currency === "brl") return `R$ ${amount.toFixed(2).replace(".", ",")}`;
-  return `${amount.toFixed(2)} ${currency.toUpperCase()}`;
 }

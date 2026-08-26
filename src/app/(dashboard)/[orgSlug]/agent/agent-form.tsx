@@ -19,23 +19,8 @@ Além do padrão do Inboxy (cliente pede atendente), transfira também quando:
 - o cliente mencionar cancelamento ou reembolso;
 - a reclamação for sobre entrega atrasada há mais de 7 dias.
 
-## Labels de lead (Chatwoot)
-Crie as labels antes em Chatwoot → Settings → Labels, depois defina aqui as regras:
-- Exemplos: "cliente pergunta preço → aplicar label X", "cliente diz que não quer → aplicar label Y e remover label X"
-- Se precisar remover uma label antes de aplicar outra, use a ferramenta duas vezes: remova "X", depois adicione "Y"
-- Você controla quais labels usar — não há labels pré-definidas obrigatórias
-
-## CRM / Contato (Chatwoot)
-Quando o cliente informar nome completo e e-mail:
-- Chame update_chatwoot_contact com name, email
-- Tag de contato "lead-qualificado"
-- Note resumindo interesse e próximo passo
-
 ## Roteamento de atendentes
-Use os nomes exatos dos atendentes cadastrados no Chatwoot:
-- Assuntos financeiros → transferir para "Ana Silva"
-- Suporte técnico → transferir para "Carlos Mendes"
-- Cliente pede humano sem especificar → transferir sem assignee (fila geral)`;
+- Cliente pede humano sem especificar → use transfer_to_human sem assignee (fila geral)`;
 
 interface Props {
   orgId: string;
@@ -43,9 +28,6 @@ interface Props {
   initialPrompt: string;
   initialFollowupEnabled: boolean;
   initialFollowupIdleMinutes: number;
-  chatwootActive: boolean;
-  chatwootLabels?: string[];
-  chatwootAgents?: { name: string; email: string }[];
 }
 
 export function AgentForm({
@@ -54,9 +36,6 @@ export function AgentForm({
   initialPrompt,
   initialFollowupEnabled,
   initialFollowupIdleMinutes,
-  chatwootActive,
-  chatwootLabels = [],
-  chatwootAgents = [],
 }: Props) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [followupEnabled, setFollowupEnabled] = useState(initialFollowupEnabled);
@@ -94,17 +73,8 @@ export function AgentForm({
         <Label htmlFor="system-prompt">System Prompt</Label>
         <p className="text-xs text-muted-foreground">
           Define a personalidade, tom de voz e regras do agente. A base de conhecimento é adicionada
-          separadamente.
-          {chatwootActive && (
-            <>
-              {" "}
-              Com Chatwoot conectado, a transferência para humano acontece automaticamente quando o
-              cliente pedir — e você pode definir <strong>outros gatilhos</strong> aqui no prompt (ex.:
-              cancelamento, reclamações graves). Também pode definir <strong>regras de labels</strong>{" "}
-              para classificar leads nas conversas (labels devem existir no Chatwoot) e{" "}
-              <strong>roteamento para atendentes</strong> específicos pelo nome.
-            </>
-          )}
+          separadamente. A transferência para humano acontece automaticamente quando o cliente pedir —
+          você pode definir <strong>outros gatilhos</strong> aqui no prompt.
         </p>
         <Textarea
           id="system-prompt"
@@ -116,96 +86,52 @@ export function AgentForm({
         />
       </div>
 
-      {chatwootActive && (
-        <div className="space-y-2">
-          <Label>Labels no Chatwoot</Label>
-          {chatwootLabels.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Labels disponíveis nesta conta:{" "}
-              {chatwootLabels.map((label) => (
-                <code key={label} className="mr-1 rounded bg-muted px-1 py-0.5">
-                  {label}
-                </code>
-              ))}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Nenhuma label encontrada. Crie em Chatwoot → Settings → Labels antes de referenciá-las
-              no prompt.
-            </p>
-          )}
+      <div className="space-y-4 rounded-lg border p-4">
+        <div>
+          <h2 className="text-sm font-medium">Reengajamento automático</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Envia uma mensagem contextual quando o lead para de responder após o bot falar por
+            último. Funciona dentro da janela de 24h do WhatsApp. Máximo de 1 nudge por conversa.
+          </p>
         </div>
-      )}
 
-      {chatwootActive && (
-        <div className="space-y-2">
-          <Label>Atendentes no Chatwoot</Label>
-          {chatwootAgents.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Atendentes disponíveis:{" "}
-              {chatwootAgents.map((agent) => (
-                <code key={agent.email} className="mr-1 rounded bg-muted px-1 py-0.5">
-                  {agent.name}
-                </code>
-              ))}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Nenhum atendente encontrado. Adicione agentes em Chatwoot → Settings → Agents antes de
-              referenciá-los no prompt.
-            </p>
-          )}
+        <div className="flex items-center gap-2">
+          <input
+            id="followup-enabled"
+            type="checkbox"
+            checked={followupEnabled}
+            onChange={(e) => setFollowupEnabled(e.target.checked)}
+            className="h-4 w-4 rounded border border-input"
+          />
+          <Label htmlFor="followup-enabled" className="font-normal">
+            Reengajar leads silenciosos
+          </Label>
         </div>
-      )}
 
-      {chatwootActive && (
-        <div className="space-y-4 rounded-lg border p-4">
-          <div>
-            <h2 className="text-sm font-medium">Reengajamento automático</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Envia uma mensagem contextual quando o lead para de responder após o bot falar por
-              último. Funciona dentro da janela de 24h do WhatsApp. Máximo de 1 nudge por conversa.
+        {followupEnabled && (
+          <div className="space-y-2">
+            <Label htmlFor="followup-idle">Esperar antes de reengajar</Label>
+            <select
+              id="followup-idle"
+              value={followupIdleMinutes}
+              onChange={(e) =>
+                setFollowupIdleMinutes(normalizeFollowupIdleMinutes(Number(e.target.value)))
+              }
+              className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-3 py-1 text-sm"
+            >
+              {FOLLOWUP_IDLE_OPTIONS.map((option) => (
+                <option key={option.minutes} value={option.minutes}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Com follow-up ativo, o agente também pode agendar retornos manuais via tool{" "}
+              <code className="rounded bg-muted px-1 py-0.5">schedule_followup</code>.
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="followup-enabled"
-              type="checkbox"
-              checked={followupEnabled}
-              onChange={(e) => setFollowupEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border border-input"
-            />
-            <Label htmlFor="followup-enabled" className="font-normal">
-              Reengajar leads silenciosos
-            </Label>
-          </div>
-
-          {followupEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="followup-idle">Esperar antes de reengajar</Label>
-              <select
-                id="followup-idle"
-                value={followupIdleMinutes}
-                onChange={(e) =>
-                  setFollowupIdleMinutes(normalizeFollowupIdleMinutes(Number(e.target.value)))
-                }
-                className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-3 py-1 text-sm"
-              >
-                {FOLLOWUP_IDLE_OPTIONS.map((option) => (
-                  <option key={option.minutes} value={option.minutes}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Com follow-up ativo, o agente também pode agendar retornos manuais via tool{" "}
-                <code className="rounded bg-muted px-1 py-0.5">schedule_followup</code>.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={isPending}>

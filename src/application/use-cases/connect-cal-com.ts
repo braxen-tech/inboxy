@@ -9,7 +9,6 @@ interface ConnectCalComInput {
   apiKey: string;
   eventTypeId: string;
   timezone: string;
-  bookingUrl: string;
 }
 
 export async function connectCalCom(
@@ -18,7 +17,7 @@ export async function connectCalCom(
   calendarProvider: CalendarProvider,
   input: ConnectCalComInput,
 ): Promise<Result<{ validated: true }, DomainError>> {
-  const { orgId, apiKey, eventTypeId, timezone, bookingUrl } = input;
+  const { orgId, apiKey, eventTypeId, timezone } = input;
   const ctx = { orgId };
 
   if (!apiKey || !eventTypeId) {
@@ -45,28 +44,15 @@ export async function connectCalCom(
     return Err(new DomainError("CALENDAR_SLOTS_FAILED", `Erro ao validar credencial: ${slotsResult.error.message}`));
   }
 
-  const encryptedKey = secretStore.encrypt(apiKey);
-
-  const calTools = ["check_calendar_availability", "book_calendar_appointment"];
-
-  const { data: currentOrg } = await db
-    .from("organizations")
-    .select("tools_enabled")
-    .eq("id", orgId)
-    .single();
-
-  const existingTools: string[] = currentOrg?.tools_enabled ?? [];
-  const mergedTools = Array.from(new Set([...existingTools, ...calTools]));
+  const encryptedToken = secretStore.encrypt(apiKey);
 
   const { error: updateError } = await db
     .from("organizations")
     .update({
-      cal_api_key: encryptedKey,
+      cal_managed_user_id: 1, // placeholder: non-null = connected
+      cal_access_token_enc: encryptedToken,
       cal_event_type_id: eventTypeId,
       cal_timezone: timezone,
-      cal_booking_url: bookingUrl || null,
-      cal_status: "active",
-      tools_enabled: mergedTools,
     })
     .eq("id", orgId);
 
@@ -83,25 +69,14 @@ export async function disconnectCalCom(
   db: SupabaseClient,
   orgId: string,
 ): Promise<Result<{ disconnected: true }, DomainError>> {
-  const calTools = ["check_calendar_availability", "book_calendar_appointment"];
-
-  const { data: currentOrg } = await db
-    .from("organizations")
-    .select("tools_enabled")
-    .eq("id", orgId)
-    .single();
-
-  const existingTools: string[] = currentOrg?.tools_enabled ?? [];
-  const filteredTools = existingTools.filter((t) => !calTools.includes(t));
-
   const { error } = await db
     .from("organizations")
     .update({
-      cal_api_key: null,
+      cal_managed_user_id: null,
+      cal_access_token_enc: null,
+      cal_refresh_token_enc: null,
       cal_event_type_id: null,
-      cal_booking_url: null,
-      cal_status: "disconnected",
-      tools_enabled: filteredTools,
+      cal_timezone: null,
     })
     .eq("id", orgId);
 

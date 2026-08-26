@@ -4,7 +4,6 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { parseStoreTheme } from "@/lib/store-theme";
 import { StoreThemeProvider } from "@/components/store/store-theme-provider";
 import { StorePage } from "@/components/store/store-page";
-import { StoreChatWidget } from "@/components/store/store-chat-widget";
 import { StoreAnalytics } from "@/components/store/store-analytics";
 
 export const revalidate = 60;
@@ -19,7 +18,7 @@ async function getStoreData(slug: string) {
   const { data: org } = await db
     .from("organizations")
     .select(
-      "id, slug, name, store_enabled, store_display_name, store_bio, store_photo_url, store_theme, store_chat_enabled, store_chat_trigger, store_chat_trigger_seconds, store_chat_greeting, store_chatwoot_website_token, chatwoot_api_url",
+      "id, slug, name, store_enabled, store_display_name, store_bio, store_photo_url, store_theme",
     )
     .eq("slug", slug)
     .eq("store_enabled", true)
@@ -27,12 +26,44 @@ async function getStoreData(slug: string) {
 
   if (!org) return null;
 
-  const { data: blocks } = await db
+  const { data: rawBlocks } = await db
     .from("store_blocks")
-    .select("id, type, title, description, image_url, cta_text, external_url, price_display, duration_minutes, link_icon")
+    .select(
+      "id, type, title, description, image_url, cta_text, external_url, price_display, price_brl, payment_type, billing_cycle, duration_minutes, link_icon, digital_product_id, digital_products(id, title, description, thumbnail_url, price_brl, payment_type, billing_cycle, active)",
+    )
     .eq("organization_id", org.id)
     .eq("visible", true)
     .order("position", { ascending: true });
+
+  // A block linked to a digital product displays/sells that product — its own
+  // price/title/description fields become a fallback the product overrides.
+  const blocks = (rawBlocks ?? [])
+    .map(({ digital_products, ...b }) => {
+      const product = Array.isArray(digital_products) ? digital_products[0] : digital_products;
+      if (b.digital_product_id && (!product || !product.active)) return null;
+
+      return {
+        id: b.id,
+        type: b.type,
+        title: product?.title ?? b.title,
+        description: product?.description ?? b.description,
+        image_url: product?.thumbnail_url ?? b.image_url,
+        cta_text: b.cta_text,
+        external_url: b.external_url,
+        price_display:
+          b.price_display ||
+          (product?.price_brl != null
+            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.price_brl)
+            : null),
+        price_brl: product ? product.price_brl : b.price_brl,
+        payment_type: product?.payment_type ?? b.payment_type,
+        billing_cycle: product?.billing_cycle ?? b.billing_cycle,
+        duration_minutes: b.duration_minutes,
+        link_icon: b.link_icon,
+        digital_product_id: b.digital_product_id,
+      };
+    })
+    .filter((b): b is NonNullable<typeof b> => b !== null);
 
   const { data: socialLinks } = await db
     .from("store_social_links")
@@ -42,7 +73,7 @@ async function getStoreData(slug: string) {
 
   return {
     org,
-    blocks: blocks ?? [],
+    blocks,
     socialLinks: socialLinks ?? [],
   };
 }
@@ -85,11 +116,6 @@ export default async function StorePublicPage({ params }: PageProps) {
   const theme = parseStoreTheme(org.store_theme);
   const displayName = org.store_display_name || org.name;
 
-  const showChat =
-    org.store_chat_enabled &&
-    org.store_chatwoot_website_token &&
-    org.chatwoot_api_url;
-
   return (
     <StoreThemeProvider theme={theme}>
       <StoreAnalytics orgId={org.id} orgSlug={org.slug} />
@@ -105,18 +131,6 @@ export default async function StorePublicPage({ params }: PageProps) {
         orgId={org.id}
         orgSlug={org.slug}
       />
-
-      {showChat && (
-        <StoreChatWidget
-          chatwootApiUrl={org.chatwoot_api_url}
-          websiteToken={org.store_chatwoot_website_token}
-          trigger={org.store_chat_trigger}
-          triggerSeconds={org.store_chat_trigger_seconds}
-          greeting={org.store_chat_greeting}
-          orgId={org.id}
-          orgSlug={org.slug}
-        />
-      )}
     </StoreThemeProvider>
   );
 }

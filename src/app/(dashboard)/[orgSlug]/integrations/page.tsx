@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { IntegrationCard } from "./integration-card";
 import { ChatwootCredentialsForm } from "./chatwoot-credentials-form";
 import { CalComCredentialsForm } from "./cal-com-credentials-form";
-import { StripeCredentialsForm } from "./stripe-credentials-form";
+import { AsaasCredentialsForm } from "./asaas-credentials-form";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -35,16 +35,11 @@ function CalComIcon() {
   );
 }
 
-function StripeIcon() {
+function AsaasIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-5" fill="none">
-      <rect x="2" y="5" width="20" height="14" rx="2" stroke="#635BFF" strokeWidth="2" />
-      <path
-        d="M12 9.5c-1.5 0-2.5.5-2.5 1.25 0 1.75 5 1 5 3.5 0 1-1.25 1.75-3 1.75s-2.75-.5-2.75-.5M12.5 8v8"
-        stroke="#635BFF"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="#00C853" strokeWidth="2" />
+      <path d="M7 12h10M12 8v8" stroke="#00C853" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -59,8 +54,8 @@ export default async function IntegrationsPage({ params }: Props) {
     org.chatwoot_agent_bot_webhook_secret != null
       ? buildAgentBotWebhookUrl(org.chatwoot_agent_bot_webhook_secret)
       : null;
-  const isCalActive = org.cal_status === "active";
-  const isStripeActive = org.stripe_status === "active";
+  const isCalActive = !!org.cal_managed_user_id && !!org.cal_access_token_enc;
+  const isAsaasActive = org.asaas_status === "active";
 
   return (
     <div className="space-y-6">
@@ -74,12 +69,10 @@ export default async function IntegrationsPage({ params }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <IntegrationCard
           name="Chatwoot"
-          description="Receba e responda mensagens de qualquer canal via Chatwoot"
+          description="Receba e responda mensagens via WhatsApp, Instagram e mais"
           summary={
             isChatwootActive
-              ? org.chatwoot_agent_bot_id
-                ? `Bot ${org.chatwoot_agent_bot_id} · Account ${org.chatwoot_account_id}`
-                : `Account ${org.chatwoot_account_id}`
+              ? `Conta ${org.chatwoot_account_id} conectada`
               : "Pendente de configuração"
           }
           icon={<ChatwootIcon />}
@@ -101,7 +94,7 @@ export default async function IntegrationsPage({ params }: Props) {
           description="Consulte disponibilidade e agende automaticamente"
           summary={
             isCalActive
-              ? `Event Type: ${org.cal_event_type_id} · ${org.cal_timezone}`
+              ? `Event Type: ${org.cal_event_type_id} · ${org.cal_timezone ?? "America/Sao_Paulo"}`
               : "Pendente de configuração"
           }
           icon={<CalComIcon />}
@@ -112,25 +105,17 @@ export default async function IntegrationsPage({ params }: Props) {
             isConnected={isCalActive}
             savedEventTypeId={org.cal_event_type_id ?? ""}
             savedTimezone={org.cal_timezone ?? "America/Sao_Paulo"}
-            savedBookingUrl={org.cal_booking_url ?? ""}
           />
         </IntegrationCard>
 
         <IntegrationCard
-          name="Stripe"
-          description="Venda produtos via WhatsApp com pagamento online"
-          summary={
-            isStripeActive
-              ? "Conectado — produtos sendo exibidos pelo agente"
-              : "Pendente de configuração"
-          }
-          icon={<StripeIcon />}
-          status={isStripeActive ? "active" : "pending"}
+          name="Asaas (Pagamentos)"
+          description="Venda produtos via WhatsApp — PIX, boleto e cartão"
+          summary={isAsaasActive ? "Subconta ativa" : "Pendente de ativação"}
+          icon={<AsaasIcon />}
+          status={isAsaasActive ? "active" : "pending"}
         >
-          <StripeCredentialsForm
-            orgSlug={orgSlug}
-            isConnected={isStripeActive}
-          />
+          <AsaasCredentialsForm orgSlug={orgSlug} isConnected={isAsaasActive} />
         </IntegrationCard>
       </div>
     </div>

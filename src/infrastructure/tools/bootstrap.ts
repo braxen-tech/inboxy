@@ -12,8 +12,6 @@ import { CreateCheckoutTool } from "./stripe/create-checkout";
 import { CheckOrderStatusTool } from "./stripe/check-order-status";
 import { ShowProductImagesTool } from "./stripe/show-product-images";
 import { TransferToHumanTool } from "./transfer-to-human";
-import { ManageConversationLabelsTool } from "./manage-conversation-labels";
-import { UpdateChatwootContactTool } from "./update-chatwoot-contact";
 import { LookupKnowledgeTool } from "./lookup-knowledge";
 import { ScheduleFollowupTool } from "./schedule-followup";
 
@@ -23,7 +21,6 @@ interface ToolRegistryDeps {
   paymentGateway: PaymentGateway;
   knowledgeRetriever?: KnowledgeRetriever;
   db: SupabaseClient;
-  appUrl: string;
 }
 
 export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry {
@@ -37,12 +34,10 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new AddToCartTool(deps.db, deps.productCatalog));
   registry.register(new ViewCartTool(deps.db));
   registry.register(new RemoveFromCartTool(deps.db));
-  registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway, deps.appUrl));
+  registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway));
   registry.register(new CheckOrderStatusTool(deps.db));
   registry.register(new ShowProductImagesTool(deps.productCatalog));
   registry.register(new TransferToHumanTool(deps.db));
-  registry.register(new ManageConversationLabelsTool());
-  registry.register(new UpdateChatwootContactTool(deps.db));
   registry.register(new ScheduleFollowupTool(deps.db));
 
   if (deps.knowledgeRetriever) {

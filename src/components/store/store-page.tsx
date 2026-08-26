@@ -17,8 +17,12 @@ interface StoreBlock {
   cta_text: string;
   external_url: string | null;
   price_display: string | null;
+  price_brl: number | null;
+  payment_type: string | null;
+  billing_cycle: string | null;
   duration_minutes: number | null;
   link_icon: string | null;
+  digital_product_id: string | null;
 }
 
 interface StorePageProps {
@@ -80,6 +84,7 @@ export function StorePage({
               key={block.id}
               block={block}
               cardLayout={cardLayout}
+              orgSlug={orgSlug}
               onBlockClick={handleBlockClick}
             />
           ))}
@@ -93,6 +98,7 @@ export function StorePage({
               key={block.id}
               block={block}
               cardLayout={cardLayout}
+              orgSlug={orgSlug}
               onBlockClick={handleBlockClick}
             />
           ))}

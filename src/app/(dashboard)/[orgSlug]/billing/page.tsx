@@ -1,17 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import { getOrgBySlug } from "@/lib/get-org";
-import { needsBillingSetup, getTrialPeriodDays, isPilotMode } from "@/lib/billing-setup";
+import { needsBillingSetup, isPilotMode } from "@/lib/billing-setup";
 import { PLANS, QUOTA_WARNING_RATIO, type PlanId } from "@/lib/plans";
 import { getMonthlyUsage } from "@/application/services/monthly-usage";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { syncOrgFromCheckoutSessionId, syncOrgBillingFromStripe } from "@/application/services/sync-billing-from-checkout";
-import { logger } from "@/lib/logger";
 import { BillingPlanCards } from "./billing-plan-cards";
 import { BillingAutoSync } from "./billing-auto-sync";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ checkout?: string; setup?: string; session_id?: string }>;
+  searchParams: Promise<{ checkout?: string; setup?: string }>;
 }
 
 const PLAN_LABELS: Record<PlanId, string> = {
@@ -30,34 +28,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default async function BillingPage({ params, searchParams }: Props) {
   const { orgSlug } = await params;
-  const { checkout, setup, session_id: sessionId } = await searchParams;
+  const { checkout, setup } = await searchParams;
 
   if (isPilotMode()) {
     redirect(`/${orgSlug}/kb`);
   }
 
-  let org = await getOrgBySlug(orgSlug);
+  const org = await getOrgBySlug(orgSlug);
   if (!org) notFound();
 
-  if (needsBillingSetup(org)) {
-    try {
-      if (sessionId?.startsWith("cs_")) {
-        await syncOrgFromCheckoutSessionId(getAdminClient(), sessionId, org.id);
-      } else {
-        await syncOrgBillingFromStripe(getAdminClient(), org.id);
-      }
-      org = (await getOrgBySlug(orgSlug)) ?? org;
-    } catch (error) {
-      logger.warn("Billing sync from Stripe failed", {
-        orgId: org.id,
-        orgSlug,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
   const billingSetupRequired = needsBillingSetup(org);
-  const trialDays = getTrialPeriodDays();
 
   const db = getAdminClient();
   const usage = await getMonthlyUsage(db, org.id);
@@ -78,38 +58,29 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-8">
-      <BillingAutoSync
-        orgSlug={orgSlug}
-        needsBillingSetup={billingSetupRequired}
-        sessionId={sessionId}
-      />
+      <BillingAutoSync orgSlug={orgSlug} needsBillingSetup={billingSetupRequired} />
       <div>
         <h1 className="text-2xl font-semibold">
           {billingSetupRequired ? "Ative sua conta" : "Assinatura"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {billingSetupRequired
-            ? `Escolha um plano e cadastre o cartão para iniciar o trial de ${trialDays} dias. Você só será cobrado depois.`
+            ? "Escolha um plano para começar a usar o Inboxy."
             : "Gerencie seu plano e acompanhe o uso de mensagens do agente"}
         </p>
       </div>
 
       {(billingSetupRequired || setup === "required") && (
         <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
-          Para usar o Inboxy (agente, integrações e base de conhecimento), complete o cadastro no
-          Stripe com um plano abaixo. O trial vale para Starter, Professional e Business.
+          Para usar o Inboxy (agente, integrações e base de conhecimento), assine um plano abaixo.
+          Pagamento via Asaas (PIX, boleto ou cartão).
         </div>
       )}
 
       {checkout === "success" && (
         <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-800 dark:text-green-300">
-          Cartão cadastrado. Seu trial de {trialDays} dias começa assim que o Stripe confirmar a
-          assinatura (alguns segundos). Depois você pode acessar o restante do painel.
-        </div>
-      )}
-      {checkout === "canceled" && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          Checkout cancelado. Nenhuma cobrança foi feita.
+          Assinatura confirmada assim que o pagamento for aprovado (alguns segundos a minutos,
+          dependendo da forma de pagamento).
         </div>
       )}
 
@@ -180,9 +151,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
         <BillingPlanCards
           orgSlug={orgSlug}
           plans={planCards}
-          hasStripeCustomer={!!org.stripe_customer_id}
           needsBillingSetup={billingSetupRequired}
-          trialDays={trialDays}
         />
       </section>
     </div>

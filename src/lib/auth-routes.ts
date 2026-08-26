@@ -9,6 +9,7 @@ export const AUTH_PUBLIC_PATH_PREFIXES = [
   "/api/inngest",
   "/s/",
   "/api/store",
+  "/portal/",
 ] as const;
 
 /** Top-level routes that must not be treated as organization slugs. */
@@ -20,6 +21,8 @@ export const AUTH_RESERVED_SLUGS = new Set([
   "reset-password",
   "s",
   "checkout",
+  "portal",
+  "download",
 ]);
 
 export function isAuthPublicPath(pathname: string): boolean {

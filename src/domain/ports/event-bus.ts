@@ -20,10 +20,6 @@ export type DomainEvent =
       };
     }
   | {
-      type: "chatwoot.connected";
-      payload: { orgId: OrgId; accountId: string };
-    }
-  | {
       type: "kb.document.uploaded";
       payload: { orgId: OrgId; documentId: string };
     };

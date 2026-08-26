@@ -1,4 +1,3 @@
-/** Aligned with Chatwoot Agent Bot conversation statuses */
 export type ConversationStatus = "pending" | "open" | "closed";
 
 export const CONVERSATION_STATUSES: ConversationStatus[] = ["pending", "open", "closed"];

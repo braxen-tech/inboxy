@@ -6,10 +6,12 @@ import { usePathname } from "next/navigation";
 import {
   BookOpen,
   Bot,
+  ChevronDown,
   Inbox,
   LogOut,
   Menu,
   CreditCard,
+  Package,
   Plug,
   Settings,
   Store,
@@ -28,14 +30,42 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-const baseNavItems = [
-  { href: "kb", label: "Base de conhecimento", icon: BookOpen },
-  { href: "agent", label: "Agente", icon: Bot },
-  { href: "integrations", label: "Integrações", icon: Plug },
-  { href: "store", label: "Minha Loja", icon: Store },
-  { href: "billing", label: "Assinatura", icon: CreditCard },
-  { href: "settings", label: "Configurações", icon: Settings },
+const navGroups = [
+  {
+    label: "Atendimento com IA",
+    items: [
+      { href: "kb", label: "Base de conhecimento", icon: BookOpen },
+      { href: "agent", label: "Agente", icon: Bot },
+      { href: "integrations", label: "Integrações", icon: Plug },
+    ],
+  },
+  {
+    label: "Loja",
+    items: [
+      { href: "store", label: "Minha Loja", icon: Store },
+      { href: "products", label: "Produtos Digitais", icon: Package },
+    ],
+  },
+  {
+    label: null,
+    items: [
+      { href: "billing", label: "Assinatura", icon: CreditCard },
+      { href: "settings", label: "Configurações", icon: Settings },
+    ],
+  },
 ] as const;
+
+const COLLAPSED_GROUPS_STORAGE_KEY = "inboxy:collapsed-nav-groups";
+
+function loadCollapsedGroups(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
 
 function NavLinks({
   orgSlug,
@@ -48,31 +78,71 @@ function NavLinks({
   onNavigate?: () => void;
   billingEnabled?: boolean;
 }) {
-  const navItems = billingEnabled
-    ? baseNavItems
-    : baseNavItems.filter((item) => item.href !== "billing");
+  const groups = navGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => billingEnabled || item.href !== "billing"),
+  }));
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => loadCollapsedGroups());
+
+  function toggleGroup(label: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      try {
+        window.localStorage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        // localStorage unavailable — collapse state just won't persist
+      }
+      return next;
+    });
+  }
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
-      {navItems.map(({ href, label, icon: Icon }) => {
-        const path = `/${orgSlug}/${href}`;
-        const isActive = pathname === path || pathname.startsWith(`${path}/`);
+    <nav className="flex flex-1 flex-col gap-4 px-3 py-2">
+      {groups.map((group, i) => {
+        const isCollapsed = group.label ? collapsed.has(group.label) : false;
+        const groupHasActiveItem = group.items.some((item) => {
+          const path = `/${orgSlug}/${item.href}`;
+          return pathname === path || pathname.startsWith(`${path}/`);
+        });
+        const showItems = !isCollapsed || groupHasActiveItem;
 
         return (
-          <Link
-            key={href}
-            href={path}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+          <div key={group.label ?? `group-${i}`} className="flex flex-col gap-1">
+            {group.label && (
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label!)}
+                className="flex items-center justify-between px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
+              >
+                {group.label}
+                <ChevronDown className={cn("size-3.5 transition-transform", isCollapsed ? "-rotate-90" : "")} aria-hidden />
+              </button>
             )}
-          >
-            <Icon className="size-4 shrink-0" aria-hidden />
-            {label}
-          </Link>
+            {showItems && group.items.map(({ href, label, icon: Icon }) => {
+              const path = `/${orgSlug}/${href}`;
+              const isActive = pathname === path || pathname.startsWith(`${path}/`);
+
+              return (
+                <Link
+                  key={href}
+                  href={path}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
         );
       })}
     </nav>

@@ -13,7 +13,7 @@ import { wrapAgentModelForPostHog } from "@/lib/agent-telemetry";
 
 const AGENT_TIMEOUT_MS = 45_000;
 const AGENT_TIMEOUT_WITH_TOOLS_MS = 60_000;
-const MAX_STEPS_WITH_TOOLS = 5;
+const MAX_STEPS_WITH_TOOLS = 10;
 
 export class ClaudeAdapter implements AgentRunner {
   async run(params: AgentRunParams): Promise<Result<AgentOutput, AgentError>> {
@@ -94,21 +94,20 @@ export class ClaudeAdapter implements AgentRunner {
       }
     }
 
-    if (toolContext.stripe) {
+    if (toolContext.asaas) {
       systemParts.push("");
       systemParts.push(`## Instruções de vendas e catálogo`);
       systemParts.push(`- Você tem acesso ao catálogo de produtos da loja via tools. SEMPRE use search_products para consultar produtos reais — NUNCA invente produtos ou preços.`);
       systemParts.push(`- Quando o cliente perguntar sobre produtos, preços ou quiser comprar algo, CHAME IMEDIATAMENTE search_products (com query se o cliente especificou algo, sem query para listar todos).`);
       systemParts.push(`- Apresente os produtos retornados de forma natural e amigável, incluindo nome e preço. Não mostre IDs internos ao cliente.`);
-      systemParts.push(`- FLUXO OBRIGATÓRIO para detalhes: PRIMEIRO chame search_products para encontrar o produto e obter o ID (prod_xxx). DEPOIS use get_product_details com esse ID. NUNCA chame get_product_details sem ter o ID do produto.`);
-      systemParts.push(`- Se o cliente pedir para ver fotos/imagens de um produto, use show_product_images com o ID do produto para enviar as imagens diretamente no chat.`);
+      systemParts.push(`- FLUXO OBRIGATÓRIO para detalhes: PRIMEIRO chame search_products para encontrar o produto e obter o ID. DEPOIS use get_product_details com esse ID.`);
+      systemParts.push(`- Se o cliente pedir para ver fotos/imagens de um produto, use show_product_images com o ID do produto.`);
       systemParts.push(`- Quando o cliente quiser comprar, use add_to_cart para adicionar ao carrinho. Confirme a adição.`);
       systemParts.push(`- Se o cliente pedir para ver o carrinho, use view_cart.`);
       systemParts.push(`- Se quiser remover algo, use remove_from_cart.`);
       systemParts.push(`- Quando o cliente confirmar que quer finalizar a compra, use create_checkout para gerar o link de pagamento.`);
-      systemParts.push(`- IMPORTANTE: Quando create_checkout retornar a URL, você DEVE incluir a URL completa (https://...) na sua resposta ao cliente. NUNCA omita o link. O cliente precisa clicar nele para pagar.`);
+      systemParts.push(`- IMPORTANTE: Quando create_checkout retornar a URL, você DEVE incluir a URL completa (https://...) na sua resposta ao cliente. NUNCA omita o link.`);
       systemParts.push(`- O link de pagamento expira em 30 minutos. Informe isso ao cliente.`);
-      systemParts.push(`- No checkout o cliente pode pagar com cartão ou PIX (se a loja tiver PIX ativo no Stripe). Para PIX, explique que ele verá o QR code na página do link.`);
     }
 
     const hasKnowledgeLookup = tools.some((t) => t.name === "lookup_knowledge");
@@ -196,7 +195,13 @@ export class ClaudeAdapter implements AgentRunner {
         ),
       ]);
 
-      const usage = result.usage;
+      let reply = result.text;
+      let inputTokens = result.totalUsage.inputTokens ?? 0;
+      let outputTokens = result.totalUsage.outputTokens ?? 0;
+      let cacheReadTokens =
+        (result.providerMetadata?.anthropic?.cacheReadInputTokens as number) ?? 0;
+      let cacheCreationTokens =
+        (result.providerMetadata?.anthropic?.cacheCreationInputTokens as number) ?? 0;
 
       logger.info("ClaudeAdapter result", {
         orgId: params.orgId,
@@ -205,12 +210,56 @@ export class ClaudeAdapter implements AgentRunner {
         textLength: result.text.length,
       });
 
+      if (reply.trim().length === 0 && result.finishReason === "tool-calls") {
+        logger.warn("Agent exhausted steps without text reply, running final text-only turn", {
+          orgId: params.orgId,
+          steps: result.steps?.length ?? 0,
+        });
+
+        const fallback = await Promise.race([
+          generateText({
+            model: tracedModel,
+            system: {
+              role: "system" as const,
+              content: [
+                systemContent,
+                "",
+                "## Resposta final obrigatória",
+                "As ferramentas não estão mais disponíveis. Responda agora ao cliente com um resumo claro do resultado das ações já executadas. Não tente chamar outras ferramentas.",
+              ].join("\n"),
+              providerOptions: {
+                anthropic: { cacheControl: { type: "ephemeral" } },
+              },
+            },
+            messages: [...messages, ...result.response.messages],
+            maxOutputTokens: 1024,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("AGENT_TIMEOUT")), AGENT_TIMEOUT_MS),
+          ),
+        ]);
+
+        reply = fallback.text;
+        inputTokens += fallback.totalUsage.inputTokens ?? 0;
+        outputTokens += fallback.totalUsage.outputTokens ?? 0;
+        cacheReadTokens +=
+          (fallback.providerMetadata?.anthropic?.cacheReadInputTokens as number) ?? 0;
+        cacheCreationTokens +=
+          (fallback.providerMetadata?.anthropic?.cacheCreationInputTokens as number) ?? 0;
+
+        logger.info("ClaudeAdapter fallback result", {
+          orgId: params.orgId,
+          finishReason: fallback.finishReason,
+          textLength: fallback.text.length,
+        });
+      }
+
       return Ok({
-        reply: result.text,
-        inputTokens: usage.inputTokens ?? 0,
-        outputTokens: usage.outputTokens ?? 0,
-        cacheReadTokens: (result.providerMetadata?.anthropic?.cacheReadInputTokens as number) ?? 0,
-        cacheCreationTokens: (result.providerMetadata?.anthropic?.cacheCreationInputTokens as number) ?? 0,
+        reply,
+        inputTokens,
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

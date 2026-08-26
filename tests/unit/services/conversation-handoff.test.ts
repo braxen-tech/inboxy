@@ -1,85 +1,46 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { handoffConversationToHuman } from "@/application/services/conversation-handoff";
 
+function makeDb(updateError: null | { message: string } = null) {
+  const eq2 = vi.fn().mockResolvedValue({ error: updateError });
+  const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
+  const update = vi.fn().mockReturnValue({ eq: eq1 });
+  const selectEq = vi.fn().mockResolvedValue({ data: [], error: null });
+  const select = vi.fn().mockReturnValue({ eq: selectEq });
+  const deleteEq = vi.fn().mockResolvedValue({ error: null });
+  const deleteIn = vi.fn().mockReturnValue({ eq: deleteEq });
+  const deleteFrom = vi.fn().mockReturnValue({ in: deleteIn });
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "conversations") return { update };
+    if (table === "scheduled_messages") return { select, delete: deleteFrom };
+    return { update, select };
+  });
+  return { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
+}
+
 describe("handoffConversationToHuman", () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string, init?: RequestInit) => {
-        const method = init?.method ?? "GET";
-        if (url.includes("/toggle_status") && method === "POST") {
-          return new Response(
-            JSON.stringify({
-              payload: { success: true, current_status: "open", conversation_id: 42 },
-            }),
-            { status: 200 },
-          );
-        }
-        if (url.includes("/assignments") && method === "POST") {
-          return new Response(JSON.stringify({ id: 10 }), { status: 200 });
-        }
-        return new Response("{}", { status: 404 });
-      }),
-    );
-  });
-
-  it("unassigns when no assigneeId provided", async () => {
-    const fetchMock = vi.mocked(fetch);
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    });
-    const db = { from: vi.fn().mockReturnValue({ update }) } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
+  it("updates conversation status to open", async () => {
+    const db = makeDb();
     const result = await handoffConversationToHuman({
       db,
       orgId: "org-1",
       conversationId: "conv-1",
-      chatwoot: {
-        apiUrl: "https://app.chatwoot.com",
-        adminToken: "admin-token",
-        accountId: "1",
-        conversationId: 42,
-      },
     });
 
     expect(result.ok).toBe(true);
-    const assignmentCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).includes("/assignments"),
-    );
-    const body = JSON.parse(String((assignmentCall?.[1] as RequestInit)?.body));
-    expect(body.assignee_id).toBeNull();
+    const { update } = (db.from as ReturnType<typeof vi.fn>).mock.results[0].value;
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "open" }));
   });
 
-  it("assigns specific agent when assigneeId provided", async () => {
-    const fetchMock = vi.mocked(fetch);
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    });
-    const db = { from: vi.fn().mockReturnValue({ update }) } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
+  it("returns error when DB update fails", async () => {
+    const db = makeDb({ message: "constraint violation" });
     const result = await handoffConversationToHuman({
       db,
       orgId: "org-1",
       conversationId: "conv-1",
-      assigneeId: 10,
-      assigneeName: "Ana Silva",
-      chatwoot: {
-        apiUrl: "https://app.chatwoot.com",
-        adminToken: "admin-token",
-        accountId: "1",
-        conversationId: 42,
-      },
     });
 
-    expect(result.ok).toBe(true);
-    const assignmentCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).includes("/assignments"),
-    );
-    const body = JSON.parse(String((assignmentCall?.[1] as RequestInit)?.body));
-    expect(body.assignee_id).toBe(10);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBe("constraint violation");
   });
 });

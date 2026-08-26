@@ -15,7 +15,7 @@ interface OrderWithItems {
   currency: string;
   created_at: string;
   updated_at: string;
-  checkout_url: string | null;
+  asaas_payment_link: string | null;
   order_items: Array<{
     product_name: string;
     quantity: number;
@@ -32,7 +32,7 @@ export class CheckOrderStatusTool implements AgentTool {
   constructor(private db: SupabaseClient) {}
 
   async execute(ctx: ToolContext): Promise<Result<string, ToolError>> {
-    if (!ctx.stripe) {
+    if (!ctx.asaas) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 
@@ -46,7 +46,7 @@ export class CheckOrderStatusTool implements AgentTool {
         currency,
         created_at,
         updated_at,
-        checkout_url,
+        asaas_payment_link,
         order_items (
           product_name,
           quantity,
@@ -78,7 +78,7 @@ export class CheckOrderStatusTool implements AgentTool {
           `PAGAMENTO CONFIRMADO!\n` +
             `Pedido: ${itemsSummary}\n` +
             `Valor: ${totalFormatted}\n` +
-            `O cliente JÁ PAGOU. Você pode prosseguir com os próximos passos (ex: agendar reunião, enviar informações, etc).`,
+            `O cliente JÁ PAGOU. Prossiga com os próximos passos.`,
         );
 
       case "checkout":
@@ -86,7 +86,7 @@ export class CheckOrderStatusTool implements AgentTool {
           `Pedido aguardando pagamento.\n` +
             `Pedido: ${itemsSummary}\n` +
             `Valor: ${totalFormatted}\n` +
-            `Link de pagamento já foi enviado. Se o cliente disse que pagou, aguarde alguns instantes e verifique novamente, pois a confirmação pode levar alguns segundos.`,
+            `Link de pagamento já foi enviado. Se o cliente disse que pagou, aguarde alguns instantes e verifique novamente.`,
         );
 
       case "draft":
@@ -101,7 +101,6 @@ export class CheckOrderStatusTool implements AgentTool {
         return Ok(
           `Link de pagamento expirou.\n` +
             `Pedido: ${itemsSummary}\n` +
-            `Valor: ${totalFormatted}\n` +
             `Se o cliente ainda quiser comprar, será necessário criar um novo checkout.`,
         );
 
@@ -109,7 +108,6 @@ export class CheckOrderStatusTool implements AgentTool {
         return Ok(
           `Pagamento cancelado.\n` +
             `Pedido: ${itemsSummary}\n` +
-            `Valor: ${totalFormatted}\n` +
             `Se o cliente quiser tentar novamente, será necessário criar um novo checkout.`,
         );
 

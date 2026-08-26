@@ -102,7 +102,7 @@ const steps = [
   {
     step: "05",
     title: "Ative vendas e agendamento",
-    description: "Conecte Stripe e Cal.com para vender e agendar direto na conversa.",
+    description: "A plataforma conecta Asaas e Cal.com — venda e agende direto na conversa, sem que seu cliente crie contas.",
   },
 ] as const;
 
@@ -132,7 +132,7 @@ export function LandingPage() {
               </h1>
               <p className="mt-6 text-lg text-muted-foreground text-pretty sm:text-xl">
                 Conecte WhatsApp, Telegram, SMS, e-mail e o chat do seu site — com o widget
-                Chatwoot, basta colar um script na página. O agente responde, vende com Stripe
+                Chatwoot, basta colar um script na página. O agente responde, vende com Asaas
                 e agenda com Cal.com na mesma conversa.
               </p>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -388,7 +388,7 @@ export function LandingPage() {
           <p className="text-center sm:text-right">
             Integração via{" "}
             <span className="text-foreground">Chatwoot</span> ·{" "}
-            <span className="text-foreground">Stripe</span> ·{" "}
+            <span className="text-foreground">Asaas</span> ·{" "}
             <span className="text-foreground">Cal.com</span> · IA com Claude
           </p>
         </div>

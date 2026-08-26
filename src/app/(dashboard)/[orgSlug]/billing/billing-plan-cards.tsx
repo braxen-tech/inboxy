@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import posthog from "posthog-js";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createCheckoutSessionAction, createPortalSessionAction } from "./actions";
+import { createCheckoutSessionAction } from "./actions";
 import type { PlanId } from "@/lib/plans";
 
 interface PlanCard {
@@ -19,35 +18,23 @@ interface PlanCard {
 interface Props {
   orgSlug: string;
   plans: PlanCard[];
-  hasStripeCustomer: boolean;
   needsBillingSetup: boolean;
-  trialDays: number;
 }
 
-export function BillingPlanCards({
-  orgSlug,
-  plans,
-  hasStripeCustomer,
-  needsBillingSetup,
-  trialDays,
-}: Props) {
-  const router = useRouter();
+export function BillingPlanCards({ orgSlug, plans, needsBillingSetup }: Props) {
   const [pending, startTransition] = useTransition();
-  const [portalPending, setPortalPending] = useState(false);
-  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   function subscribe(planId: PlanId) {
-    setMessage(null);
     if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
       posthog.capture("billing_checkout_started", { org_slug: orgSlug, plan_id: planId });
     }
     startTransition(async () => {
       const r = await createCheckoutSessionAction(orgSlug, planId);
       if ("error" in r && r.error) {
-        setMessage({ type: "err", text: r.error });
         if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
           posthog.captureException(new Error(r.error), { org_slug: orgSlug, plan_id: planId });
         }
+        alert(r.error);
         return;
       }
       if ("url" in r && r.url) {
@@ -56,57 +43,10 @@ export function BillingPlanCards({
     });
   }
 
-  async function openPortal() {
-    setMessage(null);
-    setPortalPending(true);
-    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-      posthog.capture("billing_portal_opened", { org_slug: orgSlug });
-    }
-    const r = await createPortalSessionAction(orgSlug);
-    setPortalPending(false);
-    if ("error" in r && r.error) {
-      setMessage({ type: "err", text: r.error });
-      if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-        posthog.captureException(new Error(r.error), { org_slug: orgSlug });
-      }
-      return;
-    }
-    if ("url" in r && r.url) {
-      window.location.href = r.url;
-    }
-    router.refresh();
-  }
-
   return (
     <div className="space-y-6">
-      {message && (
-        <p
-          className={
-            message.type === "err"
-              ? "text-sm text-destructive"
-              : "text-sm text-green-600 dark:text-green-400"
-          }
-        >
-          {message.text}
-        </p>
-      )}
-
-      {hasStripeCustomer && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={portalPending}
-            onClick={() => void openPortal()}
-          >
-            {portalPending ? "Abrindo..." : "Gerenciar assinatura"}
-          </Button>
-        </div>
-      )}
-
       <p className="text-sm text-muted-foreground">
-        Todos os planos incluem {trialDays} dias de trial. O cartão é cadastrado agora; a cobrança
-        só começa após o período de teste.
+        Pagamento via Asaas — PIX, boleto ou cartão. A cobrança é mensal, sem fidelidade.
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -126,9 +66,6 @@ export function BillingPlanCards({
               <p className="text-sm text-muted-foreground mt-1">
                 {plan.messageQuota.toLocaleString("pt-BR")} mensagens de saída/mês
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {trialDays} dias grátis para testar
-              </p>
             </div>
             <ul className="text-sm text-muted-foreground space-y-1.5 flex-1 mb-4">
               {plan.features.map((f) => (
@@ -140,18 +77,8 @@ export function BillingPlanCards({
                 Plano atual
               </Button>
             ) : (
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={() => subscribe(plan.id)}
-              >
-                {pending
-                  ? "Redirecionando..."
-                  : needsBillingSetup
-                    ? `Iniciar trial (${trialDays} dias)`
-                    : plan.isCurrent
-                      ? "Gerenciar no Stripe"
-                      : "Assinar"}
+              <Button type="button" disabled={pending} onClick={() => subscribe(plan.id)}>
+                {pending ? "Redirecionando..." : "Assinar"}
               </Button>
             )}
           </div>

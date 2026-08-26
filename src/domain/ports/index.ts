@@ -20,7 +20,7 @@ export type {
   ToolContext,
   ToolError,
   CalendarContext,
-  StripeContext,
+  AsaasContext,
   ChatwootContext,
 } from "./tool-registry";
 
@@ -71,5 +71,4 @@ export type {
   CheckoutLineItem,
   CheckoutResult,
   PaymentError,
-  StripeWebhookEvent,
 } from "./payment-gateway";

@@ -35,9 +35,9 @@ async function uniqueSlug(baseSlug: string): Promise<string> {
 
 async function grantPilotSubscriptionIfNeeded(
   orgId: string,
-  subscriptionId: string | null | undefined,
+  asaasSubscriptionId: string | null | undefined,
 ): Promise<void> {
-  if (!isPilotMode() || !canGrantPilotSubscription(subscriptionId)) return;
+  if (!isPilotMode() || !canGrantPilotSubscription(asaasSubscriptionId)) return;
 
   const db = getAdminClient();
   const { error } = await db
@@ -59,7 +59,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
 
   const { data: existing, error: selectError } = await db
     .from("organizations")
-    .select("id, slug, subscription_id")
+    .select("id, slug, asaas_subscription_id")
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -69,7 +69,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
   }
 
   if (existing?.slug) {
-    await grantPilotSubscriptionIfNeeded(existing.id, existing.subscription_id);
+    await grantPilotSubscriptionIfNeeded(existing.id, existing.asaas_subscription_id);
     return { slug: existing.slug };
   }
 

@@ -15,7 +15,8 @@ export interface Subscription {
   status: SubscriptionStatus;
   messageQuota: number;
   currentPeriodEnd: Date | null;
-  stripeCustomerId: string | null;
+  /** Customer/payer ID on the payment gateway (Asaas, Stripe, PagarMe, etc). */
+  paymentCustomerId: string | null;
 }
 
 export type BillingError = {
@@ -23,6 +24,11 @@ export type BillingError = {
   message: string;
 };
 
+/**
+ * Platform billing gateway — charges orgs for their Inboxy subscription
+ * (Starter/Professional/Business). Implemented today by AsaasBillingAdapter;
+ * swappable for Stripe/PagarMe/Iugu/etc without touching call sites.
+ */
 export interface BillingProvider {
   createCheckoutSession(
     orgId: OrgId,

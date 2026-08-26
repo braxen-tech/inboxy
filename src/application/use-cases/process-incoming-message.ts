@@ -245,18 +245,18 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     let calendarCtx: import("@/domain/ports").CalendarContext | undefined;
-    if (org.cal_status === "active" && org.cal_api_key && org.cal_event_type_id) {
+    if (org.cal_managed_user_id && org.cal_access_token_enc && org.cal_event_type_id) {
       calendarCtx = {
         eventTypeId: org.cal_event_type_id,
-        apiToken: secretStore.decrypt(org.cal_api_key),
+        apiToken: secretStore.decrypt(org.cal_access_token_enc),
         timezone: org.cal_timezone ?? "America/Sao_Paulo",
-        bookingUrl: org.cal_booking_url ?? null,
+        bookingUrl: null,
       };
     }
 
-    let stripeCtx: import("@/domain/ports").StripeContext | undefined;
-    if (org.stripe_status === "active" && org.stripe_secret_key) {
-      stripeCtx = { apiKey: secretStore.decrypt(org.stripe_secret_key) };
+    let asaasCtx: import("@/domain/ports").AsaasContext | undefined;
+    if (org.asaas_status === "active" && org.asaas_api_key_enc) {
+      asaasCtx = { apiKey: secretStore.decrypt(org.asaas_api_key_enc) };
     }
 
     let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
@@ -306,7 +306,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       conversationId,
       localContactId: conversation.contacts?.id as string | undefined,
       calendar: calendarCtx,
-      stripe: stripeCtx,
+      asaas: asaasCtx,
       chatwoot: chatwootCtx,
     };
 

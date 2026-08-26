@@ -8,125 +8,54 @@ function makeCtx(overrides?: Partial<ToolContext>): ToolContext {
     orgId: "org-1" as OrgId,
     contactPhone: "+5511999999999",
     conversationId: "conv-uuid-1",
-    chatwoot: {
-      apiUrl: "https://app.chatwoot.com",
-      apiToken: "admin-token",
-      accountId: "165655",
-      conversationId: 42,
-    },
     ...overrides,
   };
 }
 
+function makeDb(updateError: null | { message: string } = null) {
+  const eq2 = vi.fn().mockResolvedValue({ error: updateError });
+  const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
+  const update = vi.fn().mockReturnValue({ eq: eq1 });
+  // cancelPendingFollowups also calls db.from
+  const selectEq = vi.fn().mockResolvedValue({ data: [], error: null });
+  const select = vi.fn().mockReturnValue({ eq: selectEq });
+  const deleteEq = vi.fn().mockResolvedValue({ error: null });
+  const deleteIn = vi.fn().mockReturnValue({ eq: deleteEq });
+  const deleteFrom = vi.fn().mockReturnValue({ in: deleteIn });
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "conversations") return { update };
+    if (table === "scheduled_messages") return { select, delete: deleteFrom };
+    return { update, select };
+  });
+  return { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
+}
+
 describe("TransferToHumanTool", () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes("/toggle_status") && init?.method === "POST") {
-          return new Response(
-            JSON.stringify({
-              payload: { success: true, current_status: "open", conversation_id: 42 },
-            }),
-            { status: 200 },
-          );
-        }
-        if (url.includes("/accounts/165655/agents") && init?.method === "GET") {
-          return new Response(
-            JSON.stringify({
-              payload: [{ id: 10, name: "Ana Silva", email: "ana@example.com", role: "agent" }],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url.includes("/assignments") && init?.method === "POST") {
-          return new Response("null", { status: 200 });
-        }
-        return new Response("{}", { status: 404 });
-      }),
-    );
-  });
-
-  it("returns error when Chatwoot context is missing", async () => {
-    const db = {
-      from: vi.fn(),
-    } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
-    const tool = new TransferToHumanTool(db);
-    const result = await tool.execute(makeCtx({ chatwoot: undefined }), {});
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("EXECUTION_FAILED");
-  });
-
   it("hands off conversation to open status", async () => {
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    });
-    const from = vi.fn().mockReturnValue({ update });
-    const db = { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
+    const db = makeDb();
     const tool = new TransferToHumanTool(db);
-    const result = await tool.execute(
-      makeCtx(),
-      { reason: "Cliente pediu atendente" },
-    );
+    const result = await tool.execute(makeCtx(), { reason: "Cliente pediu atendente" });
 
     expect(result.ok).toBe(true);
-    expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "open" }),
-    );
     if (result.ok) {
       expect(result.value).toContain("Transferência concluída");
     }
   });
 
-  it("assigns conversation to named agent", async () => {
-    const fetchMock = vi.mocked(fetch);
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    });
-    const from = vi.fn().mockReturnValue({ update });
-    const db = { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
+  it("returns error when DB update fails", async () => {
+    const db = makeDb({ message: "db error" });
     const tool = new TransferToHumanTool(db);
-    const result = await tool.execute(makeCtx(), {
-      reason: "Assunto financeiro",
-      assignee_name: "Ana Silva",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toContain("Ana Silva");
-    }
-    const assignmentCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).includes("/assignments"),
-    );
-    const body = JSON.parse(String((assignmentCall?.[1] as RequestInit)?.body));
-    expect(body.assignee_id).toBe(10);
-  });
-
-  it("returns error for unknown assignee_name", async () => {
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    });
-    const from = vi.fn().mockReturnValue({ update });
-    const db = { from } as unknown as import("@supabase/supabase-js").SupabaseClient;
-
-    const tool = new TransferToHumanTool(db);
-    const result = await tool.execute(makeCtx(), {
-      assignee_name: "Inexistente",
-    });
+    const result = await tool.execute(makeCtx(), {});
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.message).toContain("Inexistente");
-    }
+    if (!result.ok) expect(result.error.code).toBe("EXECUTION_FAILED");
+  });
+
+  it("executes without a reason", async () => {
+    const db = makeDb();
+    const tool = new TransferToHumanTool(db);
+    const result = await tool.execute(makeCtx(), {});
+
+    expect(result.ok).toBe(true);
   });
 });
