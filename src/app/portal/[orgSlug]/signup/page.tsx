@@ -49,6 +49,15 @@ export default function PortalSignupPage() {
         return;
       }
 
+      // Supabase returns a "success" response with no error and an empty
+      // identities array (instead of an error) when the email is already
+      // registered — this prevents email enumeration, but looks identical
+      // to a real signup unless we check for it explicitly.
+      if (data.user && data.user.identities?.length === 0) {
+        setError("Este e-mail já tem uma conta. Tente entrar em vez de criar uma nova conta.");
+        return;
+      }
+
       if (data.session) {
         router.push(`/portal/${orgSlug}/library`);
       } else {
