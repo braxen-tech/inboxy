@@ -23,13 +23,13 @@ export const STORE_THEME_PRESETS: StoreThemePreset[] = [
     id: "minimal",
     name: "Minimal",
     description: "Limpo e neutro — funciona para qualquer nicho",
-    theme: { colorScheme: "light", primaryColor: "#6366f1", backgroundColor: "#ffffff", cardColor: "#f8f9fa", textColor: "#1a1a2e", fontFamily: "geist", borderRadius: "lg", cardLayout: "horizontal", profileLayout: "centered", coverImageUrl: null },
+    theme: { colorScheme: "light", primaryColor: "#6366f1", backgroundColor: "#ffffff", cardColor: "#f8f9fa", textColor: "#1a1a2e", fontFamily: "geist", borderRadius: "lg", cardLayout: "horizontal", profileLayout: "centered", coverImageUrl: "/store-templates/minimal.png" },
   },
   {
     id: "dark-pro",
     name: "Dark Pro",
     description: "Escuro e sofisticado — tech, SaaS, programação",
-    theme: { colorScheme: "dark", primaryColor: "#a78bfa", backgroundColor: "#0f0f0f", cardColor: "#1a1a1a", textColor: "#e5e7eb", fontFamily: "geist", borderRadius: "md", cardLayout: "vertical", profileLayout: "centered", coverImageUrl: null },
+    theme: { colorScheme: "dark", primaryColor: "#a78bfa", backgroundColor: "#0f0f0f", cardColor: "#1a1a1a", textColor: "#e5e7eb", fontFamily: "geist", borderRadius: "md", cardLayout: "vertical", profileLayout: "centered", coverImageUrl: "/store-templates/dark-pro.png" },
   },
   {
     id: "creator",
@@ -41,7 +41,7 @@ export const STORE_THEME_PRESETS: StoreThemePreset[] = [
     id: "educator",
     name: "Educator",
     description: "Profissional e confiável — cursos e mentorias",
-    theme: { colorScheme: "light", primaryColor: "#3b82f6", backgroundColor: "#eff6ff", cardColor: "#dbeafe", textColor: "#1e3a5f", fontFamily: "inter", borderRadius: "lg", cardLayout: "vertical", profileLayout: "centered", coverImageUrl: null },
+    theme: { colorScheme: "light", primaryColor: "#3b82f6", backgroundColor: "#eff6ff", cardColor: "#dbeafe", textColor: "#1e3a5f", fontFamily: "inter", borderRadius: "lg", cardLayout: "vertical", profileLayout: "centered", coverImageUrl: "/store-templates/educator.png" },
   },
   {
     id: "premium",
@@ -59,13 +59,13 @@ export const STORE_THEME_PRESETS: StoreThemePreset[] = [
     id: "tech-blue",
     name: "Tech Blue",
     description: "Navy + ciano — marketing digital, infoprodutores tech",
-    theme: { colorScheme: "dark", primaryColor: "#22d3ee", backgroundColor: "#080d1a", cardColor: "#0f1a2e", textColor: "#e2e8f0", fontFamily: "geist", borderRadius: "md", cardLayout: "horizontal", profileLayout: "hero", coverImageUrl: null },
+    theme: { colorScheme: "dark", primaryColor: "#22d3ee", backgroundColor: "#080d1a", cardColor: "#0f1a2e", textColor: "#e2e8f0", fontFamily: "geist", borderRadius: "md", cardLayout: "horizontal", profileLayout: "hero", coverImageUrl: "/store-templates/tech-blue.png" },
   },
   {
     id: "sport-gold",
     name: "Sport Gold",
     description: "Charcoal + dourado — fitness, esporte, alta performance",
-    theme: { colorScheme: "dark", primaryColor: "#d4af37", backgroundColor: "#0c1118", cardColor: "#1a2033", textColor: "#f5f5f0", fontFamily: "playfair", borderRadius: "sm", cardLayout: "vertical", profileLayout: "hero", coverImageUrl: null },
+    theme: { colorScheme: "dark", primaryColor: "#d4af37", backgroundColor: "#0c1118", cardColor: "#1a2033", textColor: "#f5f5f0", fontFamily: "playfair", borderRadius: "sm", cardLayout: "vertical", profileLayout: "hero", coverImageUrl: "/store-templates/sport-gold.png" },
   },
 ];
 
