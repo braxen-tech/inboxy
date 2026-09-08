@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { createPaymentLink, AsaasApiError } from "@/infrastructure/adapters/asaas";
-import { digitalPurchaseReference } from "@/lib/asaas-checkout-refs";
+import { digitalPurchaseReference, courseEnrollmentReference } from "@/lib/asaas-checkout-refs";
 import { logger } from "@/lib/logger";
 
 type BillingCycle = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
@@ -202,6 +202,77 @@ export async function createDigitalProductCheckout(
       return { error: "Erro ao gerar link de pagamento." };
     }
     logger.error("Digital checkout failed", { orgSlug, productId, error: String(error) });
+    return { error: "Erro ao gerar link de pagamento." };
+  }
+}
+
+/** Generates an Asaas payment link for a course and returns its URL. */
+export async function createCourseCheckout(
+  orgSlug: string,
+  courseId: string,
+  raw: { buyerEmail: string; buyerName?: string },
+) {
+  const parsed = buyerSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: "Informe um e-mail válido." };
+  }
+  const { buyerEmail, buyerName } = parsed.data;
+
+  const result = await getActiveOrgAndKey(orgSlug);
+  if ("error" in result) return result;
+  const { db, org, apiKey } = result;
+
+  const { data: course } = await db
+    .from("courses")
+    .select("id, title, description, price_brl, active")
+    .eq("id", courseId)
+    .eq("organization_id", org.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!course || !course.price_brl || course.price_brl <= 0) {
+    return { error: "Curso não encontrado ou sem preço definido." };
+  }
+
+  const { data: enrollment, error: enrollmentError } = await db
+    .from("course_enrollments")
+    .insert({
+      course_id: course.id,
+      buyer_email: buyerEmail,
+      buyer_name: buyerName ?? null,
+      payment_type: "one_time",
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (enrollmentError || !enrollment) {
+    logger.error("Course checkout: failed to create enrollment", { orgSlug, courseId, error: enrollmentError?.message });
+    return { error: "Erro ao iniciar checkout." };
+  }
+
+  try {
+    const link = await createPaymentLink(apiKey, {
+      name: course.title,
+      description: course.description ?? undefined,
+      billingType: "UNDEFINED",
+      chargeType: "DETACHED",
+      value: course.price_brl,
+      externalReference: courseEnrollmentReference(enrollment.id),
+    });
+
+    await db
+      .from("course_enrollments")
+      .update({ asaas_payment_id: link.id })
+      .eq("id", enrollment.id);
+
+    return { url: link.url };
+  } catch (error) {
+    if (error instanceof AsaasApiError) {
+      logger.error("Course checkout: Asaas error", { orgSlug, courseId, status: error.status, body: error.body });
+      return { error: "Erro ao gerar link de pagamento." };
+    }
+    logger.error("Course checkout failed", { orgSlug, courseId, error: String(error) });
     return { error: "Erro ao gerar link de pagamento." };
   }
 }

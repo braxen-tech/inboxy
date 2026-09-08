@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { getEventBus } from "@/infrastructure/events/get-event-bus";
 import { toOrgId, toConversationId, toMessageId } from "@/domain/value-objects";
-import { parseDigitalPurchaseReference } from "@/lib/asaas-checkout-refs";
+import { parseDigitalPurchaseReference, parseCourseEnrollmentReference } from "@/lib/asaas-checkout-refs";
 import { sendEmail } from "@/lib/send-email";
 import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
 import { logger } from "@/lib/logger";
@@ -117,6 +117,23 @@ export async function POST(
       logger.info("Digital purchase canceled", { ...ctx, digitalPurchaseId });
     } else {
       logger.info("Asaas webhook: unhandled digital purchase event", ctx);
+    }
+    return NextResponse.json({ status: "ok" });
+  }
+
+  const courseEnrollmentId = parseCourseEnrollmentReference(payment.externalReference);
+
+  if (courseEnrollmentId) {
+    if (CONFIRMED_EVENTS.has(event)) {
+      await handleCourseEnrollmentConfirmed(db, org, courseEnrollmentId, payment, ctx);
+    } else if (event === "PAYMENT_OVERDUE" || event === "PAYMENT_DELETED") {
+      await db
+        .from("course_enrollments")
+        .update({ status: "canceled" })
+        .eq("id", courseEnrollmentId);
+      logger.info("Course enrollment canceled", { ...ctx, courseEnrollmentId });
+    } else {
+      logger.info("Asaas webhook: unhandled course enrollment event", ctx);
     }
     return NextResponse.json({ status: "ok" });
   }
@@ -312,6 +329,72 @@ async function handlePaymentFailed(
     .eq("id", orderId);
 
   logger.info(`Order marked as ${status}`, { ...ctx, orderId });
+}
+
+async function handleCourseEnrollmentConfirmed(
+  db: ReturnType<typeof getAdminClient>,
+  org: OrgInfo,
+  enrollmentId: string,
+  payment: NonNullable<AsaasWebhookPayload["payment"]>,
+  ctx: Record<string, unknown>,
+) {
+  const { data: enrollment } = await db
+    .from("course_enrollments")
+    .select("id, buyer_email, buyer_name, course_id, courses!inner(organization_id, title)")
+    .eq("id", enrollmentId)
+    .eq("courses.organization_id", org.id)
+    .maybeSingle();
+
+  if (!enrollment) {
+    logger.warn("Course enrollment webhook: enrollment not found for org", { ...ctx, enrollmentId });
+    return;
+  }
+
+  const course = Array.isArray(enrollment.courses) ? enrollment.courses[0] : enrollment.courses;
+  const courseTitle = (course as { title?: string } | null)?.title ?? "seu curso";
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const emailParam = encodeURIComponent(enrollment.buyer_email);
+
+  const { data: existingAccount } = await db
+    .from("users")
+    .select("id")
+    .eq("email", enrollment.buyer_email)
+    .eq("role", "end_user")
+    .maybeSingle();
+
+  const accessLink = existingAccount
+    ? `${appUrl}/portal/${org.slug}/login?email=${emailParam}`
+    : `${appUrl}/portal/${org.slug}/signup?email=${emailParam}`;
+  const accessCta = existingAccount ? "Entrar na minha conta" : "Criar minha conta";
+
+  const { error: updateErr } = await db
+    .from("course_enrollments")
+    .update({
+      status: "active",
+      asaas_payment_id: payment.id,
+      end_user_id: existingAccount?.id ?? null,
+    })
+    .eq("id", enrollmentId);
+
+  if (updateErr) {
+    logger.error("Course enrollment webhook: failed to activate", { ...ctx, enrollmentId, error: updateErr.message });
+    return;
+  }
+
+  await sendEmail({
+    to: enrollment.buyer_email,
+    subject: `Sua matrícula em "${courseTitle}" foi confirmada`,
+    html: `
+      <p>Olá${enrollment.buyer_name ? `, ${enrollment.buyer_name}` : ""}!</p>
+      <p>Seu pagamento foi confirmado e você já tem acesso ao curso <strong>${courseTitle}</strong>.</p>
+      <p><a href="${accessLink}">${accessCta}</a></p>
+      ${existingAccount ? "" : "<p>Use este mesmo e-mail para criar sua conta — sua matrícula já estará vinculada automaticamente.</p>"}
+    `,
+  });
+
+  logger.info("Course enrollment activated", { ...ctx, enrollmentId, hasExistingAccount: !!existingAccount });
+  captureServerEvent("course_enrollment_activated", { ...ctx, enrollment_id: enrollmentId });
 }
 
 async function triggerAgentAfterPayment(

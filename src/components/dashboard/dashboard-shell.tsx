@@ -7,6 +7,7 @@ import {
   BookOpen,
   Bot,
   ChevronDown,
+  GraduationCap,
   Inbox,
   LogOut,
   Menu,
@@ -44,6 +45,7 @@ const navGroups = [
     items: [
       { href: "store", label: "Minha Loja", icon: Store },
       { href: "products", label: "Produtos Digitais", icon: Package },
+      { href: "courses", label: "Cursos Online", icon: GraduationCap },
     ],
   },
   {
@@ -83,7 +85,10 @@ function NavLinks({
     items: group.items.filter((item) => billingEnabled || item.href !== "billing"),
   }));
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => loadCollapsedGroups());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setCollapsed(loadCollapsedGroups());
+  }, []);
 
   function toggleGroup(label: string) {
     setCollapsed((prev) => {

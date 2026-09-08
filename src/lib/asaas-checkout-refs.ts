@@ -15,3 +15,14 @@ export function parseDigitalPurchaseReference(externalReference: string): string
   if (!externalReference.startsWith(DIGITAL_PURCHASE_REF_PREFIX)) return null;
   return externalReference.slice(DIGITAL_PURCHASE_REF_PREFIX.length);
 }
+
+export const COURSE_ENROLLMENT_REF_PREFIX = "course:";
+
+export function courseEnrollmentReference(enrollmentId: string): string {
+  return `${COURSE_ENROLLMENT_REF_PREFIX}${enrollmentId}`;
+}
+
+export function parseCourseEnrollmentReference(externalReference: string): string | null {
+  if (!externalReference.startsWith(COURSE_ENROLLMENT_REF_PREFIX)) return null;
+  return externalReference.slice(COURSE_ENROLLMENT_REF_PREFIX.length);
+}
