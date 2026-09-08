@@ -46,6 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { StoreTheme } from "@/lib/store-theme";
+import { STORE_THEME_PRESETS } from "@/lib/store-theme";
 import { ImageUpload } from "@/components/store/image-upload";
 import {
   saveStoreProfile,
@@ -1125,6 +1126,48 @@ export function StoreEditor({
         {/* Tab 5 — Theme */}
         <TabsContent value="theme">
           <div className="mt-6 space-y-4 max-w-lg">
+
+            {/* Template presets */}
+            <div className="space-y-3">
+              <Label>Templates</Label>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {STORE_THEME_PRESETS.map((preset) => {
+                  const isActive =
+                    theme.primaryColor === preset.theme.primaryColor &&
+                    theme.backgroundColor === preset.theme.backgroundColor &&
+                    theme.colorScheme === preset.theme.colorScheme;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setTheme({ ...preset.theme, coverImageUrl: theme.coverImageUrl })}
+                      className={`rounded-lg border-2 p-3 text-left transition-colors hover:border-primary ${isActive ? "border-primary" : "border-border"}`}
+                    >
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <span
+                          className="size-4 rounded-full border border-black/10"
+                          style={{ background: preset.theme.backgroundColor }}
+                        />
+                        <span
+                          className="size-4 rounded-full border border-black/10"
+                          style={{ background: preset.theme.primaryColor }}
+                        />
+                        <span
+                          className="size-4 rounded-full border border-black/10"
+                          style={{ background: preset.theme.cardColor }}
+                        />
+                      </div>
+                      <p className="text-sm font-semibold leading-tight">{preset.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground leading-tight">{preset.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <hr />
+            <p className="text-sm font-medium text-muted-foreground">Personalizar</p>
+
             <div className="space-y-2">
               <Label>Modo</Label>
               <select
