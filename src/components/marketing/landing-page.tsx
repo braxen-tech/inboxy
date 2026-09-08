@@ -1,110 +1,74 @@
 import Link from "next/link";
 import {
   BookOpen,
-  Bot,
   Calendar,
-  CreditCard,
-  Globe,
-  Mail,
-  MessageCircle,
-  Send,
-  Shield,
-  Smartphone,
+  GraduationCap,
+  Link2,
+  MoveRight,
+  Package,
+  ShoppingBag,
+  Users,
+  Video,
   Zap,
 } from "lucide-react";
 import { BraxenContactCta } from "@/components/marketing/braxen-contact-cta";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { buildBraxenWhatsAppUrl } from "@/lib/braxen-contact";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const channels = [
-  { icon: MessageCircle, name: "WhatsApp", copy: "Onde seus clientes já estão" },
-  { icon: Send, name: "Telegram", copy: "DMs com resposta automática" },
-  { icon: Smartphone, name: "SMS", copy: "Confirmações e lembretes por texto" },
-  { icon: Mail, name: "E-mail", copy: "Tickets e respostas assíncronas" },
-  {
-    icon: Globe,
-    name: "Chat no site",
-    copy: "Widget no seu site — um script, um balão ao vivo",
-  },
-] as const;
+import { SectionLabel, SectionTitle } from "@/components/ui/motion-primitives";
+import { TestimonialsColumn, type TestimonialItem } from "@/components/ui/testimonials-columns";
 
 const features = [
   {
-    icon: MessageCircle,
-    title: "Inbox unificado",
-    description:
-      "WhatsApp, Telegram, SMS, e-mail e chat no site em uma única fila. Mensagens do widget do seu site entram no mesmo inbox.",
+    icon: Link2,
+    title: "Loja com link próprio",
+    description: "Uma vitrine com seu nome, seu visual e seu link. Compartilhe onde quiser.",
   },
   {
-    icon: CreditCard,
-    title: "Vendas com Stripe",
-    description:
-      "Catálogo, carrinho e checkout na conversa. O agente vende e envia o link de pagamento na hora.",
+    icon: Video,
+    title: "Cursos online com vídeo",
+    description: "Crie módulos e aulas. Seus alunos acompanham o progresso no portal deles.",
+  },
+  {
+    icon: Package,
+    title: "Entrega automática",
+    description: "E-books, templates e planilhas entregues por e-mail logo após o pagamento.",
   },
   {
     icon: Calendar,
-    title: "Agendamento com Cal.com",
-    description:
-      "Consulta horários e marca compromissos direto no chat, sem redirecionar para outro site.",
+    title: "Agendamento de mentorias",
+    description: "Sessões individuais com link de pagamento e agenda integrada.",
   },
   {
-    icon: BookOpen,
-    title: "Base de conhecimento",
-    description:
-      "Centralize FAQs, políticas e tom de voz. O agente responde com o contexto do seu negócio.",
+    icon: Users,
+    title: "Portal do aluno",
+    description: "Seus alunos acessam os cursos em um portal dedicado, sem precisar de app.",
   },
   {
-    icon: Bot,
-    title: "Agente configurável",
-    description:
-      "Defina personalidade, instruções e modelo de IA. Ajuste até combinar com a experiência da sua marca.",
-  },
-  {
-    icon: Shield,
-    title: "Multi-organização",
-    description:
-      "Cada empresa com espaço isolado: credenciais, prompt e base de conhecimento separados.",
+    icon: Zap,
+    title: "Pagamentos integrados",
+    description: "Checkout simples, recebimento direto. Sem criar conta em outra plataforma.",
   },
 ] as const;
 
 const steps = [
-  {
-    step: "01",
-    title: "Crie sua conta",
-    description: "Acesse o painel e vincule sua organização em poucos minutos.",
-  },
-  {
-    step: "02",
-    title: "Monte a base",
-    description: "Cadastre o que o agente precisa saber sobre produtos, preços e processos.",
-  },
-  {
-    step: "03",
-    title: "Configure o agente",
-    description: "Ajuste o prompt, o modelo e o estilo de atendimento da sua marca.",
-  },
-  {
-    step: "04",
-    title: "Conecte os canais",
-    description:
-      "Conecte Chatwoot, ative WhatsApp, Telegram, e-mail e cole o script do chat no seu site — mais um canal na mesma fila.",
-  },
-  {
-    step: "05",
-    title: "Ative vendas e agendamento",
-    description: "A plataforma conecta Asaas e Cal.com — venda e agende direto na conversa, sem que seu cliente crie contas.",
-  },
+  { step: "01", title: "Crie sua conta grátis", description: "Cadastre-se e monte sua organização em minutos. Sem cartão de crédito." },
+  { step: "02", title: "Adicione seus produtos", description: "Cursos, e-books, templates ou mentorias — tudo em um só painel." },
+  { step: "03", title: "Compartilhe seu link", description: "Sua loja tem um link único. Cole no Instagram, WhatsApp ou onde preferir." },
+  { step: "04", title: "Receba, entregue e cresça", description: "Pagamentos, entregas e acessos acontecem de forma automática." },
 ] as const;
+
+const testimonials: TestimonialItem[] = [
+  { text: "Publiquei meu e-book e vendi nas primeiras horas — sem precisar de site, sem nada.", name: "Ana Carvalho", role: "Criadora de conteúdo" },
+  { text: "Coloquei meu curso no ar em uma tarde. O portal do aluno já veio pronto.", name: "Rafael Mendes", role: "Coach de carreira" },
+  { text: "Meus clientes chegam pelo link, compram e recebem o acesso sozinhos. É automático.", name: "Juliana Ferreira", role: "Educadora online" },
+  { text: "Finalmente um lugar só para os meus produtos. Antes eu mandava PDF por WhatsApp.", name: "Carlos Lima", role: "Designer e criador" },
+  { text: "Em um mês já tinha mais de 30 alunos. E eu não precisei me preocupar com nada técnico.", name: "Mariana Costa", role: "Personal trainer" },
+  { text: "Vendi minha primeira mentoria no mesmo dia que criei a loja.", name: "Pedro Alves", role: "Consultor de negócios" },
+];
+
+const firstCol = testimonials.slice(0, 3);
+const secondCol = testimonials.slice(3);
 
 export function LandingPage() {
   return (
@@ -113,173 +77,96 @@ export function LandingPage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="relative overflow-hidden border-b">
-          <div
-            className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.85_0.12_250/0.35),transparent)]"
-            aria-hidden
-          />
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
-            <div className="mx-auto max-w-3xl text-center">
-              <Badge
-                variant="secondary"
-                className="mb-6 border border-blue-500/20 bg-blue-500/10 text-blue-600"
-              >
-                WhatsApp · Telegram · SMS · E-mail · Chat no site · Vendas · Agendamento
-              </Badge>
-              <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Todos os seus canais.{" "}
-                <span className="text-blue-600">Um só lugar para atender, vender e agendar.</span>
-              </h1>
-              <p className="mt-6 text-lg text-muted-foreground text-pretty sm:text-xl">
-                Conecte WhatsApp, Telegram, SMS, e-mail e o chat do seu site — com o widget
-                Chatwoot, basta colar um script na página. O agente responde, vende com Asaas
-                e agenda com Cal.com na mesma conversa.
-              </p>
-              <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link href="/login">
-                  <Button size="lg" className="min-w-[180px] bg-blue-600 text-white hover:bg-blue-700">
-                    Começar agora
-                  </Button>
-                </Link>
-                <Link href="#como-funciona">
-                  <Button variant="outline" size="lg" className="min-w-[180px]">
-                    Ver como funciona
-                  </Button>
-                </Link>
+        <section className="w-full py-20 lg:py-36">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
+              {/* Left column */}
+              <div className="flex flex-col gap-6">
+                <div>
+                  <Badge variant="outline">Inboxy Creators</Badge>
+                </div>
+                <div className="flex flex-col gap-4">
+                  <h1 className="max-w-lg text-5xl font-semibold tracking-tight text-balance md:text-6xl lg:text-7xl">
+                    Sua loja online para cursos, e-books e mentorias.
+                  </h1>
+                  <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
+                    Crie sua vitrine em minutos, compartilhe seu link e comece a receber.
+                    Tudo em um só lugar, sem complicação.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Link href="/login">
+                    <Button size="lg" className="gap-3">
+                      Criar minha loja grátis <MoveRight className="size-4" />
+                    </Button>
+                  </Link>
+                  <Link href="#como-funciona">
+                    <Button size="lg" variant="outline">
+                      Ver como funciona
+                    </Button>
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">Grátis para começar. Sem cartão de crédito.</p>
               </div>
-            </div>
 
-            {/* Chat mock */}
-            <div className="mx-auto mt-16 max-w-2xl rounded-2xl border bg-card p-4 shadow-sm ring-1 ring-foreground/5 sm:p-6">
-              <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
-                Do primeiro contato ao pagamento, sem sair da conversa
-              </p>
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/15">
-                  <Bot className="size-5 text-blue-600" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1 space-y-3 text-sm">
-                  <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-muted-foreground">
-                    Quero comprar o Vinho Malbec. Tem disponível?
-                  </div>
-                  <div className="rounded-2xl rounded-tr-sm bg-blue-600/10 px-4 py-2.5 text-foreground">
-                    Sim! Vinho Malbec — R$ 299,00. Adicionei ao carrinho.
-                    Aqui está seu link seguro para finalizar a compra: checkout.stripe.com/...
-                  </div>
-                  <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-muted-foreground">
-                    E tem horário pra degustação na quinta?
-                  </div>
-                  <div className="rounded-2xl rounded-tr-sm bg-blue-600/10 px-4 py-2.5 text-foreground">
-                    Quinta temos 14h e 16h disponíveis. Qual prefere? Já agendo pra você!
-                  </div>
-                </div>
+              {/* Right column — image grid */}
+              <div className="hidden grid-cols-2 gap-6 md:grid">
+                <img
+                  src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=500&q=80"
+                  alt="Criadora de conteúdo"
+                  className="aspect-square w-full rounded-2xl object-cover"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&q=80"
+                  alt="Loja digital"
+                  className="row-span-2 w-full rounded-2xl object-cover"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&q=80"
+                  alt="Cursos online"
+                  className="aspect-square w-full rounded-2xl object-cover"
+                />
               </div>
             </div>
           </div>
         </section>
 
-        {/* Canais */}
-        <section id="canais" className="border-b py-20 sm:py-24">
+        {/* O que você pode vender */}
+        <section id="produtos" className="border-y bg-muted/40 py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Seus clientes falam por vários canais. Atenda em todos.
-              </h2>
-              <p className="mt-4 text-muted-foreground text-pretty">
-                Tudo passa pelo Chatwoot: canais de mensagem e também o{" "}
-                <strong className="font-medium text-foreground">live chat no seu site</strong>.
-                Você copia o script do widget, cola no HTML do site ou loja — visitantes
-                conversam pelo balão e o agente atende no mesmo inbox que o WhatsApp.
-              </p>
+              <SectionLabel>O que você pode vender</SectionLabel>
+              <SectionTitle className="text-foreground">
+                Uma plataforma, tudo o que você cria
+              </SectionTitle>
             </div>
-            <div className="mx-auto mt-14 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {channels.map(({ icon: Icon, name, copy }) => (
-                <div
-                  key={name}
-                  className="flex flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center transition-shadow hover:shadow-md"
-                >
-                  <div className="flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
-                    <Icon className="size-6 text-blue-600" aria-hidden />
-                  </div>
-                  <span className="text-sm font-medium">{name}</span>
-                  <span className="text-xs text-muted-foreground">{copy}</span>
+            <div className="mt-14 grid gap-8 sm:grid-cols-3">
+              <div className="flex flex-col gap-3 rounded-2xl border bg-card p-8">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-blue-500/10">
+                  <GraduationCap className="size-6 text-blue-600" />
                 </div>
-              ))}
-            </div>
-
-            <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 text-center text-sm text-muted-foreground">
-              <p className="text-pretty">
-                <span className="font-medium text-foreground">Chat no site:</span> no Chatwoot,
-                crie um inbox de Website, copie o snippet e publique na sua landing, WordPress
-                ou e-commerce. Sem desenvolver chat do zero — o Inboxy responde nesse canal
-                como nos demais.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Integrações: Stripe + Cal.com */}
-        <section id="integracoes" className="bg-muted/40 border-b py-20 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Venda e agende direto na conversa
-              </h2>
-              <p className="mt-4 text-muted-foreground text-pretty">
-                Integração nativa com Stripe e Cal.com. Sem tirar o cliente do chat.
-              </p>
-            </div>
-            <div className="mx-auto mt-14 grid max-w-4xl gap-8 lg:grid-cols-2">
-              {/* Stripe */}
-              <div className="rounded-2xl border bg-card p-6 sm:p-8">
-                <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
-                  <CreditCard className="size-6 text-blue-600" aria-hidden />
-                </div>
-                <h3 className="text-xl font-semibold">Venda no chat com Stripe</h3>
-                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Produtos e preços vêm do catálogo Stripe — sem duplicar cadastro
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Agente monta carrinho e gera link de pagamento na hora
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Confirmação automática após pagamento — cliente recebe no mesmo canal
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Credenciais criptografadas no painel
-                  </li>
-                </ul>
+                <h3 className="text-xl font-semibold">Cursos online</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Crie módulos e aulas em vídeo. Seus alunos acompanham o progresso no portal deles, no próprio ritmo.
+                </p>
               </div>
-
-              {/* Cal.com */}
-              <div className="rounded-2xl border bg-card p-6 sm:p-8">
-                <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
-                  <Calendar className="size-6 text-blue-600" aria-hidden />
+              <div className="flex flex-col gap-3 rounded-2xl border bg-card p-8">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-blue-500/10">
+                  <BookOpen className="size-6 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-semibold">Agende no chat com Cal.com</h3>
-                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Conecte Cal.com no painel de integrações
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Agente consulta horários disponíveis em tempo real
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Cliente confirma e recebe o agendamento na conversa
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Zap className="mt-0.5 size-4 shrink-0 text-blue-500" aria-hidden />
-                    Sem redirecionar para outro site ou app
-                  </li>
-                </ul>
+                <h3 className="text-xl font-semibold">Produtos digitais</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  E-books, templates, planilhas. O comprador recebe na hora, direto no e-mail — sem você precisar fazer nada.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 rounded-2xl border bg-card p-8">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-blue-500/10">
+                  <Users className="size-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Mentorias</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Sessões individuais com agendamento simples e recebimento integrado. Você foca no conteúdo, o resto é automático.
+                </p>
               </div>
             </div>
           </div>
@@ -289,29 +176,20 @@ export function LandingPage() {
         <section id="recursos" className="border-b py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Tudo para automatizar atendimento, vendas e agendamento
-              </h2>
-              <p className="mt-4 text-muted-foreground text-pretty">
-                Um painel simples para escalar suporte e vendas em qualquer canal sem
-                perder o controle da experiência.
-              </p>
+              <SectionLabel>Recursos</SectionLabel>
+              <SectionTitle className="text-foreground">
+                Tudo o que você precisa para vender
+              </SectionTitle>
             </div>
             <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map(({ icon: Icon, title, description }) => (
-                <Card key={title} className="border-border/80 transition-shadow hover:shadow-md">
-                  <CardHeader>
-                    <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted">
-                      <Icon className="size-5 text-blue-600" aria-hidden />
-                    </div>
-                    <CardTitle className="text-lg">{title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <CardDescription className="text-base leading-relaxed">
-                      {description}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
+                <div key={title} className="flex flex-col gap-3 rounded-xl border bg-card p-6 transition-shadow hover:shadow-md">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                    <Icon className="size-5 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+                </div>
               ))}
             </div>
           </div>
@@ -321,28 +199,48 @@ export function LandingPage() {
         <section id="como-funciona" className="bg-muted/40 py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Do cadastro ao primeiro atendimento em 5 passos
-              </h2>
-              <p className="mt-4 text-muted-foreground">
-                Sem código no dia a dia — configure pelo painel e deixe o agente trabalhar.
-              </p>
+              <SectionLabel>Como funciona</SectionLabel>
+              <SectionTitle className="text-foreground">
+                Do cadastro à primeira venda em minutos
+              </SectionTitle>
             </div>
-            <ol className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+            <ol className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
               {steps.map(({ step, title, description }) => (
-                <li key={step} className="relative">
-                  <span className="text-5xl font-semibold text-blue-500/25">{step}</span>
-                  <h3 className="mt-2 text-lg font-medium">{title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                    {description}
-                  </p>
+                <li key={step}>
+                  <span className="text-5xl font-bold text-blue-500/20">{step}</span>
+                  <h3 className="mt-3 text-base font-semibold">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
                 </li>
               ))}
             </ol>
           </div>
         </section>
 
-        {/* CTA */}
+        {/* Testimonials */}
+        <section id="loja" className="border-y py-20 sm:py-24 overflow-hidden">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto mb-14 max-w-2xl text-center">
+              <SectionLabel>Depoimentos</SectionLabel>
+              <SectionTitle className="text-foreground">
+                O que dizem os criadores
+              </SectionTitle>
+            </div>
+            <div className="flex max-h-[560px] gap-6 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_90%,transparent)]">
+              <TestimonialsColumn
+                testimonials={firstCol}
+                duration={14}
+                className="flex-1"
+              />
+              <TestimonialsColumn
+                testimonials={secondCol}
+                duration={18}
+                className="flex-1 hidden sm:block"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* CTA final */}
         <section className="py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="relative overflow-hidden rounded-3xl border bg-blue-600 px-6 py-14 text-center text-white sm:px-12 sm:py-16">
@@ -351,29 +249,17 @@ export function LandingPage() {
                 aria-hidden
               />
               <h2 className="relative text-3xl font-semibold tracking-tight sm:text-4xl">
-                Atenda, venda e agende em todos os canais
+                Pronto para monetizar o que você sabe?
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85 text-pretty">
-                WhatsApp, Telegram, e-mail ou visitante no site — tudo na mesma fila.
-                Configure o agente, conecte Stripe e Cal.com — respostas na hora em qualquer canal.
+                Crie sua loja, adicione seus produtos e compartilhe com sua audiência. Grátis para começar.
               </p>
               <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link href="/login">
-                  <Button size="lg" className="min-w-[200px] bg-white text-blue-600 hover:bg-white/90">
-                    Acessar o painel
+                  <Button size="lg" className="min-w-[220px] bg-white text-blue-600 hover:bg-white/90">
+                    Criar minha loja grátis
                   </Button>
                 </Link>
-                <a
-                  href={buildBraxenWhatsAppUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                    "min-w-[200px] border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white",
-                  )}
-                >
-                  Falar com a Braxen
-                </a>
               </div>
             </div>
           </div>
@@ -385,11 +271,8 @@ export function LandingPage() {
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <p>&copy; {new Date().getFullYear()} Inboxy</p>
-          <p className="text-center sm:text-right">
-            Integração via{" "}
-            <span className="text-foreground">Chatwoot</span> ·{" "}
-            <span className="text-foreground">Asaas</span> ·{" "}
-            <span className="text-foreground">Cal.com</span> · IA com Claude
+          <p className="text-center text-xs sm:text-right">
+            Feito para criadores de conteúdo, educadores e profissionais independentes.
           </p>
         </div>
       </footer>
