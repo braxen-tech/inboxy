@@ -1135,7 +1135,8 @@ export function StoreEditor({
                   const isActive =
                     theme.primaryColor === preset.theme.primaryColor &&
                     theme.backgroundColor === preset.theme.backgroundColor &&
-                    theme.colorScheme === preset.theme.colorScheme;
+                    theme.colorScheme === preset.theme.colorScheme &&
+                    theme.profileLayout === preset.theme.profileLayout;
                   return (
                     <button
                       key={preset.id}
@@ -1236,6 +1237,18 @@ export function StoreEditor({
                 <option value="md">Média</option>
                 <option value="lg">Grande</option>
                 <option value="full">Arredondada</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Layout do perfil</Label>
+              <select
+                value={theme.profileLayout}
+                onChange={(e) => setTheme({ ...theme, profileLayout: e.target.value as "centered" | "hero" })}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="centered">Centralizado — foto redonda, nome e bio abaixo</option>
+                <option value="hero">Hero — imagem de capa em tela cheia com texto sobreposto</option>
               </select>
             </div>
 

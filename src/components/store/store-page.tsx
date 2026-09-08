@@ -34,6 +34,7 @@ interface StorePageProps {
   socialLinks: SocialLink[];
   blocks: StoreBlock[];
   cardLayout: "horizontal" | "vertical";
+  profileLayout: "centered" | "hero";
   orgId: string;
   orgSlug: string;
 }
@@ -46,6 +47,7 @@ export function StorePage({
   socialLinks,
   blocks,
   cardLayout,
+  profileLayout,
   orgId,
   orgSlug,
 }: StorePageProps) {
@@ -76,6 +78,7 @@ export function StorePage({
         photoUrl={photoUrl}
         coverImageUrl={coverImageUrl}
         socialLinks={socialLinks}
+        profileLayout={profileLayout}
       />
 
       {productAndBookingBlocks.length > 0 && (

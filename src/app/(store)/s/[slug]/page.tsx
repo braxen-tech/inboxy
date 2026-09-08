@@ -135,6 +135,7 @@ export default async function StorePublicPage({ params }: PageProps) {
         socialLinks={socialLinks}
         blocks={blocks}
         cardLayout={theme.cardLayout}
+        profileLayout={theme.profileLayout}
         orgId={org.id}
         orgSlug={org.slug}
       />
