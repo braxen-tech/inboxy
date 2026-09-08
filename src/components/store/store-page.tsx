@@ -10,7 +10,7 @@ interface SocialLink {
 
 interface StoreBlock {
   id: string;
-  type: "product" | "booking" | "link";
+  type: "product" | "booking" | "link" | "course";
   title: string | null;
   description: string | null;
   image_url: string | null;
@@ -23,6 +23,7 @@ interface StoreBlock {
   duration_minutes: number | null;
   link_icon: string | null;
   digital_product_id: string | null;
+  course_id: string | null;
 }
 
 interface StorePageProps {

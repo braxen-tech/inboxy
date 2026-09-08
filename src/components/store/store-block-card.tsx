@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { Clock, ExternalLink } from "lucide-react";
-import { createDirectCheckout, createDigitalProductCheckout } from "@/app/(store)/s/[slug]/actions";
+import { createDirectCheckout, createDigitalProductCheckout, createCourseCheckout } from "@/app/(store)/s/[slug]/actions";
 
 interface StoreBlock {
   id: string;
-  type: "product" | "booking" | "link";
+  type: "product" | "booking" | "link" | "course";
   title: string | null;
   description: string | null;
   image_url: string | null;
@@ -19,6 +19,7 @@ interface StoreBlock {
   duration_minutes: number | null;
   link_icon: string | null;
   digital_product_id: string | null;
+  course_id: string | null;
 }
 
 interface StoreBlockCardProps {
@@ -59,8 +60,9 @@ function ProductOrBookingCard({
   onBlockClick?: StoreBlockCardProps["onBlockClick"];
 }) {
   const isHorizontal = cardLayout === "horizontal";
-  const isPurchasable = block.type === "product" && !!block.price_brl && block.price_brl > 0;
+  const isPurchasable = (block.type === "product" || block.type === "course") && !!block.price_brl && block.price_brl > 0;
   const isDigital = !!block.digital_product_id;
+  const isCourse = block.type === "course" && !!block.course_id;
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -72,9 +74,11 @@ function ProductOrBookingCard({
     setError(null);
     startTransition(async () => {
       const result =
-        isDigital && buyerEmail
-          ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!, { buyerEmail, buyerName })
-          : await createDirectCheckout(orgSlug, block.id);
+        isCourse && buyerEmail
+          ? await createCourseCheckout(orgSlug, block.course_id!, { buyerEmail, buyerName })
+          : isDigital && buyerEmail
+            ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!, { buyerEmail, buyerName })
+            : await createDirectCheckout(orgSlug, block.id);
       if ("error" in result && result.error) {
         setError(result.error);
         return;
@@ -86,7 +90,7 @@ function ProductOrBookingCard({
   }
 
   function handleBuyClick() {
-    if (isDigital) {
+    if (isCourse || isDigital) {
       setShowEmailForm(true);
       return;
     }
@@ -146,7 +150,7 @@ function ProductOrBookingCard({
           showEmailForm ? (
             <form onSubmit={submitEmailForm} className="mt-2 space-y-2">
               <p className="text-xs opacity-60" style={{ color: "var(--store-text)" }}>
-                Após o pagamento, enviaremos o acesso para este e-mail.
+                {isCourse ? "Após o pagamento, enviaremos o acesso ao curso para este e-mail." : "Após o pagamento, enviaremos o acesso para este e-mail."}
               </p>
               <input
                 type="text"

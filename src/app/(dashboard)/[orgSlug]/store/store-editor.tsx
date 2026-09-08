@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Calendar,
   Link2,
+  GraduationCap,
 } from "lucide-react";
 import {
   DndContext,
@@ -65,7 +66,7 @@ interface SocialLink {
 
 interface StoreBlock {
   id: string;
-  type: "product" | "booking" | "link";
+  type: "product" | "booking" | "link" | "course";
   position: number;
   visible: boolean;
   title: string | null;
@@ -78,9 +79,16 @@ interface StoreBlock {
   duration_minutes: number | null;
   link_icon: string | null;
   digital_product_id: string | null;
+  course_id: string | null;
 }
 
 interface DigitalProductOption {
+  id: string;
+  title: string;
+  price_brl: number | null;
+}
+
+interface CourseOption {
   id: string;
   title: string;
   price_brl: number | null;
@@ -110,6 +118,7 @@ interface StoreEditorProps {
   socialLinks: SocialLink[];
   blocks: StoreBlock[];
   digitalProducts: DigitalProductOption[];
+  courses: CourseOption[];
   theme: StoreTheme;
   chatEnabled: boolean;
   chatTrigger: string;
@@ -130,7 +139,8 @@ const PLATFORMS = [
 ];
 
 const BLOCK_TYPES = [
-  { type: "product" as const, label: "Produto", icon: ShoppingBag, description: "Ebook, curso, template — link para checkout" },
+  { type: "product" as const, label: "Produto", icon: ShoppingBag, description: "Ebook, template — link para checkout" },
+  { type: "course" as const, label: "Curso Online", icon: GraduationCap, description: "Curso com vídeo-aulas — checkout integrado" },
   { type: "booking" as const, label: "Mentoria", icon: Calendar, description: "Sessão 1:1 — link para agendamento" },
   { type: "link" as const, label: "Link", icon: Link2, description: "Podcast, YouTube, afiliados" },
 ];
@@ -151,7 +161,9 @@ function SortableBlockCard({
   editDuration,
   editLinkIcon,
   editDigitalProductId,
+  editCourseId,
   digitalProducts,
+  courses,
   onSetEditTitle,
   onSetEditDescription,
   onSetEditImageUrl,
@@ -162,6 +174,7 @@ function SortableBlockCard({
   onSetEditDuration,
   onSetEditLinkIcon,
   onSetEditDigitalProductId,
+  onSetEditCourseId,
   onToggleVisibility,
   onDelete,
   onEdit,
@@ -183,7 +196,9 @@ function SortableBlockCard({
   editDuration: string;
   editLinkIcon: string;
   editDigitalProductId: string;
+  editCourseId: string;
   digitalProducts: DigitalProductOption[];
+  courses: CourseOption[];
   onSetEditTitle: (v: string) => void;
   onSetEditDescription: (v: string) => void;
   onSetEditImageUrl: (v: string) => void;
@@ -194,6 +209,7 @@ function SortableBlockCard({
   onSetEditDuration: (v: string) => void;
   onSetEditLinkIcon: (v: string) => void;
   onSetEditDigitalProductId: (v: string) => void;
+  onSetEditCourseId: (v: string) => void;
   onToggleVisibility: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -217,7 +233,7 @@ function SortableBlockCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
-              {block.type === "product" ? "Produto" : block.type === "booking" ? "Mentoria" : "Link"}
+              {block.type === "product" ? "Produto" : block.type === "course" ? "Curso" : block.type === "booking" ? "Mentoria" : "Link"}
             </Badge>
             <span className="font-medium truncate">{block.title || "Sem título"}</span>
           </div>
@@ -292,13 +308,28 @@ function SortableBlockCard({
               )}
             </>
           )}
+          {blockType === "course" && (
+            <div className="space-y-2">
+              <Label>Curso vinculado</Label>
+              <select
+                value={editCourseId}
+                onChange={(e) => onSetEditCourseId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Selecione um curso</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
           {blockType === "booking" && (
             <div className="space-y-2">
               <Label>Duração (minutos)</Label>
               <Input type="number" value={editDuration} onChange={(e) => onSetEditDuration(e.target.value)} placeholder="60" />
             </div>
           )}
-          {!editDigitalProductId && !(blockType === "product" && Number(editPriceBrl) > 0) && (
+          {!editDigitalProductId && !editCourseId && !(blockType === "product" && Number(editPriceBrl) > 0) && blockType !== "course" && (
             <div className="space-y-2">
               <Label>{externalUrlLabel(blockType)}</Label>
               <Input value={editExternalUrl} onChange={(e) => onSetEditExternalUrl(e.target.value)} placeholder="https://..." />
@@ -335,6 +366,7 @@ export function StoreEditor({
   socialLinks: initialSocialLinks,
   blocks: initialBlocks,
   digitalProducts,
+  courses,
   theme: initialTheme,
   chatEnabled: initialChatEnabled,
   chatTrigger: initialChatTrigger,
@@ -357,7 +389,7 @@ export function StoreEditor({
 
   // Blocks state
   const [blocks, setBlocks] = useState(initialBlocks);
-  const [addingBlockType, setAddingBlockType] = useState<"product" | "booking" | "link" | null>(null);
+  const [addingBlockType, setAddingBlockType] = useState<"product" | "booking" | "link" | "course" | null>(null);
   const [editingBlock, setEditingBlock] = useState<string | null>(null);
 
   useEffect(() => { setBlocks(initialBlocks); }, [initialBlocks]);
@@ -373,6 +405,7 @@ export function StoreEditor({
   const [newDuration, setNewDuration] = useState("");
   const [newLinkIcon, setNewLinkIcon] = useState("");
   const [newDigitalProductId, setNewDigitalProductId] = useState("");
+  const [newCourseId, setNewCourseId] = useState("");
 
   // Chat state
   const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
@@ -420,6 +453,7 @@ export function StoreEditor({
   const [editDuration, setEditDuration] = useState("");
   const [editLinkIcon, setEditLinkIcon] = useState("");
   const [editDigitalProductId, setEditDigitalProductId] = useState("");
+  const [editCourseId, setEditCourseId] = useState("");
 
   // Drag and drop
   const dndId = useId();
@@ -479,6 +513,7 @@ export function StoreEditor({
     setNewDuration("");
     setNewLinkIcon("");
     setNewDigitalProductId("");
+    setNewCourseId("");
     setAddingBlockType(null);
   }
 
@@ -498,6 +533,7 @@ export function StoreEditor({
         durationMinutes: newDuration ? parseInt(newDuration) : undefined,
         linkIcon: newLinkIcon,
         digitalProductId: newDigitalProductId || undefined,
+        courseId: newCourseId || undefined,
       });
       if (r.error) showMessage("err", r.error);
       else {
@@ -560,6 +596,7 @@ export function StoreEditor({
     setEditDuration(block.duration_minutes?.toString() ?? "");
     setEditLinkIcon(block.link_icon ?? "");
     setEditDigitalProductId(block.digital_product_id ?? "");
+    setEditCourseId(block.course_id ?? "");
   }
 
   function cancelEditingBlock() {
@@ -581,6 +618,7 @@ export function StoreEditor({
         durationMinutes: editDuration ? parseInt(editDuration) : null,
         linkIcon: editLinkIcon,
         digitalProductId: editDigitalProductId || null,
+        courseId: editCourseId || null,
       });
       if (r.error) {
         showMessage("err", r.error);
@@ -818,13 +856,33 @@ export function StoreEditor({
                     )}
                   </>
                 )}
+                {addingBlockType === "course" && (
+                  <div className="space-y-2">
+                    <Label>Curso vinculado</Label>
+                    <select
+                      value={newCourseId}
+                      onChange={(e) => setNewCourseId(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Selecione um curso</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione o curso criado em{" "}
+                      <Link href={`/${orgSlug}/courses`} className="underline">Cursos Online</Link>
+                      {" "}para gerar o checkout automaticamente.
+                    </p>
+                  </div>
+                )}
                 {addingBlockType === "booking" && (
                   <div className="space-y-2">
                     <Label>Duração (minutos)</Label>
                     <Input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="60" />
                   </div>
                 )}
-                {!newDigitalProductId && !(addingBlockType === "product" && Number(newPriceBrl) > 0) && (
+                {!newDigitalProductId && !newCourseId && !(addingBlockType === "product" && Number(newPriceBrl) > 0) && addingBlockType !== "course" && (
                   <div className="space-y-2">
                     <Label>{externalUrlLabel(addingBlockType)}</Label>
                     <Input value={newExternalUrl} onChange={(e) => setNewExternalUrl(e.target.value)} placeholder="https://..." />
@@ -868,7 +926,9 @@ export function StoreEditor({
                       editDuration={editDuration}
                       editLinkIcon={editLinkIcon}
                       editDigitalProductId={editDigitalProductId}
+                      editCourseId={editCourseId}
                       digitalProducts={digitalProducts}
+                      courses={courses}
                       onSetEditTitle={setEditTitle}
                       onSetEditDescription={setEditDescription}
                       onSetEditImageUrl={setEditImageUrl}
@@ -879,6 +939,7 @@ export function StoreEditor({
                       onSetEditDuration={setEditDuration}
                       onSetEditLinkIcon={setEditLinkIcon}
                       onSetEditDigitalProductId={setEditDigitalProductId}
+                      onSetEditCourseId={setEditCourseId}
                       onToggleVisibility={() => handleToggleBlockVisibility(block)}
                       onDelete={() => handleDeleteBlock(block.id)}
                       onEdit={() => startEditingBlock(block)}

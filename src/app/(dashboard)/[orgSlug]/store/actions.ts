@@ -172,7 +172,7 @@ export async function saveStoreChatConfig(raw: z.infer<typeof chatConfigSchema>)
 
 const addBlockSchema = z.object({
   orgSlug: z.string().min(1),
-  type: z.enum(["product", "booking", "link"]),
+  type: z.enum(["product", "booking", "link", "course"]),
   title: z.string().max(200).optional(),
   description: z.string().max(1000).optional(),
   imageUrl: z.string().url().max(2048).optional().or(z.literal("")),
@@ -183,13 +183,14 @@ const addBlockSchema = z.object({
   durationMinutes: z.number().int().min(1).max(480).optional(),
   linkIcon: z.string().max(50).optional(),
   digitalProductId: z.string().uuid().optional().nullable(),
+  courseId: z.string().uuid().optional().nullable(),
 });
 
 export async function addStoreBlock(raw: z.infer<typeof addBlockSchema>) {
   const parsed = addBlockSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { orgSlug, type, title, description, imageUrl, ctaText, externalUrl, priceDisplay, priceBrl, durationMinutes, linkIcon, digitalProductId } = parsed.data;
+  const { orgSlug, type, title, description, imageUrl, ctaText, externalUrl, priceDisplay, priceBrl, durationMinutes, linkIcon, digitalProductId, courseId } = parsed.data;
   const result = await getOrgForOwner(orgSlug);
   if ("error" in result) return { error: result.error };
   const { org, supabase } = result;
@@ -218,6 +219,7 @@ export async function addStoreBlock(raw: z.infer<typeof addBlockSchema>) {
     duration_minutes: durationMinutes || null,
     link_icon: linkIcon || null,
     digital_product_id: digitalProductId || null,
+    course_id: courseId || null,
   });
 
   if (error) return { error: "Erro ao adicionar bloco." };
@@ -240,6 +242,7 @@ const updateBlockSchema = z.object({
   linkIcon: z.string().max(50).optional(),
   visible: z.boolean().optional(),
   digitalProductId: z.string().uuid().optional().nullable(),
+  courseId: z.string().uuid().optional().nullable(),
 });
 
 export async function updateStoreBlock(raw: z.infer<typeof updateBlockSchema>) {
@@ -263,6 +266,7 @@ export async function updateStoreBlock(raw: z.infer<typeof updateBlockSchema>) {
   if (updates.linkIcon !== undefined) dbUpdates.link_icon = updates.linkIcon || null;
   if (updates.visible !== undefined) dbUpdates.visible = updates.visible;
   if (updates.digitalProductId !== undefined) dbUpdates.digital_product_id = updates.digitalProductId || null;
+  if (updates.courseId !== undefined) dbUpdates.course_id = updates.courseId || null;
 
   const { error } = await supabase
     .from("store_blocks")

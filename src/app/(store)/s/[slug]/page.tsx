@@ -29,38 +29,45 @@ async function getStoreData(slug: string) {
   const { data: rawBlocks } = await db
     .from("store_blocks")
     .select(
-      "id, type, title, description, image_url, cta_text, external_url, price_display, price_brl, payment_type, billing_cycle, duration_minutes, link_icon, digital_product_id, digital_products(id, title, description, thumbnail_url, price_brl, payment_type, billing_cycle, active)",
+      "id, type, title, description, image_url, cta_text, external_url, price_display, price_brl, payment_type, billing_cycle, duration_minutes, link_icon, digital_product_id, course_id, digital_products(id, title, description, thumbnail_url, price_brl, payment_type, billing_cycle, active), courses(id, title, description, thumbnail_url, price_brl)",
     )
     .eq("organization_id", org.id)
     .eq("visible", true)
     .order("position", { ascending: true });
 
-  // A block linked to a digital product displays/sells that product — its own
-  // price/title/description fields become a fallback the product overrides.
+  // A block linked to a digital product or course displays/sells that item.
   const blocks = (rawBlocks ?? [])
-    .map(({ digital_products, ...b }) => {
-      const product = Array.isArray(digital_products) ? digital_products[0] : digital_products;
+    .map(({ digital_products, courses, ...b }) => {
+      const product = Array.isArray(digital_products) ? digital_products[0] : digital_products as { id: string; title: string; description: string | null; thumbnail_url: string | null; price_brl: number | null; payment_type: string | null; billing_cycle: string | null; active: boolean } | null;
+      const course = Array.isArray(courses) ? courses[0] : courses as { id: string; title: string; description: string | null; thumbnail_url: string | null; price_brl: number | null } | null;
+
       if (b.digital_product_id && (!product || !product.active)) return null;
+
+      const resolvedTitle = course?.title ?? product?.title ?? b.title;
+      const resolvedDescription = course?.description ?? product?.description ?? b.description;
+      const resolvedImage = course?.thumbnail_url ?? product?.thumbnail_url ?? b.image_url;
+      const resolvedPriceBrl = course?.price_brl ?? (product ? product.price_brl : b.price_brl);
 
       return {
         id: b.id,
         type: b.type,
-        title: product?.title ?? b.title,
-        description: product?.description ?? b.description,
-        image_url: product?.thumbnail_url ?? b.image_url,
+        title: resolvedTitle,
+        description: resolvedDescription,
+        image_url: resolvedImage,
         cta_text: b.cta_text,
         external_url: b.external_url,
         price_display:
           b.price_display ||
-          (product?.price_brl != null
-            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.price_brl)
+          (resolvedPriceBrl != null
+            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(resolvedPriceBrl)
             : null),
-        price_brl: product ? product.price_brl : b.price_brl,
+        price_brl: resolvedPriceBrl,
         payment_type: product?.payment_type ?? b.payment_type,
         billing_cycle: product?.billing_cycle ?? b.billing_cycle,
         duration_minutes: b.duration_minutes,
         link_icon: b.link_icon,
         digital_product_id: b.digital_product_id,
+        course_id: b.course_id,
       };
     })
     .filter((b): b is NonNullable<typeof b> => b !== null);

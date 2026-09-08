@@ -34,6 +34,12 @@ export default async function StoreEditorPage({ params }: Props) {
     .eq("active", true)
     .order("created_at", { ascending: false });
 
+  const { data: courses } = await db
+    .from("courses")
+    .select("id, title, price_brl")
+    .eq("organization_id", org.id)
+    .order("created_at", { ascending: false });
+
   const theme = parseStoreTheme(org.store_theme);
 
   return (
@@ -47,6 +53,7 @@ export default async function StoreEditorPage({ params }: Props) {
       socialLinks={socialLinks ?? []}
       blocks={blocks ?? []}
       digitalProducts={digitalProducts ?? []}
+      courses={courses ?? []}
       theme={theme}
       chatEnabled={org.store_chat_enabled ?? false}
       chatTrigger={org.store_chat_trigger ?? "none"}
