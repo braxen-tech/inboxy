@@ -133,7 +133,7 @@ function ProductOrBookingCard({
         )}
 
         <div className="mt-auto flex items-center gap-2 pt-2">
-          {block.type === "product" && block.price_display && (
+          {(block.type === "product" || block.type === "course") && block.price_display && (
             <span className="text-sm font-bold" style={{ color: "var(--store-primary)" }}>
               {block.price_display}
             </span>
