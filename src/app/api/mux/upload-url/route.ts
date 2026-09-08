@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   }
 
   type ModuleShape = { courses: { organization_id: string; organizations: { owner_user_id: string } | null } | null };
-  const module_ = (Array.isArray(lesson.course_modules) ? lesson.course_modules[0] : lesson.course_modules) as ModuleShape | null;
+  const module_ = (Array.isArray(lesson.course_modules) ? lesson.course_modules[0] : lesson.course_modules) as unknown as ModuleShape | null;
   const course = module_?.courses;
   const org = course?.organizations;
 
