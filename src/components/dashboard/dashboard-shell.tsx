@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface DashboardShellProps {
@@ -209,13 +210,16 @@ function SidebarContent({
       />
 
       <div className="mt-auto border-t border-sidebar-border p-3">
-        <SignOutButton
-          variant="ghost"
-          className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-        >
-          <LogOut className="size-4" aria-hidden />
-          Sair
-        </SignOutButton>
+        <div className="flex items-center gap-1">
+          <SignOutButton
+            variant="ghost"
+            className="flex-1 justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          >
+            <LogOut className="size-4" aria-hidden />
+            Sair
+          </SignOutButton>
+          <ThemeToggle />
+        </div>
       </div>
     </>
   );

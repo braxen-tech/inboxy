@@ -53,3 +53,44 @@ export async function getMuxUpload(uploadId: string) {
   const mux = getMuxClient();
   return mux.video.uploads.retrieve(uploadId);
 }
+
+// --- Live Streaming ---
+
+export interface MuxLiveStreamResult {
+  liveStreamId: string;
+  streamKey: string;
+  playbackId: string;
+}
+
+export async function createMuxLiveStream(): Promise<MuxLiveStreamResult> {
+  const mux = getMuxClient();
+  const liveStream = await mux.video.liveStreams.create({
+    playback_policy: ["signed"],
+    new_asset_settings: { playback_policy: ["signed"] },
+    latency_mode: "low",
+    reconnect_window: 60,
+  });
+
+  const streamKey = liveStream.stream_key;
+  const playbackId = liveStream.playback_ids?.[0]?.id;
+  if (!streamKey || !playbackId) {
+    throw new Error("MUX não retornou stream_key ou playback_id para o live stream");
+  }
+
+  return { liveStreamId: liveStream.id, streamKey, playbackId };
+}
+
+export async function getMuxLiveStream(liveStreamId: string) {
+  const mux = getMuxClient();
+  return mux.video.liveStreams.retrieve(liveStreamId);
+}
+
+export async function disableMuxLiveStream(liveStreamId: string) {
+  const mux = getMuxClient();
+  await mux.video.liveStreams.disable(liveStreamId);
+}
+
+export async function enableMuxLiveStream(liveStreamId: string) {
+  const mux = getMuxClient();
+  await mux.video.liveStreams.enable(liveStreamId);
+}

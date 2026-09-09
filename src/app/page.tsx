@@ -49,7 +49,7 @@ export default async function HomePage() {
     if (fullOrg && needsBillingSetup(fullOrg)) {
       redirect(`/${org.slug}/billing?setup=required`);
     }
-    redirect(`/${org.slug}/kb`);
+    redirect(`/${org.slug}/store`);
   }
 
   return (

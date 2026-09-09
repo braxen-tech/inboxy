@@ -15,7 +15,7 @@ export default async function LessonPlayerPage({ params }: Props) {
 
   const { data: lesson } = await db
     .from("course_lessons")
-    .select("id, title, description, published, is_preview, mux_playback_id, module_id")
+    .select("id, title, description, published, is_preview, mux_playback_id, module_id, lesson_type, live_stream_status, mux_upload_status")
     .eq("id", lessonId)
     .maybeSingle();
 
@@ -98,6 +98,9 @@ export default async function LessonPlayerPage({ params }: Props) {
           courseId={courseId}
           orgSlug={orgSlug}
           nextLessonId={nextLesson?.id ?? null}
+          lessonType={lesson.lesson_type ?? "video"}
+          liveStreamStatus={lesson.live_stream_status ?? null}
+          muxUploadStatus={lesson.mux_upload_status ?? null}
         />
 
         {/* Lesson info */}

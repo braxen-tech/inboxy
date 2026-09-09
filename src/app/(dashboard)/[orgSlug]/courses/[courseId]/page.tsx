@@ -30,7 +30,8 @@ export default async function CourseBuilderPage({ params }: Props) {
       id, title, position, published,
       course_lessons (
         id, title, position, published, is_preview,
-        mux_upload_status, mux_playback_id, duration_seconds
+        mux_upload_status, mux_playback_id, duration_seconds,
+        lesson_type, live_stream_status, scheduled_at
       )
     `)
     .eq("course_id", courseId)

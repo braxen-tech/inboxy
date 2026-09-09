@@ -16,6 +16,9 @@ interface Lesson {
   mux_upload_status: string | null;
   mux_playback_id: string | null;
   duration_seconds: number | null;
+  lesson_type: string;
+  live_stream_status: string | null;
+  scheduled_at: string | null;
 }
 
 interface Module {
@@ -61,6 +64,7 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   const [pending, startTransition] = useTransition();
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [newLessonTitles, setNewLessonTitles] = useState<Record<string, string>>({});
+  const [newLessonTypes, setNewLessonTypes] = useState<Record<string, "video" | "live">>({});
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(initialModules.map((m) => m.id)));
 
   function toggleModule(moduleId: string) {
@@ -91,9 +95,11 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   function handleAddLesson(moduleId: string) {
     const title = newLessonTitles[moduleId]?.trim();
     if (!title) return;
+    const lessonType = newLessonTypes[moduleId] ?? "video";
     setNewLessonTitles((prev) => ({ ...prev, [moduleId]: "" }));
+    setNewLessonTypes((prev) => ({ ...prev, [moduleId]: "video" }));
     startTransition(async () => {
-      const r = await createLesson(orgSlug, course.id, moduleId, title);
+      const r = await createLesson(orgSlug, course.id, moduleId, title, lessonType);
       if ("success" in r) {
         setModules((prev) =>
           prev.map((m) =>
@@ -111,6 +117,9 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                       mux_upload_status: null,
                       mux_playback_id: null,
                       duration_seconds: null,
+                      lesson_type: lessonType,
+                      live_stream_status: lessonType === "live" ? "idle" : null,
+                      scheduled_at: null,
                     },
                   ],
                 }
@@ -147,6 +156,7 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   function handleToggleModulePublish(moduleId: string, current: boolean) {
     startTransition(async () => {
       await updateModule(orgSlug, moduleId, { published: !current });
+      setModules((prev) => prev.map((m) => m.id === moduleId ? { ...m, published: !current } : m));
       router.refresh();
     });
   }
@@ -189,11 +199,31 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
               <div className="divide-y">
                 {mod.course_lessons.map((lesson) => (
                   <div key={lesson.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="shrink-0 w-5 text-center">
+                      {lesson.lesson_type === "live" ? (
+                        <svg className={`w-4 h-4 ${lesson.live_stream_status === "active" ? "text-red-500" : "text-muted-foreground"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9.172 15.828a5 5 0 010-7.656m5.656 0a5 5 0 010 7.656M12 12h.01" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+                        </svg>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Link href={`/${orgSlug}/courses/${course.id}/lessons/${lesson.id}`} className="font-medium text-sm hover:underline truncate">
                           {lesson.title}
                         </Link>
+                        {lesson.lesson_type === "live" && lesson.live_stream_status === "active" && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 px-1.5 py-0.5 rounded">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            Ao vivo
+                          </span>
+                        )}
+                        {lesson.lesson_type === "live" && lesson.live_stream_status !== "active" && (
+                          <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">Live</span>
+                        )}
                         {lesson.is_preview && (
                           <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded">Preview</span>
                         )}
@@ -202,8 +232,20 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {statusBadge(lesson.mux_upload_status, lesson.mux_playback_id)}
-                        <span className="text-xs text-muted-foreground">{formatDuration(lesson.duration_seconds)}</span>
+                        {lesson.lesson_type === "live" ? (
+                          lesson.scheduled_at ? (
+                            <span className="text-xs text-muted-foreground">
+                              Agendada: {new Date(lesson.scheduled_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Sem agendamento</span>
+                          )
+                        ) : (
+                          <>
+                            {statusBadge(lesson.mux_upload_status, lesson.mux_playback_id)}
+                            <span className="text-xs text-muted-foreground">{formatDuration(lesson.duration_seconds)}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -219,6 +261,14 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
 
                 {/* Add lesson input */}
                 <div className="flex gap-2 px-4 py-3 bg-muted/20">
+                  <select
+                    value={newLessonTypes[mod.id] ?? "video"}
+                    onChange={(e) => setNewLessonTypes((prev) => ({ ...prev, [mod.id]: e.target.value as "video" | "live" }))}
+                    className="h-8 text-sm rounded-md border bg-background px-2"
+                  >
+                    <option value="video">Vídeo</option>
+                    <option value="live">Live</option>
+                  </select>
                   <Input
                     value={newLessonTitles[mod.id] ?? ""}
                     onChange={(e) => setNewLessonTitles((prev) => ({ ...prev, [mod.id]: e.target.value }))}

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VideoUploader } from "@/components/courses/video-uploader";
-import { updateLesson } from "../../../actions";
+import { LiveBroadcaster } from "@/components/courses/live-broadcaster";
+import { updateLesson, scheduleLiveLesson, resetLiveStream } from "../../../actions";
 
 interface Lesson {
   id: string;
@@ -15,10 +16,13 @@ interface Lesson {
   description: string | null;
   published: boolean;
   is_preview: boolean;
+  lesson_type: string;
   mux_upload_status: string | null;
   mux_playback_id: string | null;
   mux_asset_id: string | null;
   duration_seconds: number | null;
+  live_stream_status: string | null;
+  scheduled_at: string | null;
 }
 
 interface Props {
@@ -87,37 +91,119 @@ export function LessonEditor({ orgSlug, courseId, lesson }: Props) {
         </div>
       </div>
 
-      {/* Video */}
-      <div className="rounded-lg border p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Vídeo da aula</h2>
-          {lesson.duration_seconds && (
-            <span className="text-sm text-muted-foreground">{formatDuration(lesson.duration_seconds)}</span>
+      {/* Content: Video or Live */}
+      {lesson.lesson_type === "live" ? (
+        <div className="rounded-lg border p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Transmissão ao vivo</h2>
+            <LiveStatusBadge status={lesson.live_stream_status} />
+          </div>
+
+          {lesson.scheduled_at && (
+            <div className="text-sm text-muted-foreground">
+              Agendada para {new Date(lesson.scheduled_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </div>
+          )}
+
+          <LiveBroadcaster
+            lessonId={lesson.id}
+            liveStreamStatus={lesson.live_stream_status}
+            muxUploadStatus={lesson.mux_upload_status}
+            durationSeconds={lesson.duration_seconds}
+            onStatusChange={() => router.refresh()}
+          />
+
+          {!lesson.scheduled_at && (
+            <ScheduleLiveForm orgSlug={orgSlug} courseId={courseId} lessonId={lesson.id} />
           )}
         </div>
+      ) : (
+        <div className="rounded-lg border p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Vídeo da aula</h2>
+            {lesson.duration_seconds && (
+              <span className="text-sm text-muted-foreground">{formatDuration(lesson.duration_seconds)}</span>
+            )}
+          </div>
 
-        {lesson.mux_playback_id && lesson.mux_upload_status === "ready" ? (
-          <div className="space-y-3">
-            <div className="rounded-md bg-muted/60 flex items-center justify-center aspect-video text-sm text-muted-foreground">
-              Vídeo pronto · Playback ID: <code className="ml-1 text-xs">{lesson.mux_playback_id.slice(0, 12)}…</code>
+          {lesson.mux_playback_id && lesson.mux_upload_status === "ready" ? (
+            <div className="space-y-3">
+              <div className="rounded-md bg-muted/60 flex items-center justify-center aspect-video text-sm text-muted-foreground">
+                Vídeo pronto · Playback ID: <code className="ml-1 text-xs">{lesson.mux_playback_id.slice(0, 12)}…</code>
+              </div>
+              <p className="text-xs text-muted-foreground">Para substituir o vídeo, faça um novo upload abaixo.</p>
+              <VideoUploader lessonId={lesson.id} onUploaded={() => router.refresh()} />
             </div>
-            <p className="text-xs text-muted-foreground">Para substituir o vídeo, faça um novo upload abaixo.</p>
-            <VideoUploader lessonId={lesson.id} onUploaded={() => router.refresh()} />
-          </div>
-        ) : lesson.mux_upload_status === "waiting" || lesson.mux_upload_status === "asset_created" ? (
-          <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 text-sm text-amber-700 dark:text-amber-400">
-            Processando vídeo… isso pode levar alguns minutos. Recarregue a página para atualizar.
-          </div>
-        ) : lesson.mux_upload_status === "errored" ? (
-          <div className="space-y-3">
-            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive">
-              Erro no processamento do vídeo. Tente fazer o upload novamente.
+          ) : lesson.mux_upload_status === "waiting" || lesson.mux_upload_status === "asset_created" ? (
+            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 text-sm text-amber-700 dark:text-amber-400">
+              Processando vídeo… isso pode levar alguns minutos. Recarregue a página para atualizar.
             </div>
+          ) : lesson.mux_upload_status === "errored" ? (
+            <div className="space-y-3">
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive">
+                Erro no processamento do vídeo. Tente fazer o upload novamente.
+              </div>
+              <VideoUploader lessonId={lesson.id} onUploaded={() => router.refresh()} />
+            </div>
+          ) : (
             <VideoUploader lessonId={lesson.id} onUploaded={() => router.refresh()} />
-          </div>
-        ) : (
-          <VideoUploader lessonId={lesson.id} onUploaded={() => router.refresh()} />
-        )}
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveStatusBadge({ status }: { status: string | null }) {
+  if (status === "active") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+        Ao vivo
+      </span>
+    );
+  }
+  if (status === "disabled") {
+    return (
+      <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-muted text-muted-foreground">
+        Desabilitada
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-muted text-muted-foreground">
+      Offline
+    </span>
+  );
+}
+
+function ScheduleLiveForm({ orgSlug, courseId, lessonId }: { orgSlug: string; courseId: string; lessonId: string }) {
+  const [date, setDate] = useState("");
+  const [scheduling, startScheduling] = useTransition();
+  const router = useRouter();
+
+  function handleSchedule() {
+    if (!date) return;
+    startScheduling(async () => {
+      await scheduleLiveLesson(orgSlug, courseId, lessonId, date);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="rounded-md border p-4 space-y-3">
+      <p className="text-sm font-medium">Agendar transmissão</p>
+      <p className="text-xs text-muted-foreground">Os alunos matriculados serão notificados por email.</p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="datetime-local"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="flex-1"
+        />
+        <Button variant="outline" size="sm" onClick={handleSchedule} disabled={scheduling || !date}>
+          {scheduling ? "Agendando…" : "Agendar"}
+        </Button>
       </div>
     </div>
   );

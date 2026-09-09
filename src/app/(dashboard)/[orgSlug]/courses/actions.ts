@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { getOrgBySlug } from "@/lib/get-org";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
+import { createMuxLiveStream } from "@/infrastructure/adapters/mux";
 
 const BUCKET = "course-thumbnails";
 
@@ -155,7 +156,13 @@ export async function deleteModule(orgSlug: string, courseId: string, moduleId: 
   return { success: true as const };
 }
 
-export async function createLesson(orgSlug: string, courseId: string, moduleId: string, title: string) {
+export async function createLesson(
+  orgSlug: string,
+  courseId: string,
+  moduleId: string,
+  title: string,
+  lessonType: "video" | "live" = "video",
+) {
   scheduleTelemetryFlush();
   const result = await getAuthenticatedOrg(orgSlug);
   if ("error" in result) return result;
@@ -169,9 +176,24 @@ export async function createLesson(orgSlug: string, courseId: string, moduleId: 
     .limit(1)
     .maybeSingle();
 
+  const insertData: Record<string, unknown> = {
+    module_id: moduleId,
+    title,
+    position: (last?.position ?? -1) + 1,
+    lesson_type: lessonType,
+  };
+
+  if (lessonType === "live") {
+    const liveStream = await createMuxLiveStream();
+    insertData.mux_live_stream_id = liveStream.liveStreamId;
+    insertData.mux_stream_key = liveStream.streamKey;
+    insertData.mux_playback_id = liveStream.playbackId;
+    insertData.live_stream_status = "idle";
+  }
+
   const { data: lesson, error } = await db
     .from("course_lessons")
-    .insert({ module_id: moduleId, title, position: (last?.position ?? -1) + 1 })
+    .insert(insertData)
     .select("id")
     .single();
 
@@ -212,6 +234,111 @@ export async function deleteLesson(orgSlug: string, courseId: string, lessonId: 
   const { db } = result;
 
   await db.from("course_lessons").delete().eq("id", lessonId);
+  revalidatePath(`/${orgSlug}/courses/${courseId}`);
+  return { success: true as const };
+}
+
+export async function scheduleLiveLesson(orgSlug: string, courseId: string, lessonId: string, scheduledAt: string) {
+  scheduleTelemetryFlush();
+  const result = await getAuthenticatedOrg(orgSlug);
+  if ("error" in result) return result;
+  const { db } = result;
+
+  const date = new Date(scheduledAt);
+  if (isNaN(date.getTime()) || date <= new Date()) {
+    return { error: "Data de agendamento inválida." };
+  }
+
+  await db
+    .from("course_lessons")
+    .update({ scheduled_at: date.toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", lessonId);
+
+  // Fetch enrolled students and send notification
+  const { data: lesson } = await db
+    .from("course_lessons")
+    .select("title")
+    .eq("id", lessonId)
+    .single();
+
+  const { data: course } = await db
+    .from("courses")
+    .select("title, organization_id, organizations!inner(name, slug)")
+    .eq("id", courseId)
+    .single();
+
+  if (lesson && course) {
+    const { data: enrollments } = await db
+      .from("course_enrollments")
+      .select("buyer_email, buyer_name")
+      .eq("course_id", courseId)
+      .eq("status", "active");
+
+    if (enrollments && enrollments.length > 0) {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      const orgData = Array.isArray(course.organizations) ? course.organizations[0] : course.organizations;
+      const orgName = (orgData as { name: string; slug: string } | null)?.name ?? "Inboxy";
+      const orgSlugValue = (orgData as { name: string; slug: string } | null)?.slug ?? orgSlug;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      const courseUrl = `${appUrl}/portal/${orgSlugValue}/courses/${courseId}`;
+
+      const dateFormatted = date.toLocaleDateString("pt-BR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      await Promise.allSettled(
+        enrollments.map((enrollment) =>
+          resend.emails.send({
+            from: `${orgName} <noreply@${process.env.RESEND_DOMAIN ?? "inboxy.com.br"}>`,
+            to: enrollment.buyer_email,
+            subject: `Nova live agendada: ${lesson.title}`,
+            html: `
+              <p>Olá${enrollment.buyer_name ? `, ${enrollment.buyer_name}` : ""}!</p>
+              <p>Uma nova aula ao vivo foi agendada no curso <strong>${course.title}</strong>.</p>
+              <p><strong>Aula:</strong> ${lesson.title}<br>
+              <strong>Data:</strong> ${dateFormatted}</p>
+              <p>Não perca — a gravação ficará disponível depois, mas ao vivo você pode tirar suas dúvidas.</p>
+              <p><a href="${courseUrl}">Acessar curso</a></p>
+            `,
+          }),
+        ),
+      );
+    }
+  }
+
+  revalidatePath(`/${orgSlug}/courses/${courseId}`);
+  return { success: true as const };
+}
+
+export async function resetLiveStream(orgSlug: string, courseId: string, lessonId: string) {
+  scheduleTelemetryFlush();
+  const result = await getAuthenticatedOrg(orgSlug);
+  if ("error" in result) return result;
+  const { db } = result;
+
+  const liveStream = await createMuxLiveStream();
+
+  await db
+    .from("course_lessons")
+    .update({
+      mux_live_stream_id: liveStream.liveStreamId,
+      mux_stream_key: liveStream.streamKey,
+      mux_playback_id: liveStream.playbackId,
+      live_stream_status: "idle",
+      mux_asset_id: null,
+      mux_upload_status: null,
+      duration_seconds: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", lessonId);
+
+  revalidatePath(`/${orgSlug}/courses/${courseId}/lessons/${lessonId}`);
   revalidatePath(`/${orgSlug}/courses/${courseId}`);
   return { success: true as const };
 }

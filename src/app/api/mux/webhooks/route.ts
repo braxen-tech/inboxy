@@ -54,16 +54,32 @@ export async function POST(request: Request) {
     const duration = Math.round((event.data.duration as number | undefined) ?? 0);
 
     if (assetId) {
-      await db
+      const updateData = {
+        mux_playback_id: playbackId ?? null,
+        mux_upload_status: "ready" as const,
+        duration_seconds: duration || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { count } = await db
         .from("course_lessons")
-        .update({
-          mux_playback_id: playbackId ?? null,
-          mux_upload_status: "ready",
-          duration_seconds: duration || null,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("mux_asset_id", assetId);
-      logger.info("MUX webhook: asset ready", { assetId, playbackId, duration });
+
+      // Fallback: if no row matched by mux_asset_id, try matching by live_stream_id
+      // (handles race condition where video.asset.ready arrives before video.asset.live_stream_completed)
+      if (count === 0) {
+        const liveStreamId = event.data.live_stream_id as string | undefined;
+        if (liveStreamId) {
+          await db
+            .from("course_lessons")
+            .update({ ...updateData, mux_asset_id: assetId })
+            .eq("mux_live_stream_id", liveStreamId);
+          logger.info("MUX webhook: asset ready (fallback via live_stream_id)", { assetId, liveStreamId, playbackId });
+        }
+      } else {
+        logger.info("MUX webhook: asset ready", { assetId, playbackId, duration });
+      }
     }
   }
 
@@ -75,6 +91,53 @@ export async function POST(request: Request) {
         .update({ mux_upload_status: "errored", updated_at: new Date().toISOString() })
         .eq("mux_asset_id", assetId);
       logger.warn("MUX webhook: asset errored", { assetId });
+    }
+  }
+
+  // --- Live Stream Events ---
+
+  if (event.type === "video.live_stream.active") {
+    const liveStreamId = event.data.id as string;
+    if (liveStreamId) {
+      await db
+        .from("course_lessons")
+        .update({ live_stream_status: "active", updated_at: new Date().toISOString() })
+        .eq("mux_live_stream_id", liveStreamId);
+      logger.info("MUX webhook: live stream active", { liveStreamId });
+    }
+  }
+
+  if (event.type === "video.live_stream.idle") {
+    const liveStreamId = event.data.id as string;
+    if (liveStreamId) {
+      await db
+        .from("course_lessons")
+        .update({ live_stream_status: "idle", updated_at: new Date().toISOString() })
+        .eq("mux_live_stream_id", liveStreamId);
+      logger.info("MUX webhook: live stream idle", { liveStreamId });
+    }
+  }
+
+  if (event.type === "video.live_stream.disabled") {
+    const liveStreamId = event.data.id as string;
+    if (liveStreamId) {
+      await db
+        .from("course_lessons")
+        .update({ live_stream_status: "disabled", updated_at: new Date().toISOString() })
+        .eq("mux_live_stream_id", liveStreamId);
+      logger.info("MUX webhook: live stream disabled", { liveStreamId });
+    }
+  }
+
+  if (event.type === "video.asset.live_stream_completed") {
+    const assetId = event.data.id as string;
+    const liveStreamId = event.data.live_stream_id as string;
+    if (assetId && liveStreamId) {
+      await db
+        .from("course_lessons")
+        .update({ mux_asset_id: assetId, updated_at: new Date().toISOString() })
+        .eq("mux_live_stream_id", liveStreamId);
+      logger.info("MUX webhook: live stream asset completed", { assetId, liveStreamId });
     }
   }
 

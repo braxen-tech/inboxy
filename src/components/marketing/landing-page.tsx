@@ -112,18 +112,18 @@ export function LandingPage() {
               {/* Right column — image grid */}
               <div className="hidden grid-cols-2 gap-6 md:grid">
                 <img
-                  src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=500&q=80"
-                  alt="Criadora de conteúdo"
+                  src="https://images.unsplash.com/photo-1753162661371-1404b71111e5?w=500&q=80"
+                  alt="Creator gravando vídeo de moda"
                   className="aspect-square w-full rounded-2xl object-cover"
                 />
                 <img
-                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&q=80"
-                  alt="Loja digital"
+                  src="https://images.unsplash.com/photo-1758521540376-23c1b2f592d9?w=500&q=80"
+                  alt="Creator filmando com câmera e tripé"
                   className="row-span-2 w-full rounded-2xl object-cover"
                 />
                 <img
-                  src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&q=80"
-                  alt="Cursos online"
+                  src="https://images.unsplash.com/photo-1758272422665-9df3d1fb0b9c?w=500&q=80"
+                  alt="Influencer gravando vídeo em estúdio"
                   className="aspect-square w-full rounded-2xl object-cover"
                 />
               </div>
