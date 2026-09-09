@@ -16,6 +16,7 @@ import {
   Plug,
   Settings,
   Store,
+  Wallet,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,12 @@ const navGroups = [
       { href: "store", label: "Minha Loja", icon: Store },
       { href: "products", label: "Produtos Digitais", icon: Package },
       { href: "courses", label: "Cursos Online", icon: GraduationCap },
+    ],
+  },
+  {
+    label: "Financeiro",
+    items: [
+      { href: "payouts", label: "Saques", icon: Wallet },
     ],
   },
   {
