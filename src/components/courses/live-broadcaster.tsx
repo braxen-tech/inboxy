@@ -170,9 +170,12 @@ export function LiveBroadcaster({ lessonId, liveStreamStatus, muxUploadStatus, d
             if (res.ok) {
               const data = (await res.json()) as { egressId: string };
               setEgressId(data.egressId);
+            } else {
+              const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+              setError(`Egress: ${err.error ?? res.statusText}`);
             }
-          } catch {
-            // Egress may already be running
+          } catch (err) {
+            setError(`Egress: ${err instanceof Error ? err.message : "falha ao conectar"}`);
           }
         }}
         onDisconnected={() => {
@@ -194,6 +197,7 @@ export function LiveBroadcaster({ lessonId, liveStreamStatus, muxUploadStatus, d
               {formatTime(elapsed)}
             </div>
           </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex items-center gap-2">
             <TrackToggle source={Track.Source.Microphone} className="rounded px-3 py-2 text-sm border hover:bg-muted" />
             <TrackToggle source={Track.Source.Camera} className="rounded px-3 py-2 text-sm border hover:bg-muted" />
