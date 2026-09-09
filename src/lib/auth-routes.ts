@@ -5,6 +5,7 @@ export const AUTH_PUBLIC_PATH_PREFIXES = [
   "/auth/callback",
   "/api/auth",
   "/api/webhooks",
+  "/api/mux/webhooks",
   "/api/health",
   "/api/inngest",
   "/s/",
