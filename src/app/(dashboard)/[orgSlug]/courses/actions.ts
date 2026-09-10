@@ -161,7 +161,7 @@ export async function createLesson(
   courseId: string,
   moduleId: string,
   title: string,
-  lessonType: "video" | "live" = "video",
+  lessonType: "video" | "live" | "mentoring" = "video",
 ) {
   scheduleTelemetryFlush();
   const result = await getAuthenticatedOrg(orgSlug);
@@ -207,7 +207,7 @@ export async function updateLesson(
   orgSlug: string,
   courseId: string,
   lessonId: string,
-  data: { title?: string; description?: string; isPreview?: boolean; published?: boolean; position?: number },
+  data: { title?: string; description?: string; isPreview?: boolean; published?: boolean; position?: number; calEventTypeId?: string; bookingQuota?: number },
 ) {
   scheduleTelemetryFlush();
   const result = await getAuthenticatedOrg(orgSlug);
@@ -220,6 +220,8 @@ export async function updateLesson(
   if (data.isPreview !== undefined) update.is_preview = data.isPreview;
   if (data.published !== undefined) update.published = data.published;
   if (data.position !== undefined) update.position = data.position;
+  if (data.calEventTypeId !== undefined) update.cal_event_type_id = data.calEventTypeId || null;
+  if (data.bookingQuota !== undefined) update.booking_quota = data.bookingQuota;
 
   await db.from("course_lessons").update(update).eq("id", lessonId);
   revalidatePath(`/${orgSlug}/courses/${courseId}/lessons/${lessonId}`);

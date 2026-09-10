@@ -17,7 +17,7 @@ export default async function LessonEditorPage({ params }: Props) {
 
   const { data: lesson } = await db
     .from("course_lessons")
-    .select("id, title, description, published, is_preview, mux_upload_status, mux_playback_id, mux_asset_id, duration_seconds, module_id, lesson_type, live_stream_status, scheduled_at")
+    .select("id, title, description, published, is_preview, mux_upload_status, mux_playback_id, mux_asset_id, duration_seconds, module_id, lesson_type, live_stream_status, scheduled_at, cal_event_type_id, booking_quota")
     .eq("id", lessonId)
     .maybeSingle();
 

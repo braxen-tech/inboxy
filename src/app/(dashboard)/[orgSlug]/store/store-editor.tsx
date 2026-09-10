@@ -142,7 +142,7 @@ const PLATFORMS = [
 const BLOCK_TYPES = [
   { type: "product" as const, label: "Produto", icon: ShoppingBag, description: "Ebook, template — link para checkout" },
   { type: "course" as const, label: "Curso Online", icon: GraduationCap, description: "Curso com vídeo-aulas — checkout integrado" },
-  { type: "booking" as const, label: "Mentoria", icon: Calendar, description: "Sessão 1:1 — link para agendamento" },
+  { type: "booking" as const, label: "Mentoria", icon: Calendar, description: "Sessão 1:1 — curso com agendamento pago" },
   { type: "link" as const, label: "Link", icon: Link2, description: "Podcast, YouTube, afiliados" },
 ];
 
@@ -326,8 +326,22 @@ function SortableBlockCard({
           )}
           {blockType === "booking" && (
             <div className="space-y-2">
-              <Label>Duração (minutos)</Label>
-              <Input type="number" value={editDuration} onChange={(e) => onSetEditDuration(e.target.value)} placeholder="60" />
+              <Label>Curso de mentoria vinculado</Label>
+              <select
+                value={editCourseId}
+                onChange={(e) => onSetEditCourseId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Selecione um curso de mentoria</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Crie um curso com aula tipo "Mentoria" em{" "}
+                <a href={`/${orgSlug}/courses`} className="underline">Cursos Online</a>
+                . O aluno paga e depois agenda pelo portal.
+              </p>
             </div>
           )}
           {!editDigitalProductId && !editCourseId && !(blockType === "product" && Number(editPriceBrl) > 0) && blockType !== "course" && (
@@ -879,8 +893,22 @@ export function StoreEditor({
                 )}
                 {addingBlockType === "booking" && (
                   <div className="space-y-2">
-                    <Label>Duração (minutos)</Label>
-                    <Input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="60" />
+                    <Label>Curso de mentoria vinculado</Label>
+                    <select
+                      value={newCourseId}
+                      onChange={(e) => setNewCourseId(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Selecione um curso de mentoria</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Crie um curso com aula tipo "Mentoria" em{" "}
+                      <a href={`/${orgSlug}/courses`} className="underline">Cursos Online</a>
+                      . O aluno paga e depois agenda pelo portal.
+                    </p>
                   </div>
                 )}
                 {!newDigitalProductId && !newCourseId && !(addingBlockType === "product" && Number(newPriceBrl) > 0) && addingBlockType !== "course" && (

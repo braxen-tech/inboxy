@@ -23,6 +23,8 @@ interface Lesson {
   duration_seconds: number | null;
   live_stream_status: string | null;
   scheduled_at: string | null;
+  cal_event_type_id: string | null;
+  booking_quota: number | null;
 }
 
 interface Props {
@@ -45,12 +47,20 @@ export function LessonEditor({ orgSlug, courseId, lesson }: Props) {
   const [description, setDescription] = useState(lesson.description ?? "");
   const [isPreview, setIsPreview] = useState(lesson.is_preview);
   const [published, setPublished] = useState(lesson.published);
+  const [calEventTypeId, setCalEventTypeId] = useState(lesson.cal_event_type_id ?? "");
+  const [bookingQuota, setBookingQuota] = useState(lesson.booking_quota ?? 1);
   const [saved, setSaved] = useState(false);
 
   function save() {
     setSaved(false);
     startTransition(async () => {
-      await updateLesson(orgSlug, courseId, lesson.id, { title, description, isPreview, published });
+      await updateLesson(orgSlug, courseId, lesson.id, {
+        title,
+        description,
+        isPreview,
+        published,
+        ...(lesson.lesson_type === "mentoring" ? { calEventTypeId: calEventTypeId, bookingQuota } : {}),
+      });
       setSaved(true);
       router.refresh();
     });
@@ -91,8 +101,44 @@ export function LessonEditor({ orgSlug, courseId, lesson }: Props) {
         </div>
       </div>
 
-      {/* Content: Video or Live */}
-      {lesson.lesson_type === "live" ? (
+      {/* Content: Video, Live, or Mentoring */}
+      {lesson.lesson_type === "mentoring" ? (
+        <div className="rounded-lg border p-6 space-y-5">
+          <h2 className="font-semibold">Configuração da mentoria</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure o Event Type ID do Cal.com para esta sessão de mentoria.
+            O aluno só poderá agendar após efetuar o pagamento.
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="calEventTypeId">Cal.com Event Type ID</Label>
+            <Input
+              id="calEventTypeId"
+              value={calEventTypeId}
+              onChange={(e) => setCalEventTypeId(e.target.value)}
+              placeholder="Ex: 123456"
+            />
+            <p className="text-xs text-muted-foreground">
+              Encontre o ID do evento nas configurações do Cal.com
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bookingQuota">Sessões por compra</Label>
+            <Input
+              id="bookingQuota"
+              type="number"
+              min={1}
+              max={100}
+              value={bookingQuota}
+              onChange={(e) => setBookingQuota(Number(e.target.value) || 1)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Quantas sessões o aluno pode agendar por matrícula
+            </p>
+          </div>
+        </div>
+      ) : lesson.lesson_type === "live" ? (
         <div className="rounded-lg border p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Transmissão ao vivo</h2>

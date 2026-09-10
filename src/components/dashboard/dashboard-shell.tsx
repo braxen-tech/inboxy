@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BookOpen,
   Bot,
+  Calendar,
   ChevronDown,
   GraduationCap,
   Inbox,
@@ -17,6 +18,7 @@ import {
   Plug,
   Settings,
   Store,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -31,41 +33,55 @@ interface DashboardShellProps {
   orgName: string;
   chatwootActive: boolean;
   billingEnabled?: boolean;
+  asaasSandbox?: boolean;
   children: React.ReactNode;
 }
 
-const navGroups = [
-  {
-    label: "Atendimento com IA",
-    items: [
-      { href: "kb", label: "Base de conhecimento", icon: BookOpen },
-      { href: "agent", label: "Agente", icon: Bot },
-      { href: "integrations", label: "Integrações", icon: Plug },
-    ],
-  },
-  {
-    label: "Loja",
-    items: [
-      { href: "store", label: "Minha Loja", icon: Store },
-      { href: "products", label: "Produtos Digitais", icon: Package },
-      { href: "courses", label: "Cursos Online", icon: GraduationCap },
-      { href: "broadcasts", label: "Emails", icon: Mail },
-    ],
-  },
-  {
-    label: "Financeiro",
-    items: [
-      { href: "payouts", label: "Saques", icon: Wallet },
-    ],
-  },
-  {
-    label: null,
-    items: [
-      { href: "billing", label: "Assinatura", icon: CreditCard },
-      { href: "settings", label: "Configurações", icon: Settings },
-    ],
-  },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  external?: boolean;
+};
+
+function buildNavGroups(asaasSandbox: boolean) {
+  return [
+    {
+      label: "Atendimento com IA",
+      items: [
+        { href: "kb", label: "Base de conhecimento", icon: BookOpen },
+        { href: "agent", label: "Agente", icon: Bot },
+      ],
+    },
+    {
+      label: "Loja",
+      items: [
+        { href: "store", label: "Minha Loja", icon: Store },
+        { href: "products", label: "Produtos Digitais", icon: Package },
+        { href: "courses", label: "Cursos Online", icon: GraduationCap },
+        { href: "mentoring", label: "Mentorias", icon: Calendar },
+        { href: "customers", label: "Clientes", icon: Users },
+        { href: "broadcasts", label: "Emails", icon: Mail },
+      ],
+    },
+    {
+      label: "Configurações",
+      items: [
+        { href: "integrations", label: "Integrações", icon: Plug },
+        {
+          href: asaasSandbox
+            ? "https://sandbox.asaas.com"
+            : "https://www.asaas.com",
+          label: "Financeiro",
+          icon: Wallet,
+          external: true,
+        },
+        { href: "billing", label: "Assinatura", icon: CreditCard },
+        { href: "settings", label: "Configurações", icon: Settings },
+      ],
+    },
+  ] as { label: string | null; items: NavItem[] }[];
+}
 
 const COLLAPSED_GROUPS_STORAGE_KEY = "inboxy:collapsed-nav-groups";
 
@@ -84,13 +100,15 @@ function NavLinks({
   pathname,
   onNavigate,
   billingEnabled = true,
+  asaasSandbox = false,
 }: {
   orgSlug: string;
   pathname: string;
   onNavigate?: () => void;
   billingEnabled?: boolean;
+  asaasSandbox?: boolean;
 }) {
-  const groups = navGroups.map((group) => ({
+  const groups = buildNavGroups(asaasSandbox).map((group) => ({
     ...group,
     items: group.items.filter((item) => billingEnabled || item.href !== "billing"),
   }));
@@ -136,9 +154,27 @@ function NavLinks({
                 <ChevronDown className={cn("size-3.5 transition-transform", isCollapsed ? "-rotate-90" : "")} aria-hidden />
               </button>
             )}
-            {showItems && group.items.map(({ href, label, icon: Icon }) => {
-              const path = `/${orgSlug}/${href}`;
-              const isActive = pathname === path || pathname.startsWith(`${path}/`);
+            {showItems && group.items.map(({ href, label, icon: Icon, external }) => {
+              const path = external ? href : `/${orgSlug}/${href}`;
+              const isActive = !external && (pathname === path || pathname.startsWith(`${path}/`));
+
+              if (external) {
+                return (
+                  <a
+                    key={href}
+                    href={path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden />
+                    {label}
+                  </a>
+                );
+              }
 
               return (
                 <Link
@@ -171,6 +207,7 @@ function SidebarContent({
   pathname,
   onNavigate,
   billingEnabled = true,
+  asaasSandbox = false,
 }: {
   orgSlug: string;
   orgName: string;
@@ -178,6 +215,7 @@ function SidebarContent({
   pathname: string;
   onNavigate?: () => void;
   billingEnabled?: boolean;
+  asaasSandbox?: boolean;
 }) {
   return (
     <>
@@ -216,6 +254,7 @@ function SidebarContent({
         pathname={pathname}
         onNavigate={onNavigate}
         billingEnabled={billingEnabled}
+        asaasSandbox={asaasSandbox}
       />
 
       <div className="mt-auto border-t border-sidebar-border p-3">
@@ -239,6 +278,7 @@ export function DashboardShell({
   orgName,
   chatwootActive,
   billingEnabled = true,
+  asaasSandbox = false,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -290,6 +330,7 @@ export function DashboardShell({
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
           billingEnabled={billingEnabled}
+          asaasSandbox={asaasSandbox}
         />
       </aside>
 

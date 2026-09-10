@@ -64,7 +64,7 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   const [pending, startTransition] = useTransition();
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [newLessonTitles, setNewLessonTitles] = useState<Record<string, string>>({});
-  const [newLessonTypes, setNewLessonTypes] = useState<Record<string, "video" | "live">>({});
+  const [newLessonTypes, setNewLessonTypes] = useState<Record<string, "video" | "live" | "mentoring">>({});
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(initialModules.map((m) => m.id)));
 
   function toggleModule(moduleId: string) {
@@ -200,7 +200,11 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                 {mod.course_lessons.map((lesson) => (
                   <div key={lesson.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="shrink-0 w-5 text-center">
-                      {lesson.lesson_type === "live" ? (
+                      {lesson.lesson_type === "mentoring" ? (
+                        <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                      ) : lesson.lesson_type === "live" ? (
                         <svg className={`w-4 h-4 ${lesson.live_stream_status === "active" ? "text-red-500" : "text-muted-foreground"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9.172 15.828a5 5 0 010-7.656m5.656 0a5 5 0 010 7.656M12 12h.01" />
                         </svg>
@@ -223,6 +227,9 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                         )}
                         {lesson.lesson_type === "live" && lesson.live_stream_status !== "active" && (
                           <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">Live</span>
+                        )}
+                        {lesson.lesson_type === "mentoring" && (
+                          <span className="text-xs bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400 px-1.5 py-0.5 rounded">Mentoria</span>
                         )}
                         {lesson.is_preview && (
                           <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded">Preview</span>
@@ -263,11 +270,12 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                 <div className="flex gap-2 px-4 py-3 bg-muted/20">
                   <select
                     value={newLessonTypes[mod.id] ?? "video"}
-                    onChange={(e) => setNewLessonTypes((prev) => ({ ...prev, [mod.id]: e.target.value as "video" | "live" }))}
+                    onChange={(e) => setNewLessonTypes((prev) => ({ ...prev, [mod.id]: e.target.value as "video" | "live" | "mentoring" }))}
                     className="h-8 text-sm rounded-md border bg-background px-2"
                   >
                     <option value="video">Vídeo</option>
                     <option value="live">Live</option>
+                    <option value="mentoring">Mentoria</option>
                   </select>
                   <Input
                     value={newLessonTitles[mod.id] ?? ""}

@@ -40,6 +40,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
         orgName={org.name}
         chatwootActive={org.chatwoot_status === "active"}
         billingEnabled={!isPilotMode()}
+        asaasSandbox={!!process.env.ASAAS_API_BASE_URL?.includes("sandbox")}
       >
         {children}
       </DashboardShell>

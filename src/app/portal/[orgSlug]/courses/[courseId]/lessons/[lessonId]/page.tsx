@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { createMuxSignedToken } from "@/infrastructure/adapters/mux";
 import { VideoPlayer } from "./video-player";
+import { MentoringScheduler } from "@/components/courses/mentoring-scheduler";
 
 interface Props {
   params: Promise<{ orgSlug: string; courseId: string; lessonId: string }>;
@@ -15,13 +16,15 @@ export default async function LessonPlayerPage({ params }: Props) {
 
   const { data: lesson } = await db
     .from("course_lessons")
-    .select("id, title, description, published, is_preview, mux_playback_id, module_id, lesson_type, live_stream_status, mux_upload_status")
+    .select("id, title, description, published, is_preview, mux_playback_id, module_id, lesson_type, live_stream_status, mux_upload_status, cal_event_type_id, booking_quota")
     .eq("id", lessonId)
     .maybeSingle();
 
   if (!lesson || !lesson.published) notFound();
 
   let enrollmentId: string | null = null;
+  let userName = "";
+  let userEmail = "";
 
   if (!lesson.is_preview) {
     const supabase = await getServerClientFromCookies();
@@ -30,7 +33,7 @@ export default async function LessonPlayerPage({ params }: Props) {
 
     const { data: enrollment } = await db
       .from("course_enrollments")
-      .select("id")
+      .select("id, buyer_name, buyer_email")
       .eq("course_id", courseId)
       .eq("end_user_id", user.id)
       .eq("status", "active")
@@ -38,6 +41,8 @@ export default async function LessonPlayerPage({ params }: Props) {
 
     if (!enrollment) redirect(`/portal/${orgSlug}/courses`);
     enrollmentId = enrollment.id;
+    userName = enrollment.buyer_name ?? "";
+    userEmail = enrollment.buyer_email ?? user.email ?? "";
   }
 
   // Generate signed token server-side
@@ -89,19 +94,28 @@ export default async function LessonPlayerPage({ params }: Props) {
           <span className="text-foreground truncate max-w-[160px]">{lesson.title}</span>
         </div>
 
-        {/* Video player */}
-        <VideoPlayer
-          lessonId={lessonId}
-          playbackId={lesson.mux_playback_id}
-          playbackToken={playbackToken}
-          enrollmentId={enrollmentId}
-          courseId={courseId}
-          orgSlug={orgSlug}
-          nextLessonId={nextLesson?.id ?? null}
-          lessonType={lesson.lesson_type ?? "video"}
-          liveStreamStatus={lesson.live_stream_status ?? null}
-          muxUploadStatus={lesson.mux_upload_status ?? null}
-        />
+        {/* Content: Video/Live or Mentoring Scheduler */}
+        {lesson.lesson_type === "mentoring" ? (
+          <MentoringScheduler
+            lessonId={lessonId}
+            bookingQuota={lesson.booking_quota ?? 1}
+            userName={userName}
+            userEmail={userEmail}
+          />
+        ) : (
+          <VideoPlayer
+            lessonId={lessonId}
+            playbackId={lesson.mux_playback_id}
+            playbackToken={playbackToken}
+            enrollmentId={enrollmentId}
+            courseId={courseId}
+            orgSlug={orgSlug}
+            nextLessonId={nextLesson?.id ?? null}
+            lessonType={lesson.lesson_type ?? "video"}
+            liveStreamStatus={lesson.live_stream_status ?? null}
+            muxUploadStatus={lesson.mux_upload_status ?? null}
+          />
+        )}
 
         {/* Lesson info */}
         <div className="space-y-2">

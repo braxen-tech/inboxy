@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
+  },
   skipTrailingSlashRedirect: true,
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas", "@thednp/dommatrix"],
 };
