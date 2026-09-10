@@ -131,11 +131,9 @@ export default async function StorePublicPage({ params }: PageProps) {
         displayName={displayName}
         bio={org.store_bio}
         photoUrl={org.store_photo_url}
-        coverImageUrl={theme.coverImageUrl}
         socialLinks={socialLinks}
         blocks={blocks}
         cardLayout={theme.cardLayout}
-        profileLayout={theme.profileLayout}
         orgId={org.id}
         orgSlug={org.slug}
       />

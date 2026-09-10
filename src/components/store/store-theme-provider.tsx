@@ -26,9 +26,25 @@ export function StoreThemeProvider({ theme, children }: StoreThemeProviderProps)
         backgroundColor: "var(--store-bg)",
         color: "var(--store-text)",
       } as React.CSSProperties}
-      className="min-h-screen"
+      className="relative min-h-screen"
     >
-      {children}
+      {theme.coverImageUrl && (
+        <>
+          <div
+            className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${theme.coverImageUrl})` }}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-0"
+            style={{ backgroundColor: theme.colorScheme === "dark" ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.35)" }}
+            aria-hidden="true"
+          />
+        </>
+      )}
+      <div className="relative z-10">
+        {children}
+      </div>
     </div>
   );
 }

@@ -46,7 +46,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { StoreTheme } from "@/lib/store-theme";
-import { STORE_THEME_PRESETS } from "@/lib/store-theme";
+import { STORE_TEMPLATES } from "@/lib/store-theme";
+import { TemplatePreviewCard } from "@/components/store/template-preview-card";
 import { ImageUpload } from "@/components/store/image-upload";
 import {
   saveStoreProfile,
@@ -1155,40 +1156,22 @@ export function StoreEditor({
         <TabsContent value="theme">
           <div className="mt-6 space-y-4 max-w-lg">
 
-            {/* Template presets */}
+            {/* Templates */}
             <div className="space-y-3">
               <Label>Templates</Label>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {STORE_THEME_PRESETS.map((preset) => {
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {STORE_TEMPLATES.map((template) => {
                   const isActive =
-                    theme.primaryColor === preset.theme.primaryColor &&
-                    theme.backgroundColor === preset.theme.backgroundColor &&
-                    theme.colorScheme === preset.theme.colorScheme &&
-                    theme.profileLayout === preset.theme.profileLayout;
+                    theme.primaryColor === template.theme.primaryColor &&
+                    theme.backgroundColor === template.theme.backgroundColor &&
+                    theme.colorScheme === template.theme.colorScheme;
                   return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => setTheme({ ...preset.theme, coverImageUrl: theme.coverImageUrl })}
-                      className={`rounded-lg border-2 p-3 text-left transition-colors hover:border-primary ${isActive ? "border-primary" : "border-border"}`}
-                    >
-                      <div className="mb-2 flex items-center gap-1.5">
-                        <span
-                          className="size-4 rounded-full border border-black/10"
-                          style={{ background: preset.theme.backgroundColor }}
-                        />
-                        <span
-                          className="size-4 rounded-full border border-black/10"
-                          style={{ background: preset.theme.primaryColor }}
-                        />
-                        <span
-                          className="size-4 rounded-full border border-black/10"
-                          style={{ background: preset.theme.cardColor }}
-                        />
-                      </div>
-                      <p className="text-sm font-semibold leading-tight">{preset.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground leading-tight">{preset.description}</p>
-                    </button>
+                    <TemplatePreviewCard
+                      key={template.id}
+                      template={template}
+                      isActive={isActive}
+                      onSelect={() => setTheme({ ...template.theme })}
+                    />
                   );
                 })}
               </div>
@@ -1269,18 +1252,6 @@ export function StoreEditor({
             </div>
 
             <div className="space-y-2">
-              <Label>Layout do perfil</Label>
-              <select
-                value={theme.profileLayout}
-                onChange={(e) => setTheme({ ...theme, profileLayout: e.target.value as "centered" | "hero" })}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="centered">Centralizado — foto redonda, nome e bio abaixo</option>
-                <option value="hero">Hero — imagem de capa em tela cheia com texto sobreposto</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
               <Label>Layout dos cards</Label>
               <select
                 value={theme.cardLayout}
@@ -1291,13 +1262,6 @@ export function StoreEditor({
                 <option value="vertical">Vertical (imagem em cima)</option>
               </select>
             </div>
-
-            <ImageUpload
-              value={theme.coverImageUrl ?? ""}
-              onChange={(url) => setTheme({ ...theme, coverImageUrl: url || null })}
-              orgSlug={orgSlug}
-              label="Foto de capa/banner"
-            />
 
             <Button onClick={handleSaveTheme} disabled={pending}>
               {pending ? "Salvando..." : "Salvar tema"}

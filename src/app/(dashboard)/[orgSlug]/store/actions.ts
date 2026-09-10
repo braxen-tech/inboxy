@@ -109,7 +109,8 @@ const themeSchema = z.object({
     fontFamily: z.enum(["geist", "inter", "poppins", "playfair"]),
     borderRadius: z.enum(["sm", "md", "lg", "full"]),
     cardLayout: z.enum(["horizontal", "vertical"]),
-    coverImageUrl: z.string().url().max(2048).nullable().optional(),
+    profileLayout: z.enum(["centered", "hero"]).optional(),
+    coverImageUrl: z.string().max(2048).nullable().optional(),
   }),
 });
 

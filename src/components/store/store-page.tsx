@@ -30,11 +30,9 @@ interface StorePageProps {
   displayName: string;
   bio: string | null;
   photoUrl: string | null;
-  coverImageUrl: string | null;
   socialLinks: SocialLink[];
   blocks: StoreBlock[];
   cardLayout: "horizontal" | "vertical";
-  profileLayout: "centered" | "hero";
   orgId: string;
   orgSlug: string;
 }
@@ -43,11 +41,9 @@ export function StorePage({
   displayName,
   bio,
   photoUrl,
-  coverImageUrl,
   socialLinks,
   blocks,
   cardLayout,
-  profileLayout,
   orgId,
   orgSlug,
 }: StorePageProps) {
@@ -71,14 +67,12 @@ export function StorePage({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pt-6 pb-16">
+    <div className="mx-auto max-w-2xl px-4 pb-16">
       <StoreProfile
         displayName={displayName}
         bio={bio}
         photoUrl={photoUrl}
-        coverImageUrl={coverImageUrl}
         socialLinks={socialLinks}
-        profileLayout={profileLayout}
       />
 
       {productAndBookingBlocks.length > 0 && (
