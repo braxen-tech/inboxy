@@ -69,7 +69,19 @@ export async function POST(request: Request) {
       // Fallback: if no row matched by mux_asset_id, try matching by live_stream_id
       // (handles race condition where video.asset.ready arrives before video.asset.live_stream_completed)
       if (count === 0) {
-        const liveStreamId = event.data.live_stream_id as string | undefined;
+        let liveStreamId = event.data.live_stream_id as string | undefined;
+
+        // video.asset.ready may not include live_stream_id — fetch it from Mux API
+        if (!liveStreamId) {
+          try {
+            const mux = getMuxForWebhooks();
+            const asset = await mux.video.assets.retrieve(assetId);
+            liveStreamId = asset.live_stream_id ?? undefined;
+          } catch {
+            logger.warn("MUX webhook: failed to fetch asset for live_stream_id lookup", { assetId });
+          }
+        }
+
         if (liveStreamId) {
           await db
             .from("course_lessons")
@@ -133,11 +145,27 @@ export async function POST(request: Request) {
     const assetId = event.data.id as string;
     const liveStreamId = event.data.live_stream_id as string;
     if (assetId && liveStreamId) {
+      const playbackIds = event.data.playback_ids as { id: string; policy: string }[] | undefined;
+      const playbackId = playbackIds?.[0]?.id;
+      const status = event.data.status as string | undefined;
+      const duration = Math.round((event.data.duration as number | undefined) ?? 0);
+
+      const updateData: Record<string, unknown> = {
+        mux_asset_id: assetId,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (status === "ready" && playbackId) {
+        updateData.mux_playback_id = playbackId;
+        updateData.mux_upload_status = "ready";
+        if (duration) updateData.duration_seconds = duration;
+      }
+
       await db
         .from("course_lessons")
-        .update({ mux_asset_id: assetId, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq("mux_live_stream_id", liveStreamId);
-      logger.info("MUX webhook: live stream asset completed", { assetId, liveStreamId });
+      logger.info("MUX webhook: live stream asset completed", { assetId, liveStreamId, playbackId, status });
     }
   }
 
