@@ -1,9 +1,11 @@
 import Link from "next/link";
 import {
   BookOpen,
+  Bot,
   Calendar,
   GraduationCap,
   Link2,
+  Mail,
   MoveRight,
   Package,
   ShoppingBag,
@@ -191,6 +193,77 @@ export function LandingPage() {
                   <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Comparação */}
+        <section id="compare" className="border-b bg-muted/40 py-20 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <SectionLabel>Tudo em um só lugar</SectionLabel>
+              <SectionTitle className="text-foreground">
+                Substitua várias ferramentas por uma só
+              </SectionTitle>
+              <p className="mt-4 text-muted-foreground">
+                Veja quanto você economiza consolidando tudo no Inboxy.
+              </p>
+            </div>
+
+            <div className="mt-14 space-y-3">
+              {[
+                { icon: Link2, name: "Loja com link próprio", replaces: "Linktree, Squarespace", price: "R$ 79/mês" },
+                { icon: Bot, name: "Agente IA 24/7", replaces: "ManyChat, Chatfuel", price: "R$ 197/mês", highlight: true, subtitle: "Instagram, WhatsApp, Facebook, TikTok — não é auto-DM, é um agente inteligente que responde, vende e agenda por você." },
+                { icon: GraduationCap, name: "Cursos online com vídeo", replaces: "Kajabi, Hotmart", price: "R$ 249/mês" },
+                { icon: Calendar, name: "Agendamento de mentorias", replaces: "Calendly, Acuity", price: "R$ 49/mês" },
+                { icon: Users, name: "Portal do aluno", replaces: "Teachable", price: "R$ 149/mês" },
+                { icon: Package, name: "Produtos digitais com entrega automática", replaces: "Gumroad", price: "R$ 29/mês" },
+                { icon: Video, name: "Lives internas com replay", replaces: "Zoom, StreamYard", price: "R$ 99/mês" },
+                { icon: Mail, name: "Disparos de email para sua base", replaces: "Mailchimp, ConvertKit", price: "R$ 79/mês" },
+                { icon: Zap, name: "Pagamentos integrados (PIX, cartão, boleto)", replaces: "Stripe, PagSeguro", price: "R$ 0 (taxas)" },
+              ].map(({ icon: Icon, name, replaces, price, highlight, subtitle }) => (
+                <div
+                  key={name}
+                  className={`flex flex-col gap-2 rounded-xl border p-5 transition-shadow hover:shadow-md ${highlight ? "border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20" : "bg-card"}`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${highlight ? "bg-blue-500/15" : "bg-muted"}`}>
+                        <Icon className={`size-5 ${highlight ? "text-blue-600" : "text-blue-600"}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold">{name}</p>
+                        <p className="text-sm text-muted-foreground">Substitui {replaces}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium text-muted-foreground">{price}</span>
+                  </div>
+                  {subtitle && (
+                    <p className="ml-14 text-sm text-blue-600 dark:text-blue-400">{subtitle}</p>
+                  )}
+                </div>
+              ))}
+
+              <div className="mt-6 rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
+                <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                  <div className="text-center sm:text-left">
+                    <p className="text-sm text-muted-foreground">Se você contratasse tudo separado, pagaria</p>
+                    <p className="text-2xl font-bold text-muted-foreground line-through">~R$ 930/mês</p>
+                  </div>
+                  <div className="text-center sm:text-right">
+                    <p className="text-sm font-medium text-blue-600">Com o Inboxy</p>
+                    <p className="text-3xl font-bold text-blue-600">A partir de R$ 97/mês</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 text-center">
+              <Link href="/login">
+                <Button size="lg" className="gap-3">
+                  Criar minha loja grátis <MoveRight className="size-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </section>

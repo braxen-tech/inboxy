@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   CreditCard,
+  Mail,
   Package,
   Plug,
   Settings,
@@ -48,6 +49,7 @@ const navGroups = [
       { href: "store", label: "Minha Loja", icon: Store },
       { href: "products", label: "Produtos Digitais", icon: Package },
       { href: "courses", label: "Cursos Online", icon: GraduationCap },
+      { href: "broadcasts", label: "Emails", icon: Mail },
     ],
   },
   {
