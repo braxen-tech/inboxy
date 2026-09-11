@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createModule, createLesson, deleteModule, deleteLesson, updateCourse, updateModule } from "../actions";
+import { Textarea } from "@/components/ui/textarea";
+import { createModule, createLesson, deleteModule, deleteLesson, updateCourse, updateModule, updateCourseThumbnail } from "../actions";
 
 interface Lesson {
   id: string;
@@ -66,6 +67,11 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   const [newLessonTitles, setNewLessonTitles] = useState<Record<string, string>>({});
   const [newLessonTypes, setNewLessonTypes] = useState<Record<string, "video" | "live" | "mentoring">>({});
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(initialModules.map((m) => m.id)));
+  const [editTitle, setEditTitle] = useState(course.title);
+  const [editDescription, setEditDescription] = useState(course.description ?? "");
+  const [editPrice, setEditPrice] = useState(course.price_brl?.toString() ?? "0");
+  const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnail_url);
+  const [metaDirty, setMetaDirty] = useState(false);
 
   function toggleModule(moduleId: string) {
     setExpandedModules((prev) => {
@@ -310,20 +316,91 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
       {/* Course metadata panel */}
       <div className="space-y-4">
         <div className="rounded-lg border p-5 space-y-4">
-          <h2 className="font-semibold text-sm">Configurações do curso</h2>
-          {course.thumbnail_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={course.thumbnail_url} alt={course.title} className="w-full aspect-video object-cover rounded-md" />
-          )}
+          <h2 className="font-semibold text-sm">Configurações</h2>
+
+          {/* Thumbnail */}
           <div>
-            <p className="text-sm font-medium">{course.title}</p>
-            {course.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{course.description}</p>}
-            {course.price_brl != null && (
-              <p className="text-sm font-semibold mt-1">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(course.price_brl)}
-              </p>
+            {thumbnailUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={thumbnailUrl} alt={editTitle} className="w-full aspect-video object-cover rounded-md mb-2" />
             )}
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Imagem de capa</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="block w-full text-xs mt-1 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border file:border-input file:bg-background file:text-xs file:font-medium hover:file:bg-muted cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const fd = new FormData();
+                  fd.append("thumbnail", file);
+                  startTransition(async () => {
+                    const r = await updateCourseThumbnail(orgSlug, course.id, fd);
+                    if ("success" in r) setThumbnailUrl(r.thumbnailUrl ?? null);
+                  });
+                }}
+                disabled={pending}
+              />
+            </label>
           </div>
+
+          {/* Title */}
+          <div>
+            <label className="text-xs text-muted-foreground">Título</label>
+            <Input
+              value={editTitle}
+              onChange={(e) => { setEditTitle(e.target.value); setMetaDirty(true); }}
+              className="mt-1 text-sm"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-xs text-muted-foreground">Descrição</label>
+            <Textarea
+              value={editDescription}
+              onChange={(e) => { setEditDescription(e.target.value); setMetaDirty(true); }}
+              className="mt-1 text-sm min-h-[80px]"
+              rows={3}
+            />
+          </div>
+
+          {/* Price */}
+          <div>
+            <label className="text-xs text-muted-foreground">Preço (R$)</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={editPrice}
+              onChange={(e) => { setEditPrice(e.target.value); setMetaDirty(true); }}
+              className="mt-1 text-sm"
+            />
+          </div>
+
+          {/* Save metadata */}
+          {metaDirty && (
+            <Button
+              className="w-full"
+              disabled={pending || !editTitle.trim()}
+              onClick={() => {
+                startTransition(async () => {
+                  await updateCourse(orgSlug, course.id, {
+                    title: editTitle.trim(),
+                    description: editDescription,
+                    priceBrl: parseFloat(editPrice) || 0,
+                  });
+                  setMetaDirty(false);
+                  router.refresh();
+                });
+              }}
+            >
+              Salvar alterações
+            </Button>
+          )}
+
+          <hr className="border-border" />
 
           <Button
             className="w-full"
@@ -331,12 +408,12 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
             disabled={pending}
             onClick={handleTogglePublish}
           >
-            {course.active ? "Despublicar curso" : "Publicar curso"}
+            {course.active ? "Despublicar" : "Publicar"}
           </Button>
 
           <p className="text-xs text-muted-foreground">
             {course.active
-              ? "Curso visível na sua loja. Alunos podem comprar."
+              ? "Visível na sua loja. Alunos podem comprar."
               : "Rascunho. Não visível na loja."}
           </p>
         </div>

@@ -93,6 +93,30 @@ export async function updateCourse(orgSlug: string, courseId: string, data: { ti
   return { success: true as const };
 }
 
+export async function updateCourseThumbnail(orgSlug: string, courseId: string, formData: FormData) {
+  scheduleTelemetryFlush();
+  const result = await getAuthenticatedOrg(orgSlug);
+  if ("error" in result) return result;
+  const { org, db } = result;
+
+  const thumbnailFile = formData.get("thumbnail") as File | null;
+  if (!thumbnailFile || thumbnailFile.size === 0) return { error: "Nenhuma imagem enviada." };
+  if (thumbnailFile.size > 5 * 1024 * 1024) return { error: "Imagem deve ter no máximo 5 MB." };
+
+  const ext = thumbnailFile.name.split(".").pop() ?? "jpg";
+  const storagePath = `${org.id}/${randomUUID()}.${ext}`;
+  const buffer = Buffer.from(await thumbnailFile.arrayBuffer());
+  const { error: uploadErr } = await db.storage
+    .from(BUCKET)
+    .upload(storagePath, buffer, { contentType: thumbnailFile.type, upsert: false });
+  if (uploadErr) return { error: `Erro ao enviar imagem: ${uploadErr.message}` };
+  const { data: pub } = db.storage.from(BUCKET).getPublicUrl(storagePath);
+
+  await db.from("courses").update({ thumbnail_url: pub.publicUrl, updated_at: new Date().toISOString() }).eq("id", courseId).eq("organization_id", org.id);
+  revalidatePath(`/${orgSlug}/courses/${courseId}`);
+  return { success: true as const, thumbnailUrl: pub.publicUrl };
+}
+
 export async function deleteCourse(orgSlug: string, courseId: string) {
   scheduleTelemetryFlush();
   const result = await getAuthenticatedOrg(orgSlug);

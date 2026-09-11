@@ -19,11 +19,34 @@ export default async function CoursesPage({ params }: Props) {
   if (!org) notFound();
 
   const db = getAdminClient();
-  const { data: courses } = await db
+
+  // Find course IDs that have mentoring lessons (to exclude them)
+  const { data: mentoringLessons } = await db
+    .from("course_lessons")
+    .select("module_id")
+    .eq("lesson_type", "mentoring");
+
+  let mentoringCourseIds: string[] = [];
+  if (mentoringLessons && mentoringLessons.length > 0) {
+    const moduleIds = mentoringLessons.map((l) => l.module_id);
+    const { data: modules } = await db
+      .from("course_modules")
+      .select("course_id")
+      .in("id", moduleIds);
+    mentoringCourseIds = [...new Set((modules ?? []).map((m) => m.course_id))];
+  }
+
+  let query = db
     .from("courses")
     .select("id, title, description, price_brl, active, created_at")
     .eq("organization_id", org.id)
     .order("created_at", { ascending: false });
+
+  if (mentoringCourseIds.length > 0) {
+    query = query.not("id", "in", `(${mentoringCourseIds.join(",")})`);
+  }
+
+  const { data: courses } = await query;
 
   return (
     <div className="space-y-8">
