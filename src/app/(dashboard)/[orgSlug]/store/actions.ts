@@ -329,13 +329,14 @@ const bannerSchema = z.object({
   visibleFrom: z.string().optional().or(z.literal("")),
   visibleUntil: z.string().optional().or(z.literal("")),
   active: z.boolean(),
+  discountId: z.string().uuid().optional().nullable(),
 });
 
 export async function upsertStoreBanner(raw: z.infer<typeof bannerSchema>) {
   const parsed = bannerSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { orgSlug, text, linkUrl, linkProductId, linkCourseId, linkLabel, visibleFrom, visibleUntil, active } = parsed.data;
+  const { orgSlug, text, linkUrl, linkProductId, linkCourseId, linkLabel, visibleFrom, visibleUntil, active, discountId } = parsed.data;
   const result = await getOrgForOwner(orgSlug);
   if ("error" in result) return { error: result.error };
   const { org, supabase } = result;
@@ -351,6 +352,7 @@ export async function upsertStoreBanner(raw: z.infer<typeof bannerSchema>) {
       visible_from: visibleFrom || null,
       visible_until: visibleUntil || null,
       active,
+      discount_id: discountId || null,
     },
     { onConflict: "organization_id" },
   );

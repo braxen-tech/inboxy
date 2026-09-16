@@ -13,6 +13,10 @@ export interface CheckoutInput {
   metadata: Record<string, string>;
   /** "payment" (default) or "subscription" for recurring courses */
   mode?: "payment" | "subscription";
+  /** Pre-apply this Stripe PromotionCode ID (from connected account) — mutually exclusive with allowPromoCodes */
+  discountPromoCodeId?: string;
+  /** Show native promo code field in Stripe Checkout */
+  allowPromoCodes?: boolean;
 }
 
 export interface CheckoutResult {

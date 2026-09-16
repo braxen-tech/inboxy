@@ -62,7 +62,10 @@ interface StoreBanner {
   visible_from: string | null;
   visible_until: string | null;
   active: boolean;
+  discount_id: string | null;
 }
+
+interface DiscountOption { id: string; code: string; percent_off: number | null; amount_off_brl: number | null }
 
 function toDatetimeLocal(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -79,11 +82,13 @@ function BannerEditor({
   initialBanner,
   digitalProducts,
   courses,
+  discounts,
 }: {
   orgSlug: string;
   initialBanner: StoreBanner | null;
   digitalProducts: DigitalProductOption[];
   courses: CourseOption[];
+  discounts: DiscountOption[];
 }) {
   const tc = useTranslations("common");
   const [open, setOpen] = useState(!!initialBanner);
@@ -104,6 +109,7 @@ function BannerEditor({
   const [linkLabel, setLinkLabel] = useState(initialBanner?.link_label ?? "");
   const [visibleFrom, setVisibleFrom] = useState(toDatetimeLocal(initialBanner?.visible_from));
   const [visibleUntil, setVisibleUntil] = useState(toDatetimeLocal(initialBanner?.visible_until));
+  const [discountId, setDiscountId] = useState(initialBanner?.discount_id ?? "");
 
   function showMessage(type: "ok" | "err", t: string) {
     setMessage({ type, text: t });
@@ -122,6 +128,7 @@ function BannerEditor({
         linkLabel,
         visibleFrom: fromDatetimeLocal(visibleFrom) ?? "",
         visibleUntil: fromDatetimeLocal(visibleUntil) ?? "",
+        discountId: discountId || null,
       });
       if (r.error) showMessage("err", r.error);
       else showMessage("ok", "Banner salvo!");
@@ -132,7 +139,7 @@ function BannerEditor({
     startTransition(async () => {
       await deleteStoreBanner(orgSlug);
       setText(""); setLinkType("none"); setLinkUrl(""); setLinkProductId("");
-      setLinkCourseId(""); setLinkLabel(""); setVisibleFrom(""); setVisibleUntil("");
+      setLinkCourseId(""); setLinkLabel(""); setVisibleFrom(""); setVisibleUntil(""); setDiscountId("");
       setOpen(false);
       showMessage("ok", "Banner removido.");
     });
@@ -232,6 +239,21 @@ function BannerEditor({
               <Input type="datetime-local" value={visibleUntil} onChange={(e) => setVisibleUntil(e.target.value)} />
             </div>
           </div>
+
+          {discounts.length > 0 && (
+            <div className="space-y-2">
+              <Label>Desconto vinculado <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <select value={discountId} onChange={(e) => setDiscountId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Nenhum</option>
+                {discounts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.code} — {d.percent_off ? `${d.percent_off}% off` : `R$ ${Number(d.amount_off_brl).toFixed(2).replace(".", ",")} off`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">Ao clicar no link do banner, o desconto será aplicado automaticamente.</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <Button onClick={handleSave} disabled={pending || !text.trim()} size="sm">
@@ -407,9 +429,10 @@ interface Props {
   initialBanner: StoreBanner | null;
   digitalProducts: DigitalProductOption[];
   courses: CourseOption[];
+  discounts: DiscountOption[];
 }
 
-export function StoreConteudoEditor({ orgSlug, initialBlocks, initialBanner, digitalProducts, courses }: Props) {
+export function StoreConteudoEditor({ orgSlug, initialBlocks, initialBanner, digitalProducts, courses, discounts }: Props) {
   const router = useRouter();
   const t = useTranslations("store");
   const tc = useTranslations("common");
@@ -545,6 +568,7 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, initialBanner, dig
         initialBanner={initialBanner}
         digitalProducts={digitalProducts}
         courses={courses}
+        discounts={discounts}
       />
 
       {message && (

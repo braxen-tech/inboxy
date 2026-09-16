@@ -59,6 +59,7 @@ export class StripeBillingAdapter implements BillingProvider {
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${appUrl}/billing?success=1`,
         cancel_url: `${appUrl}/billing?canceled=1`,
+        allow_promotion_codes: true,
         metadata: { orgId, plan },
         subscription_data: { metadata: { orgId, plan } },
       });

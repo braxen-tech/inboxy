@@ -35,6 +35,7 @@ interface StorePageProps {
   cardLayout: "horizontal" | "vertical";
   orgId: string;
   orgSlug: string;
+  discountPromoCodeId?: string;
 }
 
 export function StorePage({
@@ -46,6 +47,7 @@ export function StorePage({
   cardLayout,
   orgId,
   orgSlug,
+  discountPromoCodeId,
 }: StorePageProps) {
   const productAndBookingBlocks = blocks.filter((b) => b.type !== "link");
   const linkBlocks = blocks.filter((b) => b.type === "link");
@@ -86,6 +88,7 @@ export function StorePage({
               cardLayout={cardLayout}
               orgSlug={orgSlug}
               onBlockClick={handleBlockClick}
+              discountPromoCodeId={discountPromoCodeId}
             />
           ))}
         </div>

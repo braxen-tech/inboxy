@@ -28,6 +28,7 @@ interface StoreBlockCardProps {
   cardLayout: "horizontal" | "vertical";
   orgSlug: string;
   onBlockClick?: (blockId: string, blockType: string, blockTitle: string | null) => void;
+  discountPromoCodeId?: string;
 }
 
 function LinkCard({ block, onBlockClick }: { block: StoreBlock; onBlockClick?: StoreBlockCardProps["onBlockClick"] }) {
@@ -54,11 +55,13 @@ function ProductOrBookingCard({
   cardLayout,
   orgSlug,
   onBlockClick,
+  discountPromoCodeId,
 }: {
   block: StoreBlock;
   cardLayout: "horizontal" | "vertical";
   orgSlug: string;
   onBlockClick?: StoreBlockCardProps["onBlockClick"];
+  discountPromoCodeId?: string;
 }) {
   const isHorizontal = cardLayout === "horizontal";
   const isPurchasable = (block.type === "product" || block.type === "course") && !!block.price_brl && block.price_brl > 0;
@@ -72,9 +75,9 @@ function ProductOrBookingCard({
     setError(null);
     startTransition(async () => {
       const result = isCourse
-        ? await createCourseCheckout(orgSlug, block.course_id!)
+        ? await createCourseCheckout(orgSlug, block.course_id!, discountPromoCodeId)
         : isDigital
-          ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!)
+          ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!, discountPromoCodeId)
           : await createDirectCheckout(orgSlug, block.id);
       if ("error" in result && result.error) {
         setError(result.error);
@@ -167,9 +170,9 @@ function ProductOrBookingCard({
   );
 }
 
-export function StoreBlockCard({ block, cardLayout, orgSlug, onBlockClick }: StoreBlockCardProps) {
+export function StoreBlockCard({ block, cardLayout, orgSlug, onBlockClick, discountPromoCodeId }: StoreBlockCardProps) {
   if (block.type === "link") {
     return <LinkCard block={block} onBlockClick={onBlockClick} />;
   }
-  return <ProductOrBookingCard block={block} cardLayout={cardLayout} orgSlug={orgSlug} onBlockClick={onBlockClick} />;
+  return <ProductOrBookingCard block={block} cardLayout={cardLayout} orgSlug={orgSlug} onBlockClick={onBlockClick} discountPromoCodeId={discountPromoCodeId} />;
 }

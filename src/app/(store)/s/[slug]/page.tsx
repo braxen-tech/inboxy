@@ -82,18 +82,31 @@ async function getStoreData(slug: string) {
   const now = new Date().toISOString();
   const { data: bannerRow } = await db
     .from("store_banners")
-    .select("id, text, link_url, link_product_id, link_course_id, link_label")
+    .select("id, text, link_url, link_product_id, link_course_id, link_label, discount_id")
     .eq("organization_id", org.id)
     .eq("active", true)
     .or(`visible_from.is.null,visible_from.lte.${now}`)
     .or(`visible_until.is.null,visible_until.gte.${now}`)
     .maybeSingle();
 
+  let bannerPromoCodeId: string | undefined;
+  if (bannerRow?.discount_id) {
+    const { data: discount } = await db
+      .from("store_discounts")
+      .select("stripe_promo_code_id, active")
+      .eq("id", bannerRow.discount_id)
+      .maybeSingle();
+    if (discount?.active && discount.stripe_promo_code_id) {
+      bannerPromoCodeId = discount.stripe_promo_code_id;
+    }
+  }
+
   return {
     org,
     blocks,
     socialLinks: socialLinks ?? [],
     banner: bannerRow ?? null,
+    bannerPromoCodeId,
   };
 }
 
@@ -131,7 +144,7 @@ export default async function StorePublicPage({ params }: PageProps) {
 
   if (!data) notFound();
 
-  const { org, blocks, socialLinks, banner } = data;
+  const { org, blocks, socialLinks, banner, bannerPromoCodeId } = data;
   const theme = parseStoreTheme(org.store_theme);
   const displayName = org.store_display_name || org.name;
 
@@ -139,7 +152,7 @@ export default async function StorePublicPage({ params }: PageProps) {
     <StoreThemeProvider theme={theme}>
       <StoreAnalytics orgId={org.id} orgSlug={org.slug} />
 
-      {banner && <StoreBanner banner={banner} orgSlug={org.slug} />}
+      {banner && <StoreBanner banner={banner} orgSlug={org.slug} discountPromoCodeId={bannerPromoCodeId} />}
 
       <StorePage
         displayName={displayName}
@@ -150,6 +163,7 @@ export default async function StorePublicPage({ params }: PageProps) {
         cardLayout={theme.cardLayout}
         orgId={org.id}
         orgSlug={org.slug}
+        discountPromoCodeId={bannerPromoCodeId}
       />
     </StoreThemeProvider>
   );

@@ -123,6 +123,16 @@ async function handleCheckoutCompleted(
   const buyerEmail = session.customer_details?.email ?? null;
   const buyerName = session.customer_details?.name ?? null;
 
+  // Increment uses_count for any applied promotion code
+  const appliedPromoCodeId = (session.discounts as Array<{ promotion_code?: string | { id: string } }> | null)?.[0]?.promotion_code;
+  if (appliedPromoCodeId) {
+    const promoId = typeof appliedPromoCodeId === "string" ? appliedPromoCodeId : appliedPromoCodeId.id;
+    await db.rpc("increment_discount_uses", { promo_code_id: promoId }).then(
+      () => {},
+      () => {}, // best-effort — don't fail the webhook
+    );
+  }
+
   if (productId) {
     await handleDigitalPurchaseConfirmed(db, org, productId, buyerEmail, buyerName, session, paymentIntentId);
     return;

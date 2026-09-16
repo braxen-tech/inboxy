@@ -13,7 +13,7 @@ export class StripePaymentAdapter implements PaymentGateway {
   async createCheckoutSession(
     input: CheckoutInput,
   ): Promise<Result<CheckoutResult, PaymentError>> {
-    const { stripeAccountId, lineItems, metadata, mode = "payment" } = input;
+    const { stripeAccountId, lineItems, metadata, mode = "payment", discountPromoCodeId, allowPromoCodes } = input;
 
     if (!stripeAccountId) {
       return Err({ code: "AUTH_FAILED", message: "Stripe Connected Account ID not configured." });
@@ -62,6 +62,11 @@ export class StripePaymentAdapter implements PaymentGateway {
         success_url: `${appUrl}/store/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/store/cancel`,
         metadata,
+        ...(discountPromoCodeId
+          ? { discounts: [{ promotion_code: discountPromoCodeId }] }
+          : allowPromoCodes
+            ? { allow_promotion_codes: true }
+            : {}),
       });
 
       if (!session.url) {

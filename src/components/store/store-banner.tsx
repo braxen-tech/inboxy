@@ -16,9 +16,10 @@ interface StoreBannerData {
 interface StoreBannerProps {
   banner: StoreBannerData;
   orgSlug: string;
+  discountPromoCodeId?: string;
 }
 
-export function StoreBanner({ banner, orgSlug }: StoreBannerProps) {
+export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBannerProps) {
   const [dismissed, setDismissed] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -46,12 +47,12 @@ export function StoreBanner({ banner, orgSlug }: StoreBannerProps) {
     try { window.posthog?.capture("store_banner_click", { banner_id: banner.id, org_slug: orgSlug }); } catch {}
     if (banner.link_product_id) {
       startTransition(async () => {
-        const result = await createDigitalProductCheckout(orgSlug, banner.link_product_id!);
+        const result = await createDigitalProductCheckout(orgSlug, banner.link_product_id!, discountPromoCodeId);
         if ("url" in result && result.url) window.location.href = result.url;
       });
     } else if (banner.link_course_id) {
       startTransition(async () => {
-        const result = await createCourseCheckout(orgSlug, banner.link_course_id!);
+        const result = await createCourseCheckout(orgSlug, banner.link_course_id!, discountPromoCodeId);
         if ("url" in result && result.url) window.location.href = result.url;
       });
     }

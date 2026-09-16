@@ -93,7 +93,7 @@ export async function createDirectCheckout(orgSlug: string, blockId: string) {
 }
 
 /** Creates a Stripe Checkout Session for a digital product. */
-export async function createDigitalProductCheckout(orgSlug: string, productId: string) {
+export async function createDigitalProductCheckout(orgSlug: string, productId: string, discountPromoCodeId?: string) {
   const result = await getActiveStripeOrg(orgSlug);
   if ("error" in result) return result;
   const { org } = result;
@@ -118,6 +118,7 @@ export async function createDigitalProductCheckout(orgSlug: string, productId: s
     lineItems: [{ productId: product.id, productName: product.title, quantity: 1, unitAmountBrl: product.price_brl }],
     metadata: { orgId: org.id, productId: product.id },
     mode: product.payment_type === "recurring" ? "subscription" : "payment",
+    ...(discountPromoCodeId ? { discountPromoCodeId } : { allowPromoCodes: true }),
   });
 
   if (!checkoutResult.ok) {
@@ -129,7 +130,7 @@ export async function createDigitalProductCheckout(orgSlug: string, productId: s
 }
 
 /** Creates a Stripe Checkout Session for a course enrollment. */
-export async function createCourseCheckout(orgSlug: string, courseId: string) {
+export async function createCourseCheckout(orgSlug: string, courseId: string, discountPromoCodeId?: string) {
   const result = await getActiveStripeOrg(orgSlug);
   if ("error" in result) return result;
   const { org } = result;
@@ -154,6 +155,7 @@ export async function createCourseCheckout(orgSlug: string, courseId: string) {
     lineItems: [{ productId: course.id, productName: course.title, quantity: 1, unitAmountBrl: course.price_brl }],
     metadata: { orgId: org.id, courseId: course.id },
     mode: course.payment_type === "recurring" ? "subscription" : "payment",
+    ...(discountPromoCodeId ? { discountPromoCodeId } : { allowPromoCodes: true }),
   });
 
   if (!checkoutResult.ok) {
