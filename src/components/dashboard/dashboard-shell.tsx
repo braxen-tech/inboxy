@@ -129,7 +129,7 @@ function NavLinks({
   }
 
   return (
-    <nav className="flex flex-1 flex-col gap-4 px-3 py-2">
+    <nav className="flex flex-col gap-4 px-3 py-2">
       {groups.map((group, i) => {
         const isCollapsed = group.label ? collapsed.has(group.label) : false;
         const groupHasActiveItem = group.items.some((item) => {
@@ -264,14 +264,16 @@ function SidebarContent({
         </Badge> */}
       </div>
 
-      <NavLinks
-        orgSlug={orgSlug}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        billingEnabled={billingEnabled}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <NavLinks
+          orgSlug={orgSlug}
+          pathname={pathname}
+          onNavigate={onNavigate}
+          billingEnabled={billingEnabled}
+        />
+      </div>
 
-      <div className="mt-auto border-t border-sidebar-border p-3">
+      <div className="shrink-0 border-t border-sidebar-border p-3">
         <div className="flex items-center gap-1">
           <SignOutButton
             variant="ghost"
