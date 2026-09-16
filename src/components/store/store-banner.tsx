@@ -60,7 +60,7 @@ export function StoreBanner({ banner, orgSlug }: StoreBannerProps) {
 
   return (
     <div
-      className="relative flex items-center justify-center gap-3 px-10 py-2.5 text-sm font-medium"
+      className="sticky top-0 z-50 relative flex items-center justify-center gap-3 px-10 py-2.5 text-sm font-medium"
       style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
     >
       <span className="text-center leading-snug">{banner.text}</span>
