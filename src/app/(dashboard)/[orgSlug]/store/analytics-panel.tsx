@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,7 @@ interface AnalyticsData {
 }
 
 export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
+  const t = useTranslations("store");
   const [days, setDays] = useState(7);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
         if (json.error) setError(json.error);
         else setData(json);
       })
-      .catch(() => setError("Erro ao carregar analytics."))
+      .catch(() => setError(t("analyticsLoading")))
       .finally(() => setLoading(false));
   }
 
@@ -40,18 +42,18 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Analytics da loja</h3>
+        <h3 className="font-semibold">{t("analyticsTitle")}</h3>
         <div className="flex items-center gap-2">
           <select
             value={days}
             onChange={(e) => { const d = parseInt(e.target.value); setDays(d); load(d); }}
             className="h-8 rounded-md border border-input bg-background px-2 text-sm"
           >
-            <option value={7}>Últimos 7 dias</option>
-            <option value={30}>Últimos 30 dias</option>
+            <option value={7}>{t("analyticsDays7")}</option>
+            <option value={30}>{t("analyticsDays30")}</option>
           </select>
           <Button variant="outline" size="sm" onClick={() => load(days)} disabled={loading}>
-            {loading ? "Carregando..." : "Atualizar"}
+            {loading ? t("analyticsLoading") : t("analyticsRefresh")}
           </Button>
         </div>
       </div>
@@ -59,13 +61,13 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
       {!data && !loading && !error && (
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-6 text-center">
           <BarChart3 className="mx-auto size-10 text-blue-500/50" />
-          <p className="mt-2 text-sm text-muted-foreground">Clique em "Atualizar" para carregar os dados.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("analyticsRefreshPrompt")}</p>
         </div>
       )}
 
       {loading && (
         <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
-          Carregando...
+          {t("analyticsLoading")}
         </div>
       )}
 
@@ -75,9 +77,9 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
-              { label: "Page views", value: data.totalViews },
-              { label: "Cliques", value: data.totalClicks },
-              { label: "CTR médio", value: `${data.ctr}%` },
+              { label: t("pageViews"), value: data.totalViews },
+              { label: t("clicks"), value: data.totalClicks },
+              { label: t("avgCtr"), value: `${data.ctr}%` },
             ].map((stat) => (
               <Card key={stat.label} className="p-4 text-center">
                 <p className="text-2xl font-bold">{stat.value}</p>
@@ -88,7 +90,7 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
 
           {data.dailyViews.length > 0 && (
             <Card className="p-4">
-              <p className="mb-3 text-sm font-medium">Views diárias</p>
+              <p className="mb-3 text-sm font-medium">{t("dailyViews")}</p>
               <div className="flex items-end gap-1" style={{ height: 80 }}>
                 {data.dailyViews.map((d) => {
                   const max = Math.max(...data.dailyViews.map((x) => x.views), 1);
@@ -113,13 +115,13 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
 
           {data.blockClicks.length > 0 && (
             <Card className="p-4">
-              <p className="mb-3 text-sm font-medium">Cliques por bloco</p>
+              <p className="mb-3 text-sm font-medium">{t("clicksByBlock")}</p>
               <div className="space-y-2">
                 {data.blockClicks.map((b) => (
                   <div key={b.blockId} className="flex items-center justify-between text-sm">
-                    <span className="truncate flex-1">{b.blockTitle || "Sem título"}</span>
+                    <span className="truncate flex-1">{b.blockTitle || t("noTitle")}</span>
                     <div className="flex items-center gap-3 text-muted-foreground">
-                      <span>{b.clicks} cliques</span>
+                      <span>{b.clicks} {t("clicks")}</span>
                       <span>{b.ctr}% CTR</span>
                     </div>
                   </div>
@@ -130,12 +132,12 @@ export function StoreAnalyticsPanel({ orgSlug }: { orgSlug: string }) {
 
           {data.socialClicks && data.socialClicks.length > 0 && (
             <Card className="p-4">
-              <p className="mb-3 text-sm font-medium">Cliques em redes sociais</p>
+              <p className="mb-3 text-sm font-medium">{t("socialClicks")}</p>
               <div className="space-y-2">
                 {data.socialClicks.map((s) => (
                   <div key={s.platform} className="flex items-center justify-between text-sm">
                     <span className="capitalize">{s.platform}</span>
-                    <span className="text-muted-foreground">{s.clicks} cliques</span>
+                    <span className="text-muted-foreground">{s.clicks} {t("clicks")}</span>
                   </div>
                 ))}
               </div>

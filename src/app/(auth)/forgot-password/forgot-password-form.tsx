@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import posthog from "posthog-js";
+import { useTranslations } from "next-intl";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function ForgotPasswordForm({
   supabaseUrl,
   supabaseAnonKey,
 }: ForgotPasswordFormProps) {
+  const t = useTranslations("auth");
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
     [supabaseUrl, supabaseAnonKey],
@@ -63,45 +65,41 @@ export function ForgotPasswordForm({
       <div className="flex flex-1 items-center justify-center p-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardTitle>Esqueci minha senha</CardTitle>
-            <CardDescription>
-              Enviaremos um link para redefinir sua senha no email informado.
-            </CardDescription>
+            <CardTitle>{t("forgotPasswordTitle")}</CardTitle>
+            <CardDescription>{t("forgotPasswordDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             {sent ? (
               <div className="space-y-3">
-                <p className="text-sm text-green-600">
-                  Se existir uma conta com esse email, você receberá um link para redefinir sua senha.
-                </p>
+                <p className="text-sm text-green-600">{t("resetLinkSent")}</p>
                 <Link
                   href="/login"
                   className={cn(buttonVariants({ variant: "outline" }), "w-full")}
                 >
-                  Voltar para login
+                  {t("goToLogin")}
                 </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("email")}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
+                    placeholder={t("emailPlaceholder")}
                     required
                     autoComplete="email"
                   />
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Aguarde..." : "Enviar link de recuperação"}
+                  {loading ? t("waitingLogin") : t("sendResetLink")}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   <Link href="/login" className="underline hover:text-foreground">
-                    Voltar para login
+                    {t("goToLogin")}
                   </Link>
                 </p>
               </form>

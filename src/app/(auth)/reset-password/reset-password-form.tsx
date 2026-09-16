@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface ResetPasswordFormProps {
 
 export function ResetPasswordForm({ supabaseUrl, supabaseAnonKey }: ResetPasswordFormProps) {
   const router = useRouter();
+  const t = useTranslations("auth");
   const supabase = useMemo(
     () => createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey),
     [supabaseUrl, supabaseAnonKey],
@@ -73,34 +75,32 @@ export function ResetPasswordForm({ supabaseUrl, supabaseAnonKey }: ResetPasswor
       <div className="flex flex-1 items-center justify-center p-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardTitle>Nova senha</CardTitle>
-            <CardDescription>Defina uma nova senha para sua conta.</CardDescription>
+            <CardTitle>{t("resetPasswordTitle")}</CardTitle>
+            <CardDescription>{t("resetPasswordDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             {checkingSession ? (
-              <p className="text-sm text-muted-foreground">Verificando sessão...</p>
+              <p className="text-sm text-muted-foreground">{t("waitingLogin")}</p>
             ) : !hasSession ? (
               <div className="space-y-3">
-                <p className="text-sm text-destructive">
-                  Link inválido ou expirado. Solicite um novo link de recuperação.
-                </p>
+                <p className="text-sm text-destructive">{t("sendResetLink")}</p>
                 <Link
                   href="/forgot-password"
                   className={cn(buttonVariants({ variant: "outline" }), "w-full")}
                 >
-                  Solicitar novo link
+                  {t("sendResetLink")}
                 </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Nova senha</Label>
+                  <Label htmlFor="password">{t("newPassword")}</Label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder={t("passwordMinLength")}
                     minLength={6}
                     required
                     autoComplete="new-password"
@@ -108,13 +108,13 @@ export function ResetPasswordForm({ supabaseUrl, supabaseAnonKey }: ResetPasswor
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                  <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repita a senha"
+                    placeholder={t("passwordMinLength")}
                     minLength={6}
                     required
                     autoComplete="new-password"
@@ -123,7 +123,7 @@ export function ResetPasswordForm({ supabaseUrl, supabaseAnonKey }: ResetPasswor
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Aguarde..." : "Salvar nova senha"}
+                  {loading ? t("waitingLogin") : t("saveNewPassword")}
                 </Button>
               </form>
             )}

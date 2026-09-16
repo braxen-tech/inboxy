@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,8 @@ interface Props {
 
 
 export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
+  const t = useTranslations("store");
+  const tc = useTranslations("common");
   const [theme, setTheme] = useState(initialTheme);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -30,7 +33,7 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
     startTransition(async () => {
       const r = await saveStoreTheme({ orgSlug, theme });
       if (r.error) showMessage("err", r.error);
-      else showMessage("ok", "Tema salvo!");
+      else showMessage("ok", t("themeSaved"));
     });
   }
 
@@ -43,7 +46,7 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
       )}
 
       <div className="space-y-3">
-        <Label>Templates</Label>
+        <Label>{t("templates")}</Label>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {STORE_TEMPLATES.map((template) => {
             const isActive =
@@ -63,44 +66,44 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
       </div>
 
       <hr />
-      <p className="text-sm font-medium text-muted-foreground">Personalizar</p>
+      <p className="text-sm font-medium text-muted-foreground">{t("customize")}</p>
 
       <div className="space-y-2">
-        <Label>Modo</Label>
+        <Label>{t("colorMode")}</Label>
         <select
           value={theme.colorScheme}
           onChange={(e) => setTheme({ ...theme, colorScheme: e.target.value as "light" | "dark" })}
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="light">Claro</option>
-          <option value="dark">Escuro</option>
+          <option value="light">{t("colorModeLight")}</option>
+          <option value="dark">{t("colorModeDark")}</option>
         </select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label>Cor primária</Label>
+          <Label>{t("primaryColor")}</Label>
           <div className="flex items-center gap-2">
             <input type="color" value={theme.primaryColor} onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })} className="h-9 w-12 cursor-pointer rounded border" />
             <Input value={theme.primaryColor} onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })} className="flex-1" />
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Cor de fundo</Label>
+          <Label>{t("backgroundColor")}</Label>
           <div className="flex items-center gap-2">
             <input type="color" value={theme.backgroundColor} onChange={(e) => setTheme({ ...theme, backgroundColor: e.target.value })} className="h-9 w-12 cursor-pointer rounded border" />
             <Input value={theme.backgroundColor} onChange={(e) => setTheme({ ...theme, backgroundColor: e.target.value })} className="flex-1" />
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Cor dos cards</Label>
+          <Label>{t("cardColor")}</Label>
           <div className="flex items-center gap-2">
             <input type="color" value={theme.cardColor} onChange={(e) => setTheme({ ...theme, cardColor: e.target.value })} className="h-9 w-12 cursor-pointer rounded border" />
             <Input value={theme.cardColor} onChange={(e) => setTheme({ ...theme, cardColor: e.target.value })} className="flex-1" />
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Cor do texto</Label>
+          <Label>{t("textColor")}</Label>
           <div className="flex items-center gap-2">
             <input type="color" value={theme.textColor} onChange={(e) => setTheme({ ...theme, textColor: e.target.value })} className="h-9 w-12 cursor-pointer rounded border" />
             <Input value={theme.textColor} onChange={(e) => setTheme({ ...theme, textColor: e.target.value })} className="flex-1" />
@@ -109,7 +112,7 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label>Fonte</Label>
+        <Label>{t("font")}</Label>
         <select
           value={theme.fontFamily}
           onChange={(e) => setTheme({ ...theme, fontFamily: e.target.value as StoreTheme["fontFamily"] })}
@@ -123,47 +126,45 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label>Borda dos cards</Label>
+        <Label>{t("borderRadius")}</Label>
         <select
           value={theme.borderRadius}
           onChange={(e) => setTheme({ ...theme, borderRadius: e.target.value as StoreTheme["borderRadius"] })}
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="sm">Pequena</option>
-          <option value="md">Média</option>
-          <option value="lg">Grande</option>
-          <option value="full">Arredondada</option>
+          <option value="sm">{t("borderRadiusSm")}</option>
+          <option value="md">{t("borderRadiusMd")}</option>
+          <option value="lg">{t("borderRadiusLg")}</option>
+          <option value="full">{t("borderRadiusFull")}</option>
         </select>
       </div>
 
       <div className="space-y-2">
-        <Label>Layout dos cards</Label>
+        <Label>{t("cardLayout")}</Label>
         <select
           value={theme.cardLayout}
           onChange={(e) => setTheme({ ...theme, cardLayout: e.target.value as "horizontal" | "vertical" })}
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="horizontal">Horizontal (imagem à esquerda)</option>
-          <option value="vertical">Vertical (imagem em cima)</option>
+          <option value="horizontal">{t("cardLayoutHorizontal")}</option>
+          <option value="vertical">{t("cardLayoutVertical")}</option>
         </select>
       </div>
 
       <hr />
-      <p className="text-sm font-medium text-muted-foreground">Imagem de fundo</p>
+      <p className="text-sm font-medium text-muted-foreground">{t("coverImage")}</p>
       <ImageUpload
         value={theme.coverImageUrl ?? ""}
         onChange={(url) => setTheme({ ...theme, coverImageUrl: url || null })}
         orgSlug={orgSlug}
-        label="Imagem de fundo"
+        label={t("coverImage")}
       />
       {theme.coverImageUrl && (
-        <p className="text-xs text-muted-foreground">
-          A imagem fica fixada ao fundo com uma sobreposição semitransparente para manter a legibilidade.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("coverImageHelp")}</p>
       )}
 
       <Button onClick={handleSave} disabled={pending}>
-        {pending ? "Salvando..." : "Salvar tema"}
+        {pending ? tc("saving") : t("saveTheme")}
       </Button>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, useId } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Plus, Trash2, Eye, EyeOff, GripVertical, Pencil, ShoppingBag, Calendar, Link2, GraduationCap } from "lucide-react";
 import {
@@ -51,24 +52,26 @@ interface StoreBlock {
 interface DigitalProductOption { id: string; title: string; price_brl: number | null }
 interface CourseOption { id: string; title: string; price_brl: number | null }
 
-function externalUrlLabel(blockType: StoreBlock["type"]): string {
-  if (blockType === "link") return "URL do link";
-  if (blockType === "booking") return "Link de agendamento (opcional)";
-  return "Link de checkout externo (opcional)";
+type TStore = ReturnType<typeof useTranslations<"store">>;
+
+function externalUrlLabel(blockType: StoreBlock["type"], t: TStore): string {
+  if (blockType === "link") return t("externalUrl");
+  if (blockType === "booking") return t("externalUrlBooking");
+  return t("externalUrlCheckout");
 }
 
-function externalUrlHelp(blockType: StoreBlock["type"]): string {
-  if (blockType === "link") return "Para onde o cliente vai ao clicar neste link.";
-  if (blockType === "booking") return "Só preencha se NÃO usar a integração Cal.com (em Integrações). Com o Cal.com conectado, o agendamento acontece direto pelo chat.";
-  return 'Deixe em branco: com um preço definido acima, o Inboxy já gera o link de pagamento (Asaas) automaticamente ao clicar em "Comprar". Preencha só se quiser usar um checkout de outro lugar.';
+function externalUrlHelp(blockType: StoreBlock["type"], t: TStore): string {
+  return t("externalUrlHelp");
 }
 
-const BLOCK_TYPES = [
-  { type: "product" as const, label: "Produto", icon: ShoppingBag },
-  { type: "course" as const, label: "Curso Online", icon: GraduationCap },
-  { type: "booking" as const, label: "Mentoria", icon: Calendar },
-  { type: "link" as const, label: "Link", icon: Link2 },
-];
+function getBlockTypes(t: TStore) {
+  return [
+    { type: "product" as const, label: t("blockProduct"), icon: ShoppingBag },
+    { type: "course" as const, label: t("blockCourse"), icon: GraduationCap },
+    { type: "booking" as const, label: t("blockMentoring"), icon: Calendar },
+    { type: "link" as const, label: t("blockLink"), icon: Link2 },
+  ];
+}
 
 function SortableBlockCard({
   block, orgSlug, isEditing, pending, editTitle, editDescription, editImageUrl, editCtaText,
@@ -92,6 +95,8 @@ function SortableBlockCard({
   onSetEditCourseId: (v: string) => void; onToggleVisibility: () => void;
   onDelete: () => void; onEdit: () => void; onSave: () => void; onCancelEdit: () => void;
 }) {
+  const t = useTranslations("store");
+  const tc = useTranslations("common");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : undefined };
   const blockType = block.type;
@@ -105,9 +110,9 @@ function SortableBlockCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
-              {blockType === "product" ? "Produto" : blockType === "course" ? "Curso" : blockType === "booking" ? "Mentoria" : "Link"}
+              {blockType === "product" ? t("blockProduct") : blockType === "course" ? t("blockCourse") : blockType === "booking" ? t("blockMentoring") : t("blockLink")}
             </Badge>
-            <span className="font-medium truncate">{block.title || "Sem título"}</span>
+            <span className="font-medium truncate">{block.title || t("noTitle")}</span>
           </div>
           {block.external_url && <p className="mt-1 text-xs text-muted-foreground truncate">{block.external_url}</p>}
         </div>
@@ -123,13 +128,13 @@ function SortableBlockCard({
       {isEditing && (
         <div className="mt-4 space-y-3 border-t pt-4">
           <div className="space-y-2">
-            <Label>Título</Label>
+            <Label>{t("blockTitle")}</Label>
             <Input value={editTitle} onChange={(e) => onSetEditTitle(e.target.value)} />
           </div>
           {blockType !== "link" && (
             <>
               <div className="space-y-2">
-                <Label>Descrição</Label>
+                <Label>{t("blockDescription")}</Label>
                 <Textarea value={editDescription} onChange={(e) => onSetEditDescription(e.target.value)} rows={2} />
               </div>
               <ImageUpload value={editImageUrl} onChange={onSetEditImageUrl} orgSlug={orgSlug} />
@@ -138,20 +143,20 @@ function SortableBlockCard({
           {blockType === "product" && (
             <>
               <div className="space-y-2">
-                <Label>Vincular a um produto digital (opcional)</Label>
+                <Label>{t("linkDigitalProduct")}</Label>
                 <select value={editDigitalProductId} onChange={(e) => onSetEditDigitalProductId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">Nenhum — produto físico/serviço</option>
+                  <option value="">{t("noDigitalProduct")}</option>
                   {digitalProducts.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
                 </select>
               </div>
               {!editDigitalProductId && (
                 <>
                   <div className="space-y-2">
-                    <Label>Preço (R$)</Label>
+                    <Label>{t("priceBrl")}</Label>
                     <Input type="number" step="0.01" min="0" value={editPriceBrl} onChange={(e) => onSetEditPriceBrl(e.target.value)} placeholder="97.00" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Preço (texto para exibição)</Label>
+                    <Label>{t("priceDisplay")}</Label>
                     <Input value={editPriceDisplay} onChange={(e) => onSetEditPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
                   </div>
                 </>
@@ -160,38 +165,38 @@ function SortableBlockCard({
           )}
           {blockType === "course" && (
             <div className="space-y-2">
-              <Label>Curso vinculado</Label>
+              <Label>{t("linkedCourse")}</Label>
               <select value={editCourseId} onChange={(e) => onSetEditCourseId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Selecione um curso</option>
+                <option value="">{t("selectCourse")}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
           )}
           {blockType === "booking" && (
             <div className="space-y-2">
-              <Label>Curso de mentoria vinculado</Label>
+              <Label>{t("linkedMentoringCourse")}</Label>
               <select value={editCourseId} onChange={(e) => onSetEditCourseId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Selecione um curso de mentoria</option>
+                <option value="">{t("selectMentoringCourse")}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
           )}
           {!editDigitalProductId && !editCourseId && !(blockType === "product" && Number(editPriceBrl) > 0) && blockType !== "course" && (
             <div className="space-y-2">
-              <Label>{externalUrlLabel(blockType)}</Label>
+              <Label>{externalUrlLabel(blockType, t)}</Label>
               <Input value={editExternalUrl} onChange={(e) => onSetEditExternalUrl(e.target.value)} placeholder="https://..." />
-              <p className="text-xs text-muted-foreground">{externalUrlHelp(blockType)}</p>
+              <p className="text-xs text-muted-foreground">{externalUrlHelp(blockType, t)}</p>
             </div>
           )}
           {blockType !== "link" && (
             <div className="space-y-2">
-              <Label>Texto do botão</Label>
+              <Label>{t("ctaText")}</Label>
               <Input value={editCtaText} onChange={(e) => onSetEditCtaText(e.target.value)} />
             </div>
           )}
           <div className="flex gap-2">
-            <Button onClick={onSave} disabled={pending} size="sm">{pending ? "Salvando..." : "Salvar"}</Button>
-            <Button variant="ghost" size="sm" onClick={onCancelEdit}>Cancelar</Button>
+            <Button onClick={onSave} disabled={pending} size="sm">{pending ? tc("saving") : tc("save")}</Button>
+            <Button variant="ghost" size="sm" onClick={onCancelEdit}>{tc("cancel")}</Button>
           </div>
         </div>
       )}
@@ -208,6 +213,8 @@ interface Props {
 
 export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, courses }: Props) {
   const router = useRouter();
+  const t = useTranslations("store");
+  const tc = useTranslations("common");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [blocks, setBlocks] = useState(initialBlocks);
@@ -271,7 +278,7 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
         courseId: newCourseId || undefined,
       });
       if (r.error) showMessage("err", r.error);
-      else { showMessage("ok", "Bloco adicionado!"); resetBlockForm(); router.refresh(); }
+      else { showMessage("ok", t("blockAdded")); resetBlockForm(); router.refresh(); }
     });
   }
 
@@ -290,7 +297,7 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
     startTransition(async () => {
       const r = await deleteStoreBlock(orgSlug, blockId);
       if (r.error) { setBlocks(prev); showMessage("err", r.error); }
-      else showMessage("ok", "Bloco removido.");
+      else showMessage("ok", t("blockRemoved"));
     });
   }
 
@@ -329,7 +336,7 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
         courseId: editCourseId || null,
       });
       if (r.error) showMessage("err", r.error);
-      else { showMessage("ok", "Bloco atualizado!"); setEditingBlock(null); router.refresh(); }
+      else { showMessage("ok", t("blockUpdated")); setEditingBlock(null); router.refresh(); }
     });
   }
 
@@ -342,10 +349,10 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{blocks.length} bloco(s)</p>
+        <p className="text-sm text-muted-foreground">{t("blocks", { count: blocks.length })}</p>
         {!addingBlockType && (
           <div className="flex gap-2 flex-wrap">
-            {BLOCK_TYPES.map((bt) => (
+            {getBlockTypes(t).map((bt) => (
               <Button key={bt.type} variant="outline" size="sm" onClick={() => setAddingBlockType(bt.type)}>
                 <bt.icon className="size-4 mr-1" /> {bt.label}
               </Button>
@@ -357,18 +364,18 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
       {addingBlockType && (
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Novo {BLOCK_TYPES.find((b) => b.type === addingBlockType)?.label}</h3>
-            <Button variant="ghost" size="sm" onClick={resetBlockForm}>Cancelar</Button>
+            <h3 className="font-semibold">{getBlockTypes(t).find((b) => b.type === addingBlockType)?.label}</h3>
+            <Button variant="ghost" size="sm" onClick={resetBlockForm}>{tc("cancel")}</Button>
           </div>
           <div className="space-y-2">
-            <Label>Título</Label>
-            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nome do produto, mentoria ou link" />
+            <Label>{t("blockTitle")}</Label>
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("blockTitlePlaceholder")} />
           </div>
           {addingBlockType !== "link" && (
             <>
               <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Descrição curta" rows={2} />
+                <Label>{t("blockDescription")}</Label>
+                <Textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder={t("blockDescriptionPlaceholder")} rows={2} />
               </div>
               <ImageUpload value={newImageUrl} onChange={setNewImageUrl} orgSlug={orgSlug} />
             </>
@@ -376,25 +383,23 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
           {addingBlockType === "product" && (
             <>
               <div className="space-y-2">
-                <Label>Vincular a um produto digital (opcional)</Label>
+                <Label>{t("linkDigitalProduct")}</Label>
                 <select value={newDigitalProductId} onChange={(e) => setNewDigitalProductId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">Nenhum — produto físico/serviço</option>
+                  <option value="">{t("noDigitalProduct")}</option>
                   {digitalProducts.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Vincule um produto já criado em{" "}
-                  <Link href={`/${orgSlug}/products`} className="underline">Produtos Digitais</Link>
-                  {" "}para entrega automática por e-mail.
+                  <Link href={`/${orgSlug}/products`} className="underline">{t("blockProduct")}</Link>
                 </p>
               </div>
               {!newDigitalProductId && (
                 <>
                   <div className="space-y-2">
-                    <Label>Preço (R$)</Label>
+                    <Label>{t("priceBrl")}</Label>
                     <Input type="number" step="0.01" min="0" value={newPriceBrl} onChange={(e) => setNewPriceBrl(e.target.value)} placeholder="97.00" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Preço (texto para exibição)</Label>
+                    <Label>{t("priceDisplay")}</Label>
                     <Input value={newPriceDisplay} onChange={(e) => setNewPriceDisplay(e.target.value)} placeholder="R$ 97,00" />
                   </div>
                 </>
@@ -403,41 +408,39 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
           )}
           {addingBlockType === "course" && (
             <div className="space-y-2">
-              <Label>Curso vinculado</Label>
+              <Label>{t("linkedCourse")}</Label>
               <select value={newCourseId} onChange={(e) => setNewCourseId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Selecione um curso</option>
+                <option value="">{t("selectCourse")}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
               <p className="text-xs text-muted-foreground">
-                Selecione o curso criado em{" "}
-                <Link href={`/${orgSlug}/courses`} className="underline">Cursos Online</Link>
-                {" "}para gerar o checkout automaticamente.
+                <Link href={`/${orgSlug}/courses`} className="underline">{t("blockCourse")}</Link>
               </p>
             </div>
           )}
           {addingBlockType === "booking" && (
             <div className="space-y-2">
-              <Label>Curso de mentoria vinculado</Label>
+              <Label>{t("linkedMentoringCourse")}</Label>
               <select value={newCourseId} onChange={(e) => setNewCourseId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Selecione um curso de mentoria</option>
+                <option value="">{t("selectMentoringCourse")}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
           )}
           {!newDigitalProductId && !newCourseId && !(addingBlockType === "product" && Number(newPriceBrl) > 0) && addingBlockType !== "course" && (
             <div className="space-y-2">
-              <Label>{externalUrlLabel(addingBlockType)}</Label>
+              <Label>{externalUrlLabel(addingBlockType, t)}</Label>
               <Input value={newExternalUrl} onChange={(e) => setNewExternalUrl(e.target.value)} placeholder="https://..." />
-              <p className="text-xs text-muted-foreground">{externalUrlHelp(addingBlockType)}</p>
+              <p className="text-xs text-muted-foreground">{externalUrlHelp(addingBlockType, t)}</p>
             </div>
           )}
           {addingBlockType !== "link" && (
             <div className="space-y-2">
-              <Label>Texto do botão</Label>
-              <Input value={newCtaText} onChange={(e) => setNewCtaText(e.target.value)} placeholder={addingBlockType === "booking" ? "Agendar" : "Comprar"} />
+              <Label>{t("ctaText")}</Label>
+              <Input value={newCtaText} onChange={(e) => setNewCtaText(e.target.value)} />
             </div>
           )}
-          <Button onClick={handleAddBlock} disabled={pending}>{pending ? "Adicionando..." : "Adicionar bloco"}</Button>
+          <Button onClick={handleAddBlock} disabled={pending}>{pending ? t("adding") : t("addBlock")}</Button>
         </Card>
       )}
 

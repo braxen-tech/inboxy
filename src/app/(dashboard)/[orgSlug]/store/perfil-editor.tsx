@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,8 @@ export function StorePerfilEditor({
   initialSocialLinks,
 }: Props) {
   const router = useRouter();
+  const t = useTranslations("store");
+  const tc = useTranslations("common");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [displayName, setDisplayName] = useState(initialDisplayName);
@@ -72,7 +75,7 @@ export function StorePerfilEditor({
       const r = await saveStoreProfile({ orgSlug, displayName, bio, photoUrl, socialLinks });
       if (r.error) showMessage("err", r.error);
       else {
-        showMessage("ok", "Perfil salvo!");
+        showMessage("ok", t("profileSaved"));
         router.refresh();
       }
     });
@@ -87,33 +90,33 @@ export function StorePerfilEditor({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="displayName">Nome de exibição</Label>
+        <Label htmlFor="displayName">{t("displayName")}</Label>
         <Input
           id="displayName"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="Seu nome ou marca"
+          placeholder={t("displayNamePlaceholder")}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">{t("bio")}</Label>
         <Textarea
           id="bio"
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          placeholder="Fale um pouco sobre você..."
+          placeholder={t("bioPlaceholder")}
           rows={3}
         />
       </div>
       <div className="space-y-2">
-        <ImageUpload value={photoUrl} onChange={setPhotoUrl} orgSlug={orgSlug} label="Foto de perfil" />
+        <ImageUpload value={photoUrl} onChange={setPhotoUrl} orgSlug={orgSlug} label={t("profilePhoto")} />
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Redes sociais</Label>
+          <Label>{t("socialLinks")}</Label>
           <Button type="button" variant="ghost" size="sm" onClick={addSocialLink} disabled={socialLinks.length >= 8}>
-            <Plus className="size-4 mr-1" /> Adicionar
+            <Plus className="size-4 mr-1" /> {t("addSocialLink")}
           </Button>
         </div>
         {socialLinks.map((link, i) => (
@@ -138,7 +141,7 @@ export function StorePerfilEditor({
                 updated[i] = { ...updated[i], url: e.target.value };
                 setSocialLinks(updated);
               }}
-              placeholder="URL ou e-mail"
+              placeholder={t("urlOrEmail")}
               className="flex-1"
             />
             <Button type="button" variant="ghost" size="icon" onClick={() => removeSocialLink(i)}>
@@ -149,7 +152,7 @@ export function StorePerfilEditor({
       </div>
 
       <Button onClick={handleSave} disabled={pending}>
-        {pending ? "Salvando..." : "Salvar perfil"}
+        {pending ? tc("saving") : t("saveProfile")}
       </Button>
     </div>
   );
