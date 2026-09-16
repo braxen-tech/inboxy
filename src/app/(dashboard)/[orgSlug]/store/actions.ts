@@ -316,3 +316,58 @@ export async function reorderStoreBlocks(orgSlug: string, orderedIds: string[]) 
   revalidatePath(`/s/${orgSlug}`);
   return { success: true };
 }
+
+// --- Banner ---
+
+const bannerSchema = z.object({
+  orgSlug: z.string().min(1),
+  text: z.string().min(1).max(300),
+  linkUrl: z.string().max(2048).optional().or(z.literal("")),
+  linkProductId: z.string().uuid().optional().nullable(),
+  linkCourseId: z.string().uuid().optional().nullable(),
+  linkLabel: z.string().max(80).optional().or(z.literal("")),
+  visibleFrom: z.string().optional().or(z.literal("")),
+  visibleUntil: z.string().optional().or(z.literal("")),
+  active: z.boolean(),
+});
+
+export async function upsertStoreBanner(raw: z.infer<typeof bannerSchema>) {
+  const parsed = bannerSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Dados inválidos." };
+
+  const { orgSlug, text, linkUrl, linkProductId, linkCourseId, linkLabel, visibleFrom, visibleUntil, active } = parsed.data;
+  const result = await getOrgForOwner(orgSlug);
+  if ("error" in result) return { error: result.error };
+  const { org, supabase } = result;
+
+  const { error } = await supabase.from("store_banners").upsert(
+    {
+      organization_id: org.id,
+      text,
+      link_url: linkUrl || null,
+      link_product_id: linkProductId || null,
+      link_course_id: linkCourseId || null,
+      link_label: linkLabel || null,
+      visible_from: visibleFrom || null,
+      visible_until: visibleUntil || null,
+      active,
+    },
+    { onConflict: "organization_id" },
+  );
+
+  if (error) return { error: "Erro ao salvar banner." };
+
+  revalidatePath(`/s/${orgSlug}`);
+  return { success: true };
+}
+
+export async function deleteStoreBanner(orgSlug: string) {
+  const result = await getOrgForOwner(orgSlug);
+  if ("error" in result) return { error: result.error };
+  const { org, supabase } = result;
+
+  await supabase.from("store_banners").delete().eq("organization_id", org.id);
+
+  revalidatePath(`/s/${orgSlug}`);
+  return { success: true };
+}

@@ -4,6 +4,7 @@ import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { parseStoreTheme } from "@/lib/store-theme";
 import { StoreThemeProvider } from "@/components/store/store-theme-provider";
 import { StorePage } from "@/components/store/store-page";
+import { StoreBanner } from "@/components/store/store-banner";
 import { StoreAnalytics } from "@/components/store/store-analytics";
 
 export const revalidate = 60;
@@ -78,10 +79,21 @@ async function getStoreData(slug: string) {
     .eq("organization_id", org.id)
     .order("position", { ascending: true });
 
+  const now = new Date().toISOString();
+  const { data: bannerRow } = await db
+    .from("store_banners")
+    .select("id, text, link_url, link_product_id, link_course_id, link_label")
+    .eq("organization_id", org.id)
+    .eq("active", true)
+    .or(`visible_from.is.null,visible_from.lte.${now}`)
+    .or(`visible_until.is.null,visible_until.gte.${now}`)
+    .maybeSingle();
+
   return {
     org,
     blocks,
     socialLinks: socialLinks ?? [],
+    banner: bannerRow ?? null,
   };
 }
 
@@ -119,13 +131,15 @@ export default async function StorePublicPage({ params }: PageProps) {
 
   if (!data) notFound();
 
-  const { org, blocks, socialLinks } = data;
+  const { org, blocks, socialLinks, banner } = data;
   const theme = parseStoreTheme(org.store_theme);
   const displayName = org.store_display_name || org.name;
 
   return (
     <StoreThemeProvider theme={theme}>
       <StoreAnalytics orgId={org.id} orgSlug={org.slug} />
+
+      {banner && <StoreBanner banner={banner} orgSlug={org.slug} />}
 
       <StorePage
         displayName={displayName}

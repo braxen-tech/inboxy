@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition, useId } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Pencil, ShoppingBag, Calendar, Link2, GraduationCap } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Pencil, ShoppingBag, Calendar, Link2, GraduationCap, Megaphone, ChevronDown, ChevronUp } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ImageUpload } from "@/components/store/image-upload";
-import { addStoreBlock, updateStoreBlock, deleteStoreBlock, reorderStoreBlocks } from "./actions";
+import { addStoreBlock, updateStoreBlock, deleteStoreBlock, reorderStoreBlocks, upsertStoreBanner, deleteStoreBanner } from "./actions";
 
 interface StoreBlock {
   id: string;
@@ -51,6 +51,203 @@ interface StoreBlock {
 
 interface DigitalProductOption { id: string; title: string; price_brl: number | null }
 interface CourseOption { id: string; title: string; price_brl: number | null }
+
+interface StoreBanner {
+  id?: string;
+  text: string;
+  link_url: string | null;
+  link_product_id: string | null;
+  link_course_id: string | null;
+  link_label: string | null;
+  visible_from: string | null;
+  visible_until: string | null;
+  active: boolean;
+}
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return iso.slice(0, 16);
+}
+
+function fromDatetimeLocal(val: string): string | null {
+  if (!val) return null;
+  return new Date(val).toISOString();
+}
+
+function BannerEditor({
+  orgSlug,
+  initialBanner,
+  digitalProducts,
+  courses,
+}: {
+  orgSlug: string;
+  initialBanner: StoreBanner | null;
+  digitalProducts: DigitalProductOption[];
+  courses: CourseOption[];
+}) {
+  const tc = useTranslations("common");
+  const [open, setOpen] = useState(!!initialBanner);
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const [active, setActive] = useState(initialBanner?.active ?? true);
+  const [text, setText] = useState(initialBanner?.text ?? "");
+  const [linkType, setLinkType] = useState<"none" | "url" | "product" | "course">(
+    initialBanner?.link_product_id ? "product"
+    : initialBanner?.link_course_id ? "course"
+    : initialBanner?.link_url ? "url"
+    : "none",
+  );
+  const [linkUrl, setLinkUrl] = useState(initialBanner?.link_url ?? "");
+  const [linkProductId, setLinkProductId] = useState(initialBanner?.link_product_id ?? "");
+  const [linkCourseId, setLinkCourseId] = useState(initialBanner?.link_course_id ?? "");
+  const [linkLabel, setLinkLabel] = useState(initialBanner?.link_label ?? "");
+  const [visibleFrom, setVisibleFrom] = useState(toDatetimeLocal(initialBanner?.visible_from));
+  const [visibleUntil, setVisibleUntil] = useState(toDatetimeLocal(initialBanner?.visible_until));
+
+  function showMessage(type: "ok" | "err", t: string) {
+    setMessage({ type, text: t });
+    setTimeout(() => setMessage(null), 3000);
+  }
+
+  function handleSave() {
+    startTransition(async () => {
+      const r = await upsertStoreBanner({
+        orgSlug,
+        text,
+        active,
+        linkUrl: linkType === "url" ? linkUrl : "",
+        linkProductId: linkType === "product" ? linkProductId || null : null,
+        linkCourseId: linkType === "course" ? linkCourseId || null : null,
+        linkLabel,
+        visibleFrom: fromDatetimeLocal(visibleFrom) ?? "",
+        visibleUntil: fromDatetimeLocal(visibleUntil) ?? "",
+      });
+      if (r.error) showMessage("err", r.error);
+      else showMessage("ok", "Banner salvo!");
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      await deleteStoreBanner(orgSlug);
+      setText(""); setLinkType("none"); setLinkUrl(""); setLinkProductId("");
+      setLinkCourseId(""); setLinkLabel(""); setVisibleFrom(""); setVisibleUntil("");
+      setOpen(false);
+      showMessage("ok", "Banner removido.");
+    });
+  }
+
+  return (
+    <Card className="p-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2 font-semibold text-sm">
+          <Megaphone className="size-4" />
+          Banner
+          {initialBanner?.active && (
+            <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">Ativo</span>
+          )}
+        </div>
+        {open ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3 border-t pt-4">
+          <p className="text-xs text-muted-foreground">Faixa no topo da loja com texto e link opcional. Clicável e dispensável pelo visitante.</p>
+
+          {message && (
+            <p className={`text-xs ${message.type === "ok" ? "text-green-600" : "text-destructive"}`}>{message.text}</p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input
+              id="banner-active"
+              type="checkbox"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+              className="size-4"
+            />
+            <Label htmlFor="banner-active" className="cursor-pointer">Ativo</Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Texto do banner</Label>
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="🔥 50% off no curso de Growth — só até domingo!"
+              maxLength={300}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Link</Label>
+            <div className="flex gap-2 flex-wrap">
+              {(["none", "url", "product", "course"] as const).map((lt) => (
+                <button
+                  key={lt}
+                  type="button"
+                  onClick={() => setLinkType(lt)}
+                  className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${linkType === lt ? "border-primary bg-primary text-primary-foreground" : "border-input hover:bg-accent"}`}
+                >
+                  {lt === "none" ? "Nenhum" : lt === "url" ? "URL externa" : lt === "product" ? "Produto" : "Curso"}
+                </button>
+              ))}
+            </div>
+            {linkType === "url" && (
+              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." />
+            )}
+            {linkType === "product" && (
+              <select value={linkProductId} onChange={(e) => setLinkProductId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Selecione um produto</option>
+                {digitalProducts.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            )}
+            {linkType === "course" && (
+              <select value={linkCourseId} onChange={(e) => setLinkCourseId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Selecione um curso</option>
+                {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            )}
+          </div>
+
+          {linkType !== "none" && (
+            <div className="space-y-2">
+              <Label>Texto do botão <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Input value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="Aproveitar agora" maxLength={80} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Exibir de <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Input type="datetime-local" value={visibleFrom} onChange={(e) => setVisibleFrom(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Exibir até <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Input type="datetime-local" value={visibleUntil} onChange={(e) => setVisibleUntil(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button onClick={handleSave} disabled={pending || !text.trim()} size="sm">
+              {pending ? tc("saving") : tc("save")}
+            </Button>
+            {initialBanner && (
+              <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending} className="text-destructive hover:text-destructive">
+                <Trash2 className="size-4 mr-1" /> Remover banner
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 type TStore = ReturnType<typeof useTranslations<"store">>;
 
@@ -207,11 +404,12 @@ function SortableBlockCard({
 interface Props {
   orgSlug: string;
   initialBlocks: StoreBlock[];
+  initialBanner: StoreBanner | null;
   digitalProducts: DigitalProductOption[];
   courses: CourseOption[];
 }
 
-export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, courses }: Props) {
+export function StoreConteudoEditor({ orgSlug, initialBlocks, initialBanner, digitalProducts, courses }: Props) {
   const router = useRouter();
   const t = useTranslations("store");
   const tc = useTranslations("common");
@@ -342,6 +540,13 @@ export function StoreConteudoEditor({ orgSlug, initialBlocks, digitalProducts, c
 
   return (
     <div className="space-y-4">
+      <BannerEditor
+        orgSlug={orgSlug}
+        initialBanner={initialBanner}
+        digitalProducts={digitalProducts}
+        courses={courses}
+      />
+
       {message && (
         <p className={message.type === "ok" ? "text-sm text-green-600" : "text-sm text-destructive"}>
           {message.text}
