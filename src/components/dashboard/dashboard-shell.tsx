@@ -24,9 +24,11 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
+import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -46,39 +48,44 @@ type NavItem = {
   subItems?: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
 };
 
-function buildNavGroups() {
+function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
   return [
     {
-      label: "Loja",
+      label: t("store"),
       items: [
         {
           href: "store",
-          label: "Minha Loja",
+          label: t("myStore"),
           icon: Store,
           subItems: [
-            { href: "store/profile", label: "Perfil", icon: User },
-            { href: "store/content", label: "Conteúdo", icon: LayoutGrid },
-            { href: "store/analytics", label: "Analytics", icon: BarChart3 },
-            { href: "store/theme", label: "Tema", icon: Palette },
+            { href: "store/profile", label: t("profile"), icon: User },
+            { href: "store/content", label: t("content"), icon: LayoutGrid },
+            { href: "store/analytics", label: t("analytics"), icon: BarChart3 },
+            { href: "store/theme", label: t("theme"), icon: Palette },
           ],
         },
-        { href: "products", label: "Produtos Digitais", icon: Package },
-        { href: "courses", label: "Cursos Online", icon: GraduationCap },
-        { href: "mentoring", label: "Mentorias", icon: Calendar },
-        { href: "customers", label: "Clientes", icon: Users },
-        { href: "broadcasts", label: "Emails", icon: Mail },
+        { href: "products", label: t("digitalProducts"), icon: Package },
+        { href: "courses", label: t("courses"), icon: GraduationCap },
+        { href: "mentoring", label: t("mentoring"), icon: Calendar },
+        { href: "customers", label: t("customers"), icon: Users },
+        { href: "broadcasts", label: t("broadcasts"), icon: Mail },
       ],
     },
     {
-      label: "Configurações",
+      label: t("settings"),
       items: [
-        { href: "integrations", label: "Integrações", icon: Plug },
-        { href: "finances", label: "Financeiro", icon: Wallet },
-        { href: "billing", label: "Assinatura", icon: CreditCard },
-        { href: "settings", label: "Configurações", icon: Settings },
+        { href: "integrations", label: t("integrations"), icon: Plug },
+        { href: "finances", label: t("finances"), icon: Wallet },
+        { href: "billing", label: t("billing"), icon: CreditCard },
+        { href: "settings", label: t("settings"), icon: Settings },
       ],
     },
   ] as { label: string | null; items: NavItem[] }[];
+}
+
+function SidebarSignOutLabel() {
+  const t = useTranslations("common");
+  return <>{t("sair")}</>;
 }
 
 const COLLAPSED_GROUPS_STORAGE_KEY = "inboxy:collapsed-nav-groups";
@@ -104,7 +111,8 @@ function NavLinks({
   onNavigate?: () => void;
   billingEnabled?: boolean;
 }) {
-  const groups = buildNavGroups().map((group) => ({
+  const t = useTranslations("nav");
+  const groups = buildNavGroups(t).map((group) => ({
     ...group,
     items: group.items.filter((item) => billingEnabled || item.href !== "billing"),
   }));
@@ -280,8 +288,9 @@ function SidebarContent({
             className="flex-1 justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
           >
             <LogOut className="size-4" aria-hidden />
-            Sair
+            <SidebarSignOutLabel />
           </SignOutButton>
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </div>
@@ -298,6 +307,8 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const tNav = useTranslations("nav");
+  const tDash = useTranslations("dashboard");
 
   useEffect(() => {
     setMobileOpen(false);
@@ -317,7 +328,7 @@ export function DashboardShell({
       {mobileOpen && (
         <button
           type="button"
-          aria-label="Fechar menu"
+          aria-label={tNav("closeMenu")}
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
@@ -331,7 +342,7 @@ export function DashboardShell({
       >
         <button
           type="button"
-          aria-label="Fechar menu"
+          aria-label={tNav("closeMenu")}
           className="absolute right-3 top-3 rounded-lg p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent lg:hidden"
           onClick={() => setMobileOpen(false)}
         >
@@ -354,7 +365,7 @@ export function DashboardShell({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="Abrir menu"
+            aria-label={tNav("openMenu")}
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
@@ -372,7 +383,7 @@ export function DashboardShell({
                 : "bg-amber-500/15 text-amber-700",
             )}
           >
-            {chatwootActive ? "Ativo" : "Pendente"}
+            {chatwootActive ? tDash("statusActive") : tDash("statusPending")}
           </Badge>
         </header>
 

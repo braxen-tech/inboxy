@@ -11,15 +11,21 @@ import {
 
 const DASHBOARD_SECTIONS = new Set(["kb", "agent", "integrations", "settings", "store", "products"]);
 
+function withLocale(response: ReturnType<typeof NextResponse.next>, request: NextRequest) {
+  const locale = request.cookies.get("NEXT_LOCALE")?.value ?? "pt";
+  response.headers.set("x-next-intl-locale", locale);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isAuthPublicPath(pathname)) {
-    return NextResponse.next();
+    return withLocale(NextResponse.next(), request);
   }
 
   if (pathname === "/") {
-    return NextResponse.next();
+    return withLocale(NextResponse.next(), request);
   }
 
   if (pathname.startsWith("/api/admin")) {
@@ -27,10 +33,11 @@ export async function middleware(request: NextRequest) {
     if (secret !== process.env.ADMIN_SECRET) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.next();
+    return withLocale(NextResponse.next(), request);
   }
 
   const response = NextResponse.next();
+  withLocale(response, request);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   // Helps Turbopack pick up NEXT_PUBLIC_* from .env at config load time
@@ -32,4 +35,4 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas", "@thednp/dommatrix"],
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
