@@ -26,20 +26,24 @@ export function StoreBanner({ banner, orgSlug }: StoreBannerProps) {
     try {
       if (localStorage.getItem(`banner:${banner.id}:dismissed`) === "1") {
         setDismissed(true);
+        return;
       }
     } catch {
       // localStorage unavailable
     }
-  }, [banner.id]);
+    try { window.posthog?.capture("store_banner_view", { banner_id: banner.id, org_slug: orgSlug }); } catch {}
+  }, [banner.id, orgSlug]);
 
   if (dismissed) return null;
 
   function dismiss() {
     try { localStorage.setItem(`banner:${banner.id}:dismissed`, "1"); } catch {}
+    try { window.posthog?.capture("store_banner_dismissed", { banner_id: banner.id, org_slug: orgSlug }); } catch {}
     setDismissed(true);
   }
 
   function handleLinkClick() {
+    try { window.posthog?.capture("store_banner_click", { banner_id: banner.id, org_slug: orgSlug }); } catch {}
     if (banner.link_product_id) {
       startTransition(async () => {
         const result = await createDigitalProductCheckout(orgSlug, banner.link_product_id!);
@@ -71,6 +75,7 @@ export function StoreBanner({ banner, orgSlug }: StoreBannerProps) {
             href={banner.link_url!}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => { try { window.posthog?.capture("store_banner_click", { banner_id: banner.id, org_slug: orgSlug }); } catch {} }}
             className="shrink-0 rounded-full border px-3 py-0.5 text-xs font-semibold opacity-90 hover:opacity-100 transition-opacity"
             style={{ borderColor: "var(--store-bg)", color: "var(--store-bg)" }}
           >
