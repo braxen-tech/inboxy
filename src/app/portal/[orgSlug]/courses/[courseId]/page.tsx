@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 
 export default async function PortalCourseOverviewPage({ params }: Props) {
   const { orgSlug, courseId } = await params;
+  const t = await getTranslations("portal");
 
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
@@ -88,17 +90,17 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
       return (
         <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 px-1.5 py-0.5 rounded font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          Ao vivo
+          {t("liveActive")}
         </span>
       );
     }
     if (lesson.mux_upload_status === "ready") {
-      return <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 px-1.5 py-0.5 rounded">Gravação da live</span>;
+      return <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 px-1.5 py-0.5 rounded">{t("liveRecording")}</span>;
     }
     if (lesson.scheduled_at) {
-      return <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">Live agendada</span>;
+      return <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">{t("liveScheduled")}</span>;
     }
-    return <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">Live</span>;
+    return <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-1.5 py-0.5 rounded">{t("liveShort")}</span>;
   }
 
   return (
@@ -106,7 +108,7 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
       <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
         {/* Header */}
         <div className="space-y-1">
-          <Link href={`/portal/${orgSlug}/courses`} className="text-sm text-muted-foreground hover:text-foreground">← Meus cursos</Link>
+          <Link href={`/portal/${orgSlug}/courses`} className="text-sm text-muted-foreground hover:text-foreground">← {t("myCourses")}</Link>
           <h1 className="text-2xl font-bold mt-2">{course.title}</h1>
           {course.description && <p className="text-sm text-muted-foreground">{course.description}</p>}
           {totalLessons > 0 && (
@@ -114,7 +116,7 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
               <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                 <div className="h-full bg-primary transition-all" style={{ width: `${Math.round((completedLessons / totalLessons) * 100)}%` }} />
               </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">{completedLessons}/{totalLessons} aulas</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{t("lessonsProgress", { completed: completedLessons, total: totalLessons })}</span>
             </div>
           )}
         </div>
@@ -126,7 +128,7 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
               <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9.172 15.828a5 5 0 010-7.656m5.656 0a5 5 0 010 7.656M12 12h.01" />
               </svg>
-              Próximas lives
+              {t("upcomingLives")}
             </h2>
             <div className="space-y-2">
               {upcomingLives.map((live) => (
@@ -139,11 +141,11 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
                     {live.live_stream_status === "active" ? (
                       <span className="inline-flex items-center gap-1 text-xs bg-red-600 text-white px-2 py-1 rounded font-medium">
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        AO VIVO
+                        {t("liveActiveBadge")}
                       </span>
                     ) : (
                       <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 px-2 py-1 rounded font-medium">
-                        Agendada
+                        {t("scheduledShort")}
                       </span>
                     )}
                   </div>
@@ -194,7 +196,7 @@ export default async function PortalCourseOverviewPage({ params }: Props) {
                           {getLessonBadge(lesson)}
                         </div>
                         {lesson.is_preview && (
-                          <span className="text-xs text-blue-600 dark:text-blue-400">Preview gratuito</span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">{t("freePreview")}</span>
                         )}
                         {isLive && lesson.scheduled_at && lesson.live_stream_status !== "active" && lesson.mux_upload_status !== "ready" && (
                           <p className="text-xs text-muted-foreground mt-0.5">

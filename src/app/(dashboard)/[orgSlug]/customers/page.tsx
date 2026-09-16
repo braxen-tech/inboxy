@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Search, Download, Users, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,12 +43,12 @@ function formatDate(dateString: string): string {
   });
 }
 
-function getStatusBadge(status: string) {
+function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof useTranslations<"customers">> }) {
   const statusMap: Record<string, { label: string; className: string }> = {
-    active: { label: "Ativo", className: "bg-green-500/15 text-green-700 dark:text-green-400" },
-    pending: { label: "Pendente", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-    canceled: { label: "Cancelado", className: "bg-red-500/15 text-red-700 dark:text-red-400" },
-    refunded: { label: "Reembolsado", className: "bg-gray-500/15 text-gray-700 dark:text-gray-400" },
+    active: { label: t("statusActive"), className: "bg-green-500/15 text-green-700 dark:text-green-400" },
+    pending: { label: t("statusPending"), className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+    canceled: { label: t("statusCanceled"), className: "bg-red-500/15 text-red-700 dark:text-red-400" },
+    refunded: { label: t("statusRefunded"), className: "bg-gray-500/15 text-gray-700 dark:text-gray-400" },
   };
 
   const s = statusMap[status] ?? statusMap.active;
@@ -57,6 +58,8 @@ function getStatusBadge(status: string) {
 export default function CustomersPage() {
   const params = useParams();
   const orgSlug = params.orgSlug as string;
+  const t = useTranslations("customers");
+  const tc = useTranslations("common");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
@@ -115,15 +118,15 @@ export default function CustomersPage() {
 
       // Build CSV
       const headers = [
-        "Nome",
-        "Email",
-        "Produtos",
-        "Cursos",
-        "Total de Compras",
-        "Valor Total",
-        "Status",
-        "Primeira Compra",
-        "Última Compra",
+        t("name"),
+        t("email"),
+        t("productsCount"),
+        t("coursesCount"),
+        t("purchases"),
+        t("totalValue"),
+        t("status"),
+        t("joined"),
+        t("lastPurchase"),
       ];
 
       const rows = data.customers.map((c) => [
@@ -161,27 +164,23 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Clientes</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visualize todos os seus clientes que compraram produtos ou se inscreveram em cursos
-          </p>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
         </div>
         <Button onClick={handleExport} variant="outline" className="gap-2">
           <Download className="size-4" />
-          Exportar CSV
+          {t("export")}
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
         <div className="flex-1 min-w-xs">
           <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Buscar por nome ou email
+            {t("search")}
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar..."
+              placeholder={tc("search")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -198,21 +197,21 @@ export default function CustomersPage() {
             size="sm"
             onClick={() => { setStatus(""); setPage(1); }}
           >
-            Todos
+            {t("filterAll")}
           </Button>
           <Button
             variant={status === "active" ? "default" : "outline"}
             size="sm"
             onClick={() => { setStatus("active"); setPage(1); }}
           >
-            Ativo
+            {t("filterActive")}
           </Button>
           <Button
             variant={status === "pending" ? "default" : "outline"}
             size="sm"
             onClick={() => { setStatus("pending"); setPage(1); }}
           >
-            Pendente
+            {t("filterPending")}
           </Button>
         </div>
 
@@ -222,29 +221,26 @@ export default function CustomersPage() {
             size="sm"
             onClick={() => setSortBy("lastInteraction")}
           >
-            Última Compra
+            {t("lastPurchase")}
           </Button>
           <Button
             variant={sortBy === "totalValue" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("totalValue")}
           >
-            Valor Total
+            {t("totalValue")}
           </Button>
         </div>
       </div>
 
-      {/* Table */}
       {!loading && customers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-xl bg-muted mb-4">
               <Users className="size-6 text-muted-foreground" />
             </div>
-            <p className="font-medium">Nenhum cliente ainda</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Seus clientes aparecerão aqui quando começarem a comprar produtos ou se inscrever em cursos
-            </p>
+            <p className="font-medium">{t("empty")}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t("emptyDescription")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -253,20 +249,20 @@ export default function CustomersPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Nome</th>
-                  <th className="px-4 py-3 text-left font-medium">Email</th>
-                  <th className="px-4 py-3 text-center font-medium">Produtos</th>
-                  <th className="px-4 py-3 text-center font-medium">Cursos</th>
-                  <th className="px-4 py-3 text-right font-medium">Valor Total</th>
-                  <th className="px-4 py-3 text-left font-medium">Última Compra</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("name")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("email")}</th>
+                  <th className="px-4 py-3 text-center font-medium">{t("productsCount")}</th>
+                  <th className="px-4 py-3 text-center font-medium">{t("coursesCount")}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t("totalValue")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("lastPurchase")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("status")}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                      Carregando...
+                      {tc("loading")}
                     </td>
                   </tr>
                 ) : (
@@ -282,7 +278,7 @@ export default function CustomersPage() {
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatDate(customer.lastInteractionAt)}
                       </td>
-                      <td className="px-4 py-3">{getStatusBadge(customer.status)}</td>
+                      <td className="px-4 py-3"><StatusBadge status={customer.status} t={t} /></td>
                     </tr>
                   ))
                 )}
@@ -292,11 +288,10 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Pagination */}
       {total > limit && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Mostrando {(page - 1) * limit + 1} a {Math.min(page * limit, total)} de {total} clientes
+            {t("showing", { from: (page - 1) * limit + 1, to: Math.min(page * limit, total), total })}
           </p>
           <div className="flex gap-2">
             <Button
@@ -304,14 +299,14 @@ export default function CustomersPage() {
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
             >
-              Anterior
+              {t("previous")}
             </Button>
             <Button
               variant="outline"
               onClick={() => setPage(page + 1)}
               disabled={!hasMore}
             >
-              Próximo
+              {t("nextPage")}
             </Button>
           </div>
         </div>

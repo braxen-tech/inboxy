@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { createBrowserClient } from "@supabase/ssr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ export default function PortalLoginPage() {
   const orgSlug = params.orgSlug;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("portal");
 
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
@@ -32,7 +34,7 @@ export default function PortalLoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
-        setError("E-mail ou senha inválidos.");
+        setError(t("invalidCredentials"));
         return;
       }
 
@@ -44,31 +46,31 @@ export default function PortalLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Entrar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acesse seus produtos digitais</p>
+          <h1 className="text-2xl font-bold">{t("login")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("loginDescription")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="seu@email.com" />
+            <Label htmlFor="email">{t("email")}</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={t("emailPlaceholder")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t("password")}</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Entrando..." : "Entrar"}
+            {pending ? t("pendingLogin") : t("login")}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Não tem conta?{" "}
+          {t("noAccount")}{" "}
           <Link href={`/portal/${orgSlug}/signup`} className="underline">
-            Criar conta
+            {t("signup")}
           </Link>
         </p>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   ConnectComponentsProvider,
   ConnectPayments,
@@ -60,21 +61,18 @@ export function FinancesPageClient({
   stripeAccountId,
   stripeAccountStatus,
 }: FinancesPageClientProps) {
+  const t = useTranslations("finances");
   const stripeConnectInstance = useStripeConnect(orgSlug, stripeAccountId);
 
   if (!stripeAccountId || stripeAccountStatus === "pending") {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Financeiro</h1>
-          <p className="text-muted-foreground">Gerencie seus pagamentos e saques.</p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          Configure sua conta Stripe em{" "}
-          <a href={`/${orgSlug}/integrations`} className="underline font-medium">
-            Integrações
-          </a>{" "}
-          para acessar o financeiro.
+          {t("setupStripe")}
         </div>
       </div>
     );
@@ -86,15 +84,15 @@ export function FinancesPageClient({
     <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Financeiro</h1>
-          <p className="text-muted-foreground">Gerencie seus pagamentos e saques.</p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
 
         <ConnectNotificationBanner />
 
         <Card>
           <CardHeader>
-            <CardTitle>Saldo</CardTitle>
+            <CardTitle>{t("balance")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ConnectBalances />
@@ -103,8 +101,8 @@ export function FinancesPageClient({
 
         <Tabs defaultValue="payments">
           <TabsList>
-            <TabsTrigger value="payments">Pagamentos</TabsTrigger>
-            <TabsTrigger value="payouts">Saques</TabsTrigger>
+            <TabsTrigger value="payments">{t("transactions")}</TabsTrigger>
+            <TabsTrigger value="payouts">{t("revenue")}</TabsTrigger>
           </TabsList>
           <TabsContent value="payments" className="mt-4">
             <ConnectPayments />

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default async function PortalLibraryPage({ params }: Props) {
+  const t = await getTranslations("portal");
   const { orgSlug } = await params;
 
   const supabase = await getServerClientFromCookies();
@@ -68,24 +70,24 @@ export default async function PortalLibraryPage({ params }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Minha Área</h1>
-            <p className="text-sm text-muted-foreground mt-1">Seus produtos e cursos adquiridos</p>
+            <h1 className="text-2xl font-bold">{t("myArea")}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("myAreaDescription")}</p>
           </div>
           <form action="/api/auth/signout" method="post">
-            <Button type="submit" variant="ghost" size="sm">Sair</Button>
+            <Button type="submit" variant="ghost" size="sm">{t("signout")}</Button>
           </form>
         </div>
 
         {hasNothing && (
           <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-            <p className="text-sm">Você ainda não tem produtos ou cursos na sua área.</p>
+            <p className="text-sm">{t("emptyLibrary")}</p>
           </div>
         )}
 
         {/* Cursos */}
         {activeCourses.length > 0 && (
           <section className="space-y-4">
-            <h2 className="text-base font-semibold">Meus Cursos</h2>
+            <h2 className="text-base font-semibold">{t("myCoursesSectionTitle")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {activeCourses.map((enrollment) => {
                 const course = (Array.isArray(enrollment.courses)
@@ -121,7 +123,7 @@ export default async function PortalLibraryPage({ params }: Props) {
                       {course.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
                       )}
-                      <p className="text-xs text-primary font-medium pt-1">Acessar curso →</p>
+                      <p className="text-xs text-primary font-medium pt-1">{t("accessCourse")}</p>
                     </div>
                   </Link>
                 );
@@ -133,7 +135,7 @@ export default async function PortalLibraryPage({ params }: Props) {
         {/* Produtos Digitais */}
         {activePurchases.length > 0 && (
           <section className="space-y-4">
-            <h2 className="text-base font-semibold">Produtos Digitais</h2>
+            <h2 className="text-base font-semibold">{t("digitalProducts")}</h2>
             <div className="space-y-3">
               {activePurchases.map((purchase) => {
                 const product = (Array.isArray(purchase.digital_products)
@@ -160,7 +162,7 @@ export default async function PortalLibraryPage({ params }: Props) {
                       </p>
                     </div>
                     <Link href={`/api/download/${purchase.id}`}>
-                      <Button size="sm">Baixar</Button>
+                      <Button size="sm">{t("download")}</Button>
                     </Link>
                   </div>
                 );

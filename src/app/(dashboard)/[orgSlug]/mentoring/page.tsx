@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getOrgBySlug } from "@/lib/get-org";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { Button } from "@/components/ui/button";
@@ -8,14 +9,18 @@ interface Props {
   params: Promise<{ orgSlug: string }>;
 }
 
-function formatBrl(value: number | null): string {
-  if (value == null) return "Grátis";
+function formatBrl(value: number | null, freeLabel: string): string {
+  if (value == null) return freeLabel;
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
 export default async function MentoringPage({ params }: Props) {
   const { orgSlug } = await params;
-  const org = await getOrgBySlug(orgSlug);
+  const [org, t, tc] = await Promise.all([
+    getOrgBySlug(orgSlug),
+    getTranslations("mentoring"),
+    getTranslations("common"),
+  ]);
   if (!org) notFound();
 
   const db = getAdminClient();
@@ -55,35 +60,30 @@ export default async function MentoringPage({ params }: Props) {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Mentorias</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Sessões 1:1 pagas — o aluno agenda após o pagamento
-          </p>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
         </div>
         {calConnected ? (
           <Link href={`/${orgSlug}/mentoring/new`}>
-            <Button>Nova mentoria</Button>
+            <Button>{t("new")}</Button>
           </Link>
         ) : (
           <Link href={`/${orgSlug}/integrations`}>
-            <Button variant="outline">Conectar Cal.com primeiro</Button>
+            <Button variant="outline">{t("connectCalFirst")}</Button>
           </Link>
         )}
       </div>
 
       {!calConnected && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            Para criar mentorias, conecte o Cal.com na{" "}
-            <Link href={`/${orgSlug}/integrations`} className="underline font-medium">página de integrações</Link>.
-          </p>
+          <p className="text-sm text-amber-700 dark:text-amber-400">{t("needsCal")}</p>
         </div>
       )}
 
       <div className="space-y-3">
         {courses.length === 0 && calConnected && (
           <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground text-sm">
-            Nenhuma mentoria ainda. Crie sua primeira mentoria.
+            {t("empty")}
           </div>
         )}
         {courses.map((c) => (
@@ -93,15 +93,15 @@ export default async function MentoringPage({ params }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium truncate">{c.title}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${c.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                    {c.active ? "Publicada" : "Rascunho"}
+                    {c.active ? t("published") : t("draft")}
                   </span>
                 </div>
                 {c.description && (
                   <p className="text-xs text-muted-foreground mt-1 truncate">{c.description}</p>
                 )}
-                <p className="text-sm font-semibold mt-1">{formatBrl(c.price_brl)}</p>
+                <p className="text-sm font-semibold mt-1">{formatBrl(c.price_brl, tc("free"))}</p>
               </div>
-              <span className="text-sm text-muted-foreground shrink-0">Editar →</span>
+              <span className="text-sm text-muted-foreground shrink-0">{t("edit")}</span>
             </div>
           </Link>
         ))}

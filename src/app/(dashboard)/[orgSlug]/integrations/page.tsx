@@ -1,5 +1,6 @@
 import { getOrgBySlug } from "@/lib/get-org";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { IntegrationCard } from "./integration-card";
 import { CalComCredentialsForm } from "./cal-com-credentials-form";
 import { StripeOnboarding } from "./stripe-onboarding";
@@ -31,7 +32,10 @@ function StripeIcon() {
 
 export default async function IntegrationsPage({ params }: Props) {
   const { orgSlug } = await params;
-  const org = await getOrgBySlug(orgSlug);
+  const [org, t] = await Promise.all([
+    getOrgBySlug(orgSlug),
+    getTranslations("integrations"),
+  ]);
   if (!org) notFound();
 
   const isCalActive = !!org.cal_managed_user_id && !!org.cal_access_token_enc;
@@ -40,20 +44,18 @@ export default async function IntegrationsPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Integrações</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Conecte seus serviços para habilitar funcionalidades do agente
-        </p>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <IntegrationCard
           name="Cal.com"
-          description="Consulte disponibilidade e agende automaticamente"
+          description={t("calDescription")}
           summary={
             isCalActive
               ? `Event Type: ${org.cal_event_type_id} · ${org.cal_timezone ?? "America/Sao_Paulo"}`
-              : "Pendente de configuração"
+              : t("pending")
           }
           icon={<CalComIcon />}
           status={isCalActive ? "active" : "pending"}
@@ -67,14 +69,14 @@ export default async function IntegrationsPage({ params }: Props) {
         </IntegrationCard>
 
         <IntegrationCard
-          name="Stripe (Pagamentos)"
-          description="Venda produtos via loja — cartão de crédito, PIX e mais"
+          name="Stripe"
+          description={t("stripeDescription")}
           summary={
             isStripeActive
-              ? "Conta ativa"
+              ? t("stripeActive")
               : org.stripe_account_status === "onboarding"
-                ? "Onboarding pendente"
-                : "Pendente de configuração"
+                ? t("onboardingPending")
+                : t("pending")
           }
           icon={<StripeIcon />}
           status={isStripeActive ? "active" : "pending"}

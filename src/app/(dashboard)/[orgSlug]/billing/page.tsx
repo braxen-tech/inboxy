@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getOrgBySlug } from "@/lib/get-org";
 import { needsBillingSetup, isPilotMode } from "@/lib/billing-setup";
 import { PLANS, QUOTA_WARNING_RATIO, type PlanId } from "@/lib/plans";
@@ -12,21 +13,6 @@ interface Props {
   searchParams: Promise<{ checkout?: string; setup?: string }>;
 }
 
-const PLAN_LABELS: Record<PlanId, string> = {
-  free: "Free",
-  starter: "Starter",
-  professional: "Professional",
-  business: "Business",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  trialing: "Período de teste",
-  active: "Ativa",
-  past_due: "Pagamento pendente",
-  canceled: "Cancelada",
-  unpaid: "Não paga",
-};
-
 export default async function BillingPage({ params, searchParams }: Props) {
   const { orgSlug } = await params;
   const { checkout, setup } = await searchParams;
@@ -35,10 +21,21 @@ export default async function BillingPage({ params, searchParams }: Props) {
     redirect(`/${orgSlug}/kb`);
   }
 
-  const org = await getOrgBySlug(orgSlug);
+  const [org, t] = await Promise.all([
+    getOrgBySlug(orgSlug),
+    getTranslations("billing"),
+  ]);
   if (!org) notFound();
 
   const billingSetupRequired = needsBillingSetup(org);
+
+  const STATUS_LABELS: Record<string, string> = {
+    trialing: t("trialing"),
+    active: t("activeStatus"),
+    past_due: t("pastDue"),
+    canceled: t("canceledStatus"),
+    unpaid: t("unpaid"),
+  };
 
   const db = getAdminClient();
   const usage = await getMonthlyUsage(db, org.id);
@@ -62,55 +59,51 @@ export default async function BillingPage({ params, searchParams }: Props) {
       <BillingAutoSync orgSlug={orgSlug} needsBillingSetup={billingSetupRequired} />
       <div>
         <h1 className="text-2xl font-semibold">
-          {billingSetupRequired ? "Ative sua conta" : "Assinatura"}
+          {billingSetupRequired ? t("activateAccount") : t("title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {billingSetupRequired
-            ? "Escolha um plano para começar a usar o Inboxy."
-            : "Gerencie seu plano e acompanhe o uso de mensagens do agente"}
+          {billingSetupRequired ? t("choosePlan") : t("managePlanUsage")}
         </p>
       </div>
 
       {(billingSetupRequired || setup === "required") && (
         <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
-          Escolha um plano para continuar usando o Inboxy. O plano Free é gratuito para sempre;
-          os planos pagos são cobrados via Stripe (cartão de crédito).
+          {t("choosePlanToContinue")}
         </div>
       )}
 
       {checkout === "success" && (
         <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-800 dark:text-green-300">
-          Assinatura confirmada assim que o pagamento for aprovado (alguns segundos a minutos,
-          dependendo da forma de pagamento).
+          {t("paymentConfirmPending")}
         </div>
       )}
 
       {!billingSetupRequired && (
       <section className="rounded-xl border p-5 space-y-4">
-        <h2 className="font-medium">Resumo</h2>
+        <h2 className="font-medium">{t("summary")}</h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="text-muted-foreground">Plano</dt>
-            <dd className="font-medium">{PLAN_LABELS[planId] ?? planId}</dd>
+            <dt className="text-muted-foreground">{t("plan")}</dt>
+            <dd className="font-medium">{planId}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Status</dt>
+            <dt className="text-muted-foreground">{t("statusLabel")}</dt>
             <dd className="font-medium">
               {STATUS_LABELS[org.subscription_status ?? "trialing"] ??
                 org.subscription_status}
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Mensagens de saída (este mês)</dt>
+            <dt className="text-muted-foreground">{t("outMessages")}</dt>
             <dd className="font-medium">
-              {usage.messagesOut.toLocaleString("pt-BR")} / {quota.toLocaleString("pt-BR")}
+              {usage.messagesOut.toLocaleString()} / {quota.toLocaleString()}
             </dd>
           </div>
           {org.subscription_current_period_end && (
             <div>
-              <dt className="text-muted-foreground">Próxima renovação</dt>
+              <dt className="text-muted-foreground">{t("nextRenewal")}</dt>
               <dd className="font-medium">
-                {new Date(org.subscription_current_period_end).toLocaleDateString("pt-BR")}
+                {new Date(org.subscription_current_period_end).toLocaleDateString()}
               </dd>
             </div>
           )}
@@ -131,15 +124,12 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
         {showQuotaWarning && !quotaExceeded && (
           <p className="text-sm text-amber-700 dark:text-amber-400">
-            Você já usou {Math.round(usageRatio * 100)}% da cota deste mês. Considere fazer
-            upgrade antes de atingir o limite — o agente passará para atendimento humano
-            automaticamente.
+            {t("quotaWarning", { percent: Math.round(usageRatio * 100) })}
           </p>
         )}
         {quotaExceeded && (
           <p className="text-sm text-destructive">
-            Cota esgotada. Novas conversas serão transferidas para atendentes humanos até você
-            fazer upgrade ou renovar o ciclo.
+            {t("quotaExceeded")}
           </p>
         )}
       </section>
@@ -147,7 +137,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
       <section>
         <h2 className="font-medium mb-4">
-          {billingSetupRequired ? "Escolha seu plano" : "Planos"}
+          {billingSetupRequired ? t("choosePlanLabel") : t("plans")}
         </h2>
         <BillingPlanCards
           orgSlug={orgSlug}

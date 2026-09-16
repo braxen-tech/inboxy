@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toggleStoreEnabled } from "./actions";
 
@@ -11,6 +12,7 @@ export function StoreToggleButton({
   orgSlug: string;
   initialEnabled: boolean;
 }) {
+  const t = useTranslations("store");
   const [enabled, setEnabled] = useState(initialEnabled);
   const [pending, startTransition] = useTransition();
 
@@ -25,7 +27,7 @@ export function StoreToggleButton({
 
   return (
     <Button variant={enabled ? "default" : "outline"} size="sm" onClick={handleToggle} disabled={pending}>
-      {enabled ? "Ativa" : "Ativar loja"}
+      {enabled ? t("active") : t("activate")}
     </Button>
   );
 }
