@@ -22,6 +22,7 @@ interface StoreBannerProps {
 export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBannerProps) {
   const [dismissed, setDismissed] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -44,16 +45,19 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
   }
 
   function handleLinkClick() {
+    setCheckoutError(null);
     try { window.posthog?.capture("store_banner_click", { banner_id: banner.id, org_slug: orgSlug }); } catch {}
     if (banner.link_product_id) {
       startTransition(async () => {
         const result = await createDigitalProductCheckout(orgSlug, banner.link_product_id!, discountPromoCodeId);
-        if ("url" in result && result.url) window.location.href = result.url;
+        if ("url" in result && result.url) { window.location.href = result.url; return; }
+        if ("error" in result) setCheckoutError(result.error ?? "Erro ao gerar link.");
       });
     } else if (banner.link_course_id) {
       startTransition(async () => {
         const result = await createCourseCheckout(orgSlug, banner.link_course_id!, discountPromoCodeId);
-        if ("url" in result && result.url) window.location.href = result.url;
+        if ("url" in result && result.url) { window.location.href = result.url; return; }
+        if ("error" in result) setCheckoutError(result.error ?? "Erro ao gerar link.");
       });
     }
   }
@@ -63,12 +67,19 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
   const hasLink = hasInternalLink || hasExternalLink;
   const linkLabel = banner.link_label || "Ver mais";
 
+  const bannerClickable = hasLink && !hasExternalLink;
+
   return (
     <div
       className="sticky top-0 z-50 relative flex items-center justify-center gap-3 px-10 py-2.5 text-sm font-medium"
       style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
     >
-      <span className="text-center leading-snug">{banner.text}</span>
+      <span
+        className={`text-center leading-snug${bannerClickable ? " cursor-pointer" : ""}`}
+        onClick={bannerClickable ? handleLinkClick : undefined}
+      >
+        {banner.text}
+      </span>
 
       {hasLink && (
         hasExternalLink ? (
@@ -104,6 +115,12 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
       >
         <X className="size-3.5" />
       </button>
+
+      {checkoutError && (
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full mt-1 rounded bg-destructive px-2 py-0.5 text-xs text-white z-10">
+          {checkoutError}
+        </span>
+      )}
     </div>
   );
 }

@@ -118,7 +118,7 @@ export async function createDigitalProductCheckout(orgSlug: string, productId: s
     lineItems: [{ productId: product.id, productName: product.title, quantity: 1, unitAmountBrl: product.price_brl }],
     metadata: { orgId: org.id, productId: product.id },
     mode: product.payment_type === "recurring" ? "subscription" : "payment",
-    ...(discountPromoCodeId ? { discountPromoCodeId } : { allowPromoCodes: true }),
+    ...(discountPromoCodeId ? { discountPromoCodeId } : {}),
   });
 
   if (!checkoutResult.ok) {
@@ -155,7 +155,7 @@ export async function createCourseCheckout(orgSlug: string, courseId: string, di
     lineItems: [{ productId: course.id, productName: course.title, quantity: 1, unitAmountBrl: course.price_brl }],
     metadata: { orgId: org.id, courseId: course.id },
     mode: course.payment_type === "recurring" ? "subscription" : "payment",
-    ...(discountPromoCodeId ? { discountPromoCodeId } : { allowPromoCodes: true }),
+    ...(discountPromoCodeId ? { discountPromoCodeId } : {}),
   });
 
   if (!checkoutResult.ok) {
