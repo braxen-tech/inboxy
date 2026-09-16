@@ -18,3 +18,9 @@ CREATE UNIQUE INDEX store_banners_org_idx ON store_banners (organization_id);
 CREATE TRIGGER set_updated_at_store_banners
   BEFORE UPDATE ON store_banners
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+CREATE POLICY org_owner_store_banners ON store_banners
+  FOR ALL
+  USING (organization_id IN (
+    SELECT id FROM organizations WHERE owner_user_id = auth.uid()
+  ));
