@@ -16,6 +16,7 @@ const createCourseSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional().default(""),
   priceBrl: z.coerce.number().min(0).max(999999),
+  paymentType: z.enum(["one_time", "recurring"]).default("one_time"),
 });
 
 async function getAuthenticatedOrg(orgSlug: string) {
@@ -36,7 +37,7 @@ export async function createCourse(formData: FormData) {
   const parsed = createCourseSchema.safeParse(raw);
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { orgSlug, title, description, priceBrl } = parsed.data;
+  const { orgSlug, title, description, priceBrl, paymentType } = parsed.data;
 
   const result = await getAuthenticatedOrg(orgSlug);
   if ("error" in result) return result;
@@ -65,7 +66,7 @@ export async function createCourse(formData: FormData) {
       description: description || null,
       thumbnail_url: thumbnailUrl,
       price_brl: priceBrl,
-      payment_type: "one_time",
+      payment_type: paymentType,
       active: false,
     })
     .select("id")
@@ -76,7 +77,7 @@ export async function createCourse(formData: FormData) {
   redirect(`/${orgSlug}/courses/${course.id}`);
 }
 
-export async function updateCourse(orgSlug: string, courseId: string, data: { title?: string; description?: string; priceBrl?: number; active?: boolean }) {
+export async function updateCourse(orgSlug: string, courseId: string, data: { title?: string; description?: string; priceBrl?: number; active?: boolean; paymentType?: "one_time" | "recurring" }) {
   scheduleTelemetryFlush();
   const result = await getAuthenticatedOrg(orgSlug);
   if ("error" in result) return result;
@@ -87,6 +88,7 @@ export async function updateCourse(orgSlug: string, courseId: string, data: { ti
   if (data.description !== undefined) update.description = data.description || null;
   if (data.priceBrl !== undefined) update.price_brl = data.priceBrl;
   if (data.active !== undefined) update.active = data.active;
+  if (data.paymentType !== undefined) update.payment_type = data.paymentType;
 
   await db.from("courses").update(update).eq("id", courseId).eq("organization_id", org.id);
   revalidatePath(`/${orgSlug}/courses/${courseId}`);

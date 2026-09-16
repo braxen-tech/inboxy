@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useRef } from "react";
+import { useTransition, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ interface Props {
 export function NewCourseForm({ orgSlug }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
+  const [paymentType, setPaymentType] = useState<"one_time" | "recurring">("one_time");
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,9 +42,47 @@ export function NewCourseForm({ orgSlug }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="priceBrl">Preço (R$)</Label>
-        <Input id="priceBrl" name="priceBrl" type="number" min="0" step="0.01" required placeholder="197.00" />
-        <p className="text-xs text-muted-foreground">Use 0 para disponibilizar gratuitamente.</p>
+        <Label>Tipo de cobrança</Label>
+        <div className="flex gap-3">
+          <label className={`flex flex-1 cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${paymentType === "one_time" ? "border-primary bg-primary/5" : "border-border"}`}>
+            <input
+              type="radio"
+              name="paymentType"
+              value="one_time"
+              checked={paymentType === "one_time"}
+              onChange={() => setPaymentType("one_time")}
+              className="sr-only"
+            />
+            <div>
+              <p className="text-sm font-medium">Pagamento único</p>
+              <p className="text-xs text-muted-foreground">Acesso vitalício após compra</p>
+            </div>
+          </label>
+          <label className={`flex flex-1 cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${paymentType === "recurring" ? "border-primary bg-primary/5" : "border-border"}`}>
+            <input
+              type="radio"
+              name="paymentType"
+              value="recurring"
+              checked={paymentType === "recurring"}
+              onChange={() => setPaymentType("recurring")}
+              className="sr-only"
+            />
+            <div>
+              <p className="text-sm font-medium">Assinatura mensal</p>
+              <p className="text-xs text-muted-foreground">Acesso enquanto ativo</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="priceBrl">{paymentType === "recurring" ? "Preço mensal (R$)" : "Preço (R$)"}</Label>
+        <Input id="priceBrl" name="priceBrl" type="number" min="0" step="0.01" required placeholder={paymentType === "recurring" ? "47.00" : "197.00"} />
+        <p className="text-xs text-muted-foreground">
+          {paymentType === "recurring"
+            ? "Cobrado mensalmente. Aluno perde acesso ao cancelar."
+            : "Use 0 para disponibilizar gratuitamente."}
+        </p>
       </div>
 
       <Button type="submit" disabled={pending} className="w-full">

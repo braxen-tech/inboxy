@@ -8,9 +8,11 @@ export interface CheckoutLineItem {
 }
 
 export interface CheckoutInput {
-  apiKey: string;
+  stripeAccountId: string;
   lineItems: CheckoutLineItem[];
   metadata: Record<string, string>;
+  /** "payment" (default) or "subscription" for recurring courses */
+  mode?: "payment" | "subscription";
 }
 
 export interface CheckoutResult {

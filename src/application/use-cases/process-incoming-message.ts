@@ -254,9 +254,9 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       };
     }
 
-    let asaasCtx: import("@/domain/ports").AsaasContext | undefined;
-    if (org.asaas_status === "active" && org.asaas_api_key_enc) {
-      asaasCtx = { apiKey: secretStore.decrypt(org.asaas_api_key_enc) };
+    let paymentCtx: import("@/domain/ports").PaymentContext | undefined;
+    if (org.stripe_account_status === "active" && org.stripe_account_id) {
+      paymentCtx = { stripeAccountId: org.stripe_account_id };
     }
 
     let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
@@ -306,7 +306,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       conversationId,
       localContactId: conversation.contacts?.id as string | undefined,
       calendar: calendarCtx,
-      asaas: asaasCtx,
+      payment: paymentCtx,
       chatwoot: chatwootCtx,
     };
 

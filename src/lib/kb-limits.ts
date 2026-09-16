@@ -6,6 +6,7 @@ export interface KbPlanLimits {
 }
 
 export const KB_PLAN_LIMITS: Record<PlanId, KbPlanLimits> = {
+  free: { maxFiles: 1, maxTotalBytes: 5 * 1024 * 1024 },
   starter: { maxFiles: 5, maxTotalBytes: 25 * 1024 * 1024 },
   professional: { maxFiles: 20, maxTotalBytes: 100 * 1024 * 1024 },
   business: { maxFiles: 50, maxTotalBytes: 500 * 1024 * 1024 },

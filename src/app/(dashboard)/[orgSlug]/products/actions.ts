@@ -79,6 +79,30 @@ export async function createDigitalProduct(formData: FormData) {
   return { success: true as const };
 }
 
+export async function updateDigitalProductPaymentType(
+  orgSlug: string,
+  productId: string,
+  paymentType: "one_time" | "recurring",
+) {
+  scheduleTelemetryFlush();
+  const supabase = await getServerClientFromCookies();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const db = getAdminClient();
+  const org = await (await import("@/lib/get-org")).getOrgBySlug(orgSlug);
+  if (!org) return { error: "Organização não encontrada." };
+
+  await db
+    .from("digital_products")
+    .update({ payment_type: paymentType })
+    .eq("id", productId)
+    .eq("organization_id", org.id);
+
+  revalidatePath(`/${orgSlug}/products`);
+  return { success: true as const };
+}
+
 export async function deleteDigitalProduct(orgSlug: string, productId: string) {
   scheduleTelemetryFlush();
 

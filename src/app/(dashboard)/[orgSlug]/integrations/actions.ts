@@ -10,7 +10,7 @@ import {
 import { connectChatwoot, disconnectChatwoot } from "@/application/use-cases/connect-chatwoot";
 import { connectCalCom, disconnectCalCom } from "@/application/use-cases/connect-cal-com";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
-import { provisionAsaasSubaccount, disconnectAsaas } from "@/application/use-cases/connect-asaas";
+import { provisionStripeConnectedAccount, disconnectStripe, refreshStripeAccountStatus } from "@/application/use-cases/connect-stripe";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
 // --- Chatwoot ---
@@ -188,34 +188,14 @@ export async function disconnectCalComAction(orgSlug: string) {
   return { success: true as const };
 }
 
-// --- Asaas ---
+// --- Stripe Connect ---
 
-const asaasSchema = z.object({
-  orgSlug: z.string().min(1),
-  name: z.string().min(1).max(200),
-  email: z.email(),
-  cpfCnpj: z.string().min(11).max(18),
-  companyType: z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]),
-  mobilePhone: z.string().min(10).max(20),
-  incomeValue: z.number().min(0),
-  address: z.string().min(1).max(200),
-  addressNumber: z.string().min(1).max(20),
-  province: z.string().min(1).max(100),
-  postalCode: z.string().min(8).max(9),
-});
-
-export async function activateAsaas(raw: z.infer<typeof asaasSchema>) {
+export async function activateStripe(orgSlug: string) {
   scheduleTelemetryFlush();
-  const parsed = asaasSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: "Dados inválidos. Verifique os campos." };
-  }
-
-  const { orgSlug, ...accountInput } = parsed.data;
   const supabase = await getServerClientFromCookies();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!user?.email) {
     return { error: "Não autenticado." };
   }
 
@@ -229,27 +209,44 @@ export async function activateAsaas(raw: z.infer<typeof asaasSchema>) {
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const key = process.env.ENCRYPTION_KEY?.trim() ?? "";
-  if (!isValidEncryptionKeyHex(key)) {
-    return { error: "ENCRYPTION_KEY inválida no servidor." };
-  }
-
-  const secretStore = new AesSecretStore(key);
-
-  const result = await provisionAsaasSubaccount(supabase, secretStore, {
-    orgId: org.id,
-    ...accountInput,
-  });
-
+  const result = await provisionStripeConnectedAccount(supabase, org.id, user.email);
   if (!result.ok) {
     return { error: result.error.message };
   }
 
   revalidatePath(`/${orgSlug}/integrations`);
-  return { success: true as const };
+  return { success: true as const, accountId: result.value.accountId };
 }
 
-export async function disconnectAsaasAction(orgSlug: string) {
+export async function refreshStripeStatusAction(orgSlug: string) {
+  scheduleTelemetryFlush();
+  const supabase = await getServerClientFromCookies();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Não autenticado." };
+  }
+
+  const { data: org, error: orgErr } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", orgSlug)
+    .maybeSingle();
+
+  if (orgErr || !org) {
+    return { error: "Organização não encontrada ou sem permissão." };
+  }
+
+  const result = await refreshStripeAccountStatus(supabase, org.id);
+  if (!result.ok) {
+    return { error: result.error.message };
+  }
+
+  revalidatePath(`/${orgSlug}/integrations`);
+  return { success: true as const, status: result.value.status };
+}
+
+export async function disconnectStripeAction(orgSlug: string) {
   scheduleTelemetryFlush();
   const supabase = await getServerClientFromCookies();
   const { data: { user } } = await supabase.auth.getUser();
@@ -267,7 +264,7 @@ export async function disconnectAsaasAction(orgSlug: string) {
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const result = await disconnectAsaas(supabase, org.id);
+  const result = await disconnectStripe(supabase, org.id);
   if (!result.ok) {
     return { error: result.error.message };
   }

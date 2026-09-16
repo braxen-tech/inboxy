@@ -3,6 +3,7 @@ import { getOrgBySlug } from "@/lib/get-org";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { ProductForm } from "./product-form";
 import { DeleteProductButton } from "./delete-product-button";
+import { PaymentTypeToggle } from "./payment-type-toggle";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -59,7 +60,10 @@ export default async function ProductsPage({ params }: Props) {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 truncate">{p.file_name} {p.file_size_bytes ? `· ${formatBytes(p.file_size_bytes)}` : ""}</p>
-                <p className="text-sm font-semibold mt-1">{formatBrl(p.price_brl)} <span className="font-normal text-muted-foreground text-xs">· {p.payment_type === "one_time" ? "único" : "recorrente"}</span></p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm font-semibold">{formatBrl(p.price_brl)}</span>
+                  <PaymentTypeToggle orgSlug={orgSlug} productId={p.id} paymentType={p.payment_type as "one_time" | "recurring"} />
+                </div>
               </div>
               <DeleteProductButton orgSlug={orgSlug} productId={p.id} />
             </div>

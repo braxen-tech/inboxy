@@ -13,6 +13,7 @@ interface Props {
 }
 
 const PLAN_LABELS: Record<PlanId, string> = {
+  free: "Free",
   starter: "Starter",
   professional: "Professional",
   business: "Business",
@@ -72,8 +73,8 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
       {(billingSetupRequired || setup === "required") && (
         <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
-          Para usar o Inboxy (agente, integrações e base de conhecimento), assine um plano abaixo.
-          Pagamento via Asaas (PIX, boleto ou cartão).
+          Escolha um plano para continuar usando o Inboxy. O plano Free é gratuito para sempre;
+          os planos pagos são cobrados via Stripe (cartão de crédito).
         </div>
       )}
 

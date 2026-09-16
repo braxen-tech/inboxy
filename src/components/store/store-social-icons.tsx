@@ -67,8 +67,24 @@ const LUCIDE_ICON_MAP: Record<string, LucideIcon> = {
   website: Globe,
 };
 
-export function StoreSocialIcons({ links }: { links: SocialLink[] }) {
+declare global {
+  interface Window {
+    posthog?: { capture: (event: string, properties?: Record<string, unknown>) => void };
+  }
+}
+
+export function StoreSocialIcons({ links, orgId, orgSlug }: { links: SocialLink[]; orgId?: string; orgSlug?: string }) {
   if (links.length === 0) return null;
+
+  function handleClick(platform: string) {
+    try {
+      if (typeof window !== "undefined" && window.posthog) {
+        window.posthog.capture("store_social_click", { platform, org_id: orgId, org_slug: orgSlug });
+      }
+    } catch {
+      // analytics should never break the page
+    }
+  }
 
   return (
     <div className="flex items-center justify-center gap-3">
@@ -83,6 +99,7 @@ export function StoreSocialIcons({ links }: { links: SocialLink[] }) {
             href={href}
             target={platform === "email" ? undefined : "_blank"}
             rel={platform === "email" ? undefined : "noopener noreferrer"}
+            onClick={() => handleClick(platform)}
             className="flex size-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
             style={{ backgroundColor: "var(--store-card)" }}
           >

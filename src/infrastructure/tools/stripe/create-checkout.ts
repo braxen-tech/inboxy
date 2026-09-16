@@ -19,7 +19,7 @@ export class CreateCheckoutTool implements AgentTool {
   ) {}
 
   async execute(ctx: ToolContext): Promise<Result<string, ToolError>> {
-    if (!ctx.asaas) {
+    if (!ctx.payment) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 
@@ -44,7 +44,7 @@ export class CreateCheckoutTool implements AgentTool {
     }
 
     const result = await this.paymentGateway.createCheckoutSession({
-      apiKey: ctx.asaas.apiKey,
+      stripeAccountId: ctx.payment.stripeAccountId,
       lineItems: items.map((i) => ({
         productId: i.product_id,
         productName: i.product_name,
@@ -77,8 +77,7 @@ export class CreateCheckoutTool implements AgentTool {
       .from("orders")
       .update({
         status: "checkout",
-        asaas_payment_id: paymentId,
-        asaas_payment_link: url,
+        stripe_checkout_session_id: paymentId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", order.id);

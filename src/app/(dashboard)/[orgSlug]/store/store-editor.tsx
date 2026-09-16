@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   User,
   LayoutGrid,
-  MessageCircle,
   BarChart3,
   Palette,
   ExternalLink,
@@ -53,7 +52,6 @@ import {
   saveStoreProfile,
   toggleStoreEnabled,
   saveStoreTheme,
-  saveStoreChatConfig,
   addStoreBlock,
   updateStoreBlock,
   deleteStoreBlock,
@@ -122,10 +120,6 @@ interface StoreEditorProps {
   digitalProducts: DigitalProductOption[];
   courses: CourseOption[];
   theme: StoreTheme;
-  chatEnabled: boolean;
-  chatTrigger: string;
-  chatTriggerSeconds: number;
-  chatGreeting: string;
   subscriptionPlan: string;
 }
 
@@ -384,10 +378,6 @@ export function StoreEditor({
   digitalProducts,
   courses,
   theme: initialTheme,
-  chatEnabled: initialChatEnabled,
-  chatTrigger: initialChatTrigger,
-  chatTriggerSeconds: initialTriggerSeconds,
-  chatGreeting: initialChatGreeting,
   subscriptionPlan,
 }: StoreEditorProps) {
   const router = useRouter();
@@ -422,12 +412,6 @@ export function StoreEditor({
   const [newLinkIcon, setNewLinkIcon] = useState("");
   const [newDigitalProductId, setNewDigitalProductId] = useState("");
   const [newCourseId, setNewCourseId] = useState("");
-
-  // Chat state
-  const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
-  const [chatTrigger, setChatTrigger] = useState(initialChatTrigger);
-  const [triggerSeconds, setTriggerSeconds] = useState(initialTriggerSeconds);
-  const [chatGreeting, setChatGreeting] = useState(initialChatGreeting);
 
   // Theme state
   const [theme, setTheme] = useState(initialTheme);
@@ -646,20 +630,6 @@ export function StoreEditor({
     });
   }
 
-  function handleSaveChat() {
-    startTransition(async () => {
-      const r = await saveStoreChatConfig({
-        orgSlug,
-        chatEnabled,
-        trigger: chatTrigger as "none" | "timer" | "scroll" | "exit_intent",
-        triggerSeconds,
-        greeting: chatGreeting,
-      });
-      if (r.error) showMessage("err", r.error);
-      else showMessage("ok", "Configuração de chat salva!");
-    });
-  }
-
   function handleSaveTheme() {
     startTransition(async () => {
       const r = await saveStoreTheme({ orgSlug, theme });
@@ -717,11 +687,10 @@ export function StoreEditor({
         </p>
       )}
 
-      <Tabs defaultValue="profile">
+      <Tabs defaultValue="profile" onValueChange={(v) => { if (v === "analytics") loadAnalytics(analyticsDays); }}>
         <TabsList>
           <TabsTrigger value="profile"><User className="size-4 mr-1" /> Perfil</TabsTrigger>
           <TabsTrigger value="blocks"><LayoutGrid className="size-4 mr-1" /> Blocos</TabsTrigger>
-          <TabsTrigger value="chat"><MessageCircle className="size-4 mr-1" /> Chat</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart3 className="size-4 mr-1" /> Analytics</TabsTrigger>
           <TabsTrigger value="theme"><Palette className="size-4 mr-1" /> Tema</TabsTrigger>
         </TabsList>
@@ -983,74 +952,7 @@ export function StoreEditor({
           </div>
         </TabsContent>
 
-        {/* Tab 3 — Chat */}
-        <TabsContent value="chat">
-          <div className="mt-6 space-y-4 max-w-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Chat na loja</Label>
-                <p className="text-xs text-muted-foreground">Habilitar widget de chat com IA na sua loja</p>
-              </div>
-              <Button
-                variant={chatEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChatEnabled(!chatEnabled)}
-              >
-                {chatEnabled ? "Ativo" : "Desativado"}
-              </Button>
-            </div>
-
-            {chatEnabled && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="chatTrigger">Trigger do chat</Label>
-                  <select
-                    id="chatTrigger"
-                    value={chatTrigger}
-                    onChange={(e) => setChatTrigger(e.target.value)}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="none">Sempre visível (botão no canto)</option>
-                    <option value="timer">Timer (abre após X segundos)</option>
-                    <option value="scroll">Scroll (abre ao rolar a página)</option>
-                    <option value="exit_intent">Exit intent (abre quando mouse sai)</option>
-                  </select>
-                </div>
-
-                {chatTrigger === "timer" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="triggerSeconds">Segundos até abrir</Label>
-                    <Input
-                      id="triggerSeconds"
-                      type="number"
-                      min={5}
-                      max={300}
-                      value={triggerSeconds}
-                      onChange={(e) => setTriggerSeconds(parseInt(e.target.value) || 60)}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="chatGreeting">Mensagem de boas-vindas</Label>
-                  <Textarea
-                    id="chatGreeting"
-                    value={chatGreeting}
-                    onChange={(e) => setChatGreeting(e.target.value)}
-                    placeholder="Oi! Posso te ajudar a escolher o melhor produto?"
-                    rows={2}
-                  />
-                </div>
-              </>
-            )}
-
-            <Button onClick={handleSaveChat} disabled={pending}>
-              {pending ? "Salvando..." : "Salvar configuração de chat"}
-            </Button>
-          </div>
-        </TabsContent>
-
-        {/* Tab 4 — Analytics */}
+        {/* Tab 3 — Analytics */}
         <TabsContent value="analytics">
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -1096,7 +998,6 @@ export function StoreEditor({
                   {[
                     { label: "Page views", value: analyticsData.totalViews },
                     { label: "Cliques", value: analyticsData.totalClicks },
-                    { label: "Chats abertos", value: analyticsData.totalChats },
                     { label: "CTR médio", value: `${analyticsData.ctr}%` },
                   ].map((stat) => (
                     <Card key={stat.label} className="p-4 text-center">

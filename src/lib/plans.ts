@@ -1,7 +1,18 @@
-export type PlanId = "starter" | "professional" | "business";
+export type PlanId = "free" | "starter" | "professional" | "business";
 export type PlanIntegration = "cal" | "store";
 
 export const PLANS = {
+  free: {
+    name: "Free",
+    price: 0,
+    messageQuota: 50,
+    allowedIntegrations: [] as PlanIntegration[],
+    features: [
+      "50 mensagens de saída/mês",
+      "Loja básica (1 produto)",
+      "Suporte por email",
+    ],
+  },
   starter: {
     name: "Starter",
     price: 97,
@@ -21,7 +32,7 @@ export const PLANS = {
     features: [
       "Tudo do Starter",
       "Cal.com (agendamento)",
-      "Loja e pagamentos (Asaas)",
+      "Loja e pagamentos (Stripe)",
       "2.000 mensagens de saída/mês",
     ],
   },
@@ -80,8 +91,8 @@ export function resolveEnabledToolsForOrg(org: {
   cal_managed_user_id?: number | null;
   cal_access_token_enc?: string | null;
   cal_event_type_id?: string | null;
-  asaas_status?: string | null;
-  asaas_api_key_enc?: string | null;
+  stripe_account_status?: string | null;
+  stripe_account_id?: string | null;
   chatwoot_status?: string | null;
   chatwoot_api_token?: string | null;
   chatwoot_account_id?: string | null;
@@ -98,7 +109,7 @@ export function resolveEnabledToolsForOrg(org: {
       return !!org.cal_managed_user_id && !!org.cal_access_token_enc && !!org.cal_event_type_id;
     }
     if (INTEGRATION_TOOLS.store.includes(name)) {
-      return org.asaas_status === "active" && !!org.asaas_api_key_enc;
+      return org.stripe_account_status === "active" && !!org.stripe_account_id;
     }
     return false;
   });

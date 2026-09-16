@@ -2,7 +2,8 @@ import { processIncomingMessage } from "@/application/use-cases/process-incoming
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
-import { AsaasDbCatalogAdapter, AsaasPaymentAdapter } from "@/infrastructure/adapters/asaas";
+import { AsaasDbCatalogAdapter } from "@/infrastructure/adapters/asaas";
+import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
 import { createVoyageEmbeddingAdapter } from "@/infrastructure/adapters/voyage/embedding-adapter";
 import { PgVectorKnowledgeRetriever } from "@/infrastructure/adapters/pgvector/knowledge-retriever";
 import { createToolRegistry } from "@/infrastructure/tools/bootstrap";
@@ -39,7 +40,7 @@ export async function runProcessIncomingMessageJob(
   const toolRegistry = createToolRegistry({
     calendarProvider: new CalComAdapter(),
     productCatalog: new AsaasDbCatalogAdapter(db),
-    paymentGateway: new AsaasPaymentAdapter(),
+    paymentGateway: new StripePaymentAdapter(),
     knowledgeRetriever,
     db,
   });

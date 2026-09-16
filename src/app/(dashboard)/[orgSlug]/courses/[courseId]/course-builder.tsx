@@ -35,6 +35,7 @@ interface Course {
   title: string;
   description: string | null;
   price_brl: number | null;
+  payment_type: string;
   active: boolean;
   thumbnail_url: string | null;
 }
@@ -70,6 +71,9 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
   const [editTitle, setEditTitle] = useState(course.title);
   const [editDescription, setEditDescription] = useState(course.description ?? "");
   const [editPrice, setEditPrice] = useState(course.price_brl?.toString() ?? "0");
+  const [editPaymentType, setEditPaymentType] = useState<"one_time" | "recurring">(
+    course.payment_type === "recurring" ? "recurring" : "one_time",
+  );
   const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnail_url);
   const [metaDirty, setMetaDirty] = useState(false);
 
@@ -368,7 +372,25 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
 
           {/* Price */}
           <div>
-            <label className="text-xs text-muted-foreground">Preço (R$)</label>
+            <label className="text-xs text-muted-foreground">Tipo de cobrança</label>
+            <div className="mt-1 flex gap-2">
+              {(["one_time", "recurring"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setEditPaymentType(type); setMetaDirty(true); }}
+                  className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${editPaymentType === type ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+                >
+                  {type === "one_time" ? "Pagamento único" : "Mensal"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground">
+              {editPaymentType === "recurring" ? "Preço mensal (R$)" : "Preço (R$)"}
+            </label>
             <Input
               type="number"
               min="0"
@@ -390,6 +412,7 @@ export function CourseBuilder({ orgSlug, course, initialModules }: Props) {
                     title: editTitle.trim(),
                     description: editDescription,
                     priceBrl: parseFloat(editPrice) || 0,
+                    paymentType: editPaymentType,
                   });
                   setMetaDirty(false);
                   router.refresh();

@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     .from("organizations")
     .select("id")
     .eq("slug", orgSlug)
+    .eq("owner_user_id", user.id)
     .maybeSingle();
   if (!org) return NextResponse.json({ error: "Org não encontrada." }, { status: 404 });
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
   const since = `now() - interval ${days} day`;
 
   try {
-    const [viewsRows, clicksRows, chatsRows, dailyRows] = await Promise.all([
+    const [viewsRows, clicksRows, chatsRows, dailyRows, socialRows] = await Promise.all([
       // Total page views
       hogql(`SELECT count() FROM events WHERE event = 'store_page_view' AND properties.org_id = '${orgId}' AND timestamp >= ${since}`),
       // Clicks per block
@@ -57,6 +58,8 @@ export async function GET(req: NextRequest) {
       hogql(`SELECT count() FROM events WHERE event = 'store_chat_opened' AND properties.org_id = '${orgId}' AND timestamp >= ${since}`),
       // Daily page views
       hogql(`SELECT toDate(timestamp) as day, count() as views FROM events WHERE event = 'store_page_view' AND properties.org_id = '${orgId}' AND timestamp >= ${since} GROUP BY day ORDER BY day ASC`),
+      // Social link clicks per platform
+      hogql(`SELECT properties.platform, count() as clicks FROM events WHERE event = 'store_social_click' AND properties.org_id = '${orgId}' AND timestamp >= ${since} GROUP BY properties.platform ORDER BY clicks DESC`),
     ]);
 
     const totalViews = Number(viewsRows?.[0]?.[0] ?? 0);
@@ -76,6 +79,7 @@ export async function GET(req: NextRequest) {
         ctr: totalViews > 0 ? Math.round((Number(r[3]) / totalViews) * 100) : 0,
       })),
       dailyViews: dailyRows.map((r) => ({ day: r[0], views: Number(r[1]) })),
+      socialClicks: socialRows.map((r) => ({ platform: r[0], clicks: Number(r[1]) })),
     });
   } catch (err) {
     console.error("PostHog analytics error:", err);

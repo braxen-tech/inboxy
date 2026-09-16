@@ -13,7 +13,7 @@ export function isPilotSubscription(subscriptionId: string | null | undefined): 
   return subscriptionId === PILOT_SUBSCRIPTION_ID;
 }
 
-/** Org must have an active/trialing subscription (Asaas platform billing) before using the dashboard. */
+/** Org must have an active/trialing subscription before using the dashboard. */
 export function needsBillingSetup(org: {
   subscription_status?: string | null;
 }): boolean {
@@ -24,7 +24,7 @@ export function pilotSubscriptionFields() {
   return {
     subscription_plan: "business" as const,
     subscription_status: "active" as const,
-    asaas_subscription_id: PILOT_SUBSCRIPTION_ID,
+    stripe_subscription_id: PILOT_SUBSCRIPTION_ID,
     message_quota: PILOT_MESSAGE_QUOTA,
   };
 }

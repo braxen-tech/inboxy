@@ -19,7 +19,8 @@ export class AsaasPaymentAdapter implements PaymentGateway {
       const orderId = input.metadata.orderId ?? "";
       const itemNames = input.lineItems.map((i) => `${i.quantity}x ${i.productName}`).join(", ");
 
-      const link = await createPaymentLink(input.apiKey, {
+      const apiKey = (input as unknown as { apiKey?: string }).apiKey ?? input.stripeAccountId;
+      const link = await createPaymentLink(apiKey, {
         name: `Pedido ${orderId.slice(0, 8).toUpperCase()}`,
         description: itemNames,
         billingType: "UNDEFINED",

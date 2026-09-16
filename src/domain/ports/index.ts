@@ -21,6 +21,7 @@ export type {
   ToolError,
   CalendarContext,
   AsaasContext,
+  PaymentContext,
   ChatwootContext,
 } from "./tool-registry";
 

@@ -73,6 +73,8 @@ export function StorePage({
         bio={bio}
         photoUrl={photoUrl}
         socialLinks={socialLinks}
+        orgId={orgId}
+        orgSlug={orgSlug}
       />
 
       {productAndBookingBlocks.length > 0 && (

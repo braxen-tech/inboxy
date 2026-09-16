@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+// useState kept for error state
 import { Clock, ExternalLink } from "lucide-react";
 import { createDirectCheckout, createDigitalProductCheckout, createCourseCheckout } from "@/app/(store)/s/[slug]/actions";
 
@@ -63,22 +64,18 @@ function ProductOrBookingCard({
   const isPurchasable = (block.type === "product" || block.type === "course") && !!block.price_brl && block.price_brl > 0;
   const isDigital = !!block.digital_product_id;
   const isCourse = block.type === "course" && !!block.course_id;
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function runCheckout(buyerEmail?: string, buyerName?: string) {
+  function handleBuyClick() {
     onBlockClick?.(block.id, block.type, block.title);
     setError(null);
     startTransition(async () => {
-      const result =
-        isCourse && buyerEmail
-          ? await createCourseCheckout(orgSlug, block.course_id!, { buyerEmail, buyerName })
-          : isDigital && buyerEmail
-            ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!, { buyerEmail, buyerName })
-            : await createDirectCheckout(orgSlug, block.id);
+      const result = isCourse
+        ? await createCourseCheckout(orgSlug, block.course_id!)
+        : isDigital
+          ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!)
+          : await createDirectCheckout(orgSlug, block.id);
       if ("error" in result && result.error) {
         setError(result.error);
         return;
@@ -87,19 +84,6 @@ function ProductOrBookingCard({
         window.location.href = result.url;
       }
     });
-  }
-
-  function handleBuyClick() {
-    if (isCourse || isDigital) {
-      setShowEmailForm(true);
-      return;
-    }
-    runCheckout();
-  }
-
-  function submitEmailForm(e: React.FormEvent) {
-    e.preventDefault();
-    runCheckout(email, name || undefined);
   }
 
   return (
@@ -136,9 +120,12 @@ function ProductOrBookingCard({
           {(block.type === "product" || block.type === "course") && block.price_display && (
             <span className="text-sm font-bold" style={{ color: "var(--store-primary)" }}>
               {block.price_display}
+              {block.payment_type === "recurring" && (
+                <span className="ml-1 text-xs font-normal opacity-70">/mês</span>
+              )}
             </span>
           )}
-          {block.type === "booking" && block.duration_minutes && (
+{block.type === "booking" && block.duration_minutes && (
             <span className="flex items-center gap-1 text-xs opacity-60" style={{ color: "var(--store-text)" }}>
               <Clock className="size-3" />
               {block.duration_minutes} min
@@ -147,51 +134,15 @@ function ProductOrBookingCard({
         </div>
 
         {isPurchasable ? (
-          showEmailForm ? (
-            <form onSubmit={submitEmailForm} className="mt-2 space-y-2">
-              <p className="text-xs opacity-60" style={{ color: "var(--store-text)" }}>
-                {isCourse ? "Após o pagamento, enviaremos o acesso ao curso para este e-mail." : "Após o pagamento, enviaremos o acesso para este e-mail."}
-              </p>
-              <input
-                type="text"
-                placeholder="Seu nome"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                style={{ color: "var(--store-text)" }}
-              />
-              <input
-                type="email"
-                placeholder="Seu e-mail"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                style={{ color: "var(--store-text)" }}
-              />
-              <button
-                type="submit"
-                disabled={pending}
-                className="w-full rounded-[var(--store-radius)] px-4 py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
-              >
-                {pending ? "Gerando link..." : "Continuar para pagamento"}
-              </button>
-            </form>
-          ) : (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={handleBuyClick}
-              className="mt-2 block rounded-[var(--store-radius)] px-4 py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{
-                backgroundColor: "var(--store-primary)",
-                color: "var(--store-bg)",
-              }}
-            >
-              {pending ? "Gerando link..." : block.cta_text}
-            </button>
-          )
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleBuyClick}
+            className="mt-2 block rounded-[var(--store-radius)] px-4 py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+            style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
+          >
+            {pending ? "Aguarde..." : block.cta_text}
+          </button>
         ) : (
           block.external_url && (
             <a

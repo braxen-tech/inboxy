@@ -59,7 +59,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
 
   const { data: existing, error: selectError } = await db
     .from("organizations")
-    .select("id, slug, asaas_subscription_id")
+    .select("id, slug, stripe_subscription_id")
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -69,7 +69,7 @@ export async function ensureUserOrganization(user: AuthUser): Promise<{ slug: st
   }
 
   if (existing?.slug) {
-    await grantPilotSubscriptionIfNeeded(existing.id, existing.asaas_subscription_id);
+    await grantPilotSubscriptionIfNeeded(existing.id, existing.stripe_subscription_id);
     return { slug: existing.slug };
   }
 

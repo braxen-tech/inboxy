@@ -4,20 +4,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
-  Bot,
+  BarChart3,
   Calendar,
   ChevronDown,
   GraduationCap,
   Inbox,
+  LayoutGrid,
   LogOut,
   Menu,
   CreditCard,
   Mail,
   Package,
+  Palette,
   Plug,
   Settings,
   Store,
+  User,
   Users,
   Wallet,
   X,
@@ -33,7 +35,6 @@ interface DashboardShellProps {
   orgName: string;
   chatwootActive: boolean;
   billingEnabled?: boolean;
-  asaasSandbox?: boolean;
   children: React.ReactNode;
 }
 
@@ -42,21 +43,25 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
+  subItems?: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
 };
 
-function buildNavGroups(asaasSandbox: boolean) {
+function buildNavGroups() {
   return [
-    {
-      label: "Atendimento com IA",
-      items: [
-        { href: "kb", label: "Base de conhecimento", icon: BookOpen },
-        { href: "agent", label: "Agente", icon: Bot },
-      ],
-    },
     {
       label: "Loja",
       items: [
-        { href: "store", label: "Minha Loja", icon: Store },
+        {
+          href: "store",
+          label: "Minha Loja",
+          icon: Store,
+          subItems: [
+            { href: "store/profile", label: "Perfil", icon: User },
+            { href: "store/content", label: "Conteúdo", icon: LayoutGrid },
+            { href: "store/analytics", label: "Analytics", icon: BarChart3 },
+            { href: "store/theme", label: "Tema", icon: Palette },
+          ],
+        },
         { href: "products", label: "Produtos Digitais", icon: Package },
         { href: "courses", label: "Cursos Online", icon: GraduationCap },
         { href: "mentoring", label: "Mentorias", icon: Calendar },
@@ -68,14 +73,7 @@ function buildNavGroups(asaasSandbox: boolean) {
       label: "Configurações",
       items: [
         { href: "integrations", label: "Integrações", icon: Plug },
-        {
-          href: asaasSandbox
-            ? "https://sandbox.asaas.com"
-            : "https://www.asaas.com",
-          label: "Financeiro",
-          icon: Wallet,
-          external: true,
-        },
+        { href: "finances", label: "Financeiro", icon: Wallet },
         { href: "billing", label: "Assinatura", icon: CreditCard },
         { href: "settings", label: "Configurações", icon: Settings },
       ],
@@ -100,15 +98,13 @@ function NavLinks({
   pathname,
   onNavigate,
   billingEnabled = true,
-  asaasSandbox = false,
 }: {
   orgSlug: string;
   pathname: string;
   onNavigate?: () => void;
   billingEnabled?: boolean;
-  asaasSandbox?: boolean;
 }) {
-  const groups = buildNavGroups(asaasSandbox).map((group) => ({
+  const groups = buildNavGroups().map((group) => ({
     ...group,
     items: group.items.filter((item) => billingEnabled || item.href !== "billing"),
   }));
@@ -154,7 +150,7 @@ function NavLinks({
                 <ChevronDown className={cn("size-3.5 transition-transform", isCollapsed ? "-rotate-90" : "")} aria-hidden />
               </button>
             )}
-            {showItems && group.items.map(({ href, label, icon: Icon, external }) => {
+            {showItems && group.items.map(({ href, label, icon: Icon, external, subItems }) => {
               const path = external ? href : `/${orgSlug}/${href}`;
               const isActive = !external && (pathname === path || pathname.startsWith(`${path}/`));
 
@@ -177,20 +173,41 @@ function NavLinks({
               }
 
               return (
-                <Link
-                  key={href}
-                  href={path}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" aria-hidden />
-                  {label}
-                </Link>
+                <div key={href}>
+                  <Link
+                    href={path}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden />
+                    {label}
+                  </Link>
+                  {isActive && subItems && subItems.map(({ href: subHref, label: subLabel, icon: SubIcon }) => {
+                    const subPath = `/${orgSlug}/${subHref}`;
+                    const isSubActive = pathname === subPath || pathname.startsWith(`${subPath}/`);
+                    return (
+                      <Link
+                        key={subHref}
+                        href={subPath}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg py-2 pl-9 pr-3 text-sm font-medium transition-colors",
+                          isSubActive
+                            ? "text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground",
+                        )}
+                      >
+                        <SubIcon className="size-3.5 shrink-0" aria-hidden />
+                        {subLabel}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
@@ -207,7 +224,6 @@ function SidebarContent({
   pathname,
   onNavigate,
   billingEnabled = true,
-  asaasSandbox = false,
 }: {
   orgSlug: string;
   orgName: string;
@@ -215,7 +231,6 @@ function SidebarContent({
   pathname: string;
   onNavigate?: () => void;
   billingEnabled?: boolean;
-  asaasSandbox?: boolean;
 }) {
   return (
     <>
@@ -254,7 +269,6 @@ function SidebarContent({
         pathname={pathname}
         onNavigate={onNavigate}
         billingEnabled={billingEnabled}
-        asaasSandbox={asaasSandbox}
       />
 
       <div className="mt-auto border-t border-sidebar-border p-3">
@@ -278,7 +292,6 @@ export function DashboardShell({
   orgName,
   chatwootActive,
   billingEnabled = true,
-  asaasSandbox = false,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -330,7 +343,6 @@ export function DashboardShell({
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
           billingEnabled={billingEnabled}
-          asaasSandbox={asaasSandbox}
         />
       </aside>
 

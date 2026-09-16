@@ -17,7 +17,7 @@ export default async function CourseBuilderPage({ params }: Props) {
 
   const { data: course } = await db
     .from("courses")
-    .select("id, title, description, price_brl, active, thumbnail_url")
+    .select("id, title, description, price_brl, payment_type, active, thumbnail_url")
     .eq("id", courseId)
     .eq("organization_id", org.id)
     .maybeSingle();

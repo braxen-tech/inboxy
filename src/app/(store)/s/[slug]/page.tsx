@@ -29,7 +29,7 @@ async function getStoreData(slug: string) {
   const { data: rawBlocks } = await db
     .from("store_blocks")
     .select(
-      "id, type, title, description, image_url, cta_text, external_url, price_display, price_brl, payment_type, billing_cycle, duration_minutes, link_icon, digital_product_id, course_id, digital_products(id, title, description, thumbnail_url, price_brl, payment_type, billing_cycle, active), courses(id, title, description, thumbnail_url, price_brl)",
+      "id, type, title, description, image_url, cta_text, external_url, price_display, price_brl, payment_type, billing_cycle, duration_minutes, link_icon, digital_product_id, course_id, digital_products(id, title, description, thumbnail_url, price_brl, payment_type, billing_cycle, active), courses(id, title, description, thumbnail_url, price_brl, payment_type)",
     )
     .eq("organization_id", org.id)
     .eq("visible", true)
@@ -39,7 +39,7 @@ async function getStoreData(slug: string) {
   const blocks = (rawBlocks ?? [])
     .map(({ digital_products, courses, ...b }) => {
       const product = Array.isArray(digital_products) ? digital_products[0] : digital_products as { id: string; title: string; description: string | null; thumbnail_url: string | null; price_brl: number | null; payment_type: string | null; billing_cycle: string | null; active: boolean } | null;
-      const course = Array.isArray(courses) ? courses[0] : courses as { id: string; title: string; description: string | null; thumbnail_url: string | null; price_brl: number | null } | null;
+      const course = Array.isArray(courses) ? courses[0] : courses as { id: string; title: string; description: string | null; thumbnail_url: string | null; price_brl: number | null; payment_type: string | null } | null;
 
       if (b.digital_product_id && (!product || !product.active)) return null;
 
@@ -62,7 +62,7 @@ async function getStoreData(slug: string) {
             ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(resolvedPriceBrl)
             : null),
         price_brl: resolvedPriceBrl,
-        payment_type: product?.payment_type ?? b.payment_type,
+        payment_type: course?.payment_type ?? product?.payment_type ?? b.payment_type,
         billing_cycle: product?.billing_cycle ?? b.billing_cycle,
         duration_minutes: b.duration_minutes,
         link_icon: b.link_icon,

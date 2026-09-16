@@ -1,57 +1,43 @@
 "use server";
 
-import { z } from "zod/v4";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { AesSecretStore, isValidEncryptionKeyHex } from "@/infrastructure/crypto/aes-secret-store";
-import { createPaymentLink, AsaasApiError } from "@/infrastructure/adapters/asaas";
-import { digitalPurchaseReference, courseEnrollmentReference } from "@/lib/asaas-checkout-refs";
+import { StripePaymentAdapter } from "@/infrastructure/adapters/stripe";
 import { logger } from "@/lib/logger";
 
-type BillingCycle = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
-
-async function getActiveOrgAndKey(orgSlug: string) {
+async function getActiveStripeOrg(orgSlug: string) {
   const db = getAdminClient();
 
   const { data: org } = await db
     .from("organizations")
-    .select("id, name, asaas_status, asaas_api_key_enc")
+    .select("id, name, stripe_account_id, stripe_account_status")
     .eq("slug", orgSlug)
     .eq("store_enabled", true)
     .maybeSingle();
 
-  if (!org) {
-    return { error: "Loja não encontrada." } as const;
-  }
+  if (!org) return { error: "Loja não encontrada." } as const;
 
-  if (org.asaas_status !== "active" || !org.asaas_api_key_enc) {
+  // TODO(pre-launch): require stripe_account_status === "active" once v2 account
+  // status sync is reliable. Currently relaxed because sandbox capabilities don't
+  // auto-activate and syncAccountStatus may return "onboarding" even after completing.
+  if (!org.stripe_account_id) {
     return { error: "Pagamentos não configurados para esta loja." } as const;
   }
 
-  const key = process.env.ENCRYPTION_KEY?.trim() ?? "";
-  if (!isValidEncryptionKeyHex(key)) {
-    return { error: "Erro de configuração no servidor." } as const;
-  }
-  const secretStore = new AesSecretStore(key);
-
-  let apiKey: string;
-  try {
-    apiKey = secretStore.decrypt(org.asaas_api_key_enc);
-  } catch {
-    return { error: "Erro ao acessar credenciais de pagamento." } as const;
-  }
-
-  return { db, org, apiKey } as const;
+  return { org } as const;
 }
 
-/** Generates an Asaas payment link for a storefront product/service block (physical/service — org fulfills directly). */
+const stripe = new StripePaymentAdapter();
+
+/** Creates a Stripe Checkout Session for a storefront product/service block. */
 export async function createDirectCheckout(orgSlug: string, blockId: string) {
-  const result = await getActiveOrgAndKey(orgSlug);
+  const result = await getActiveStripeOrg(orgSlug);
   if ("error" in result) return result;
-  const { db, org, apiKey } = result;
+  const { org } = result;
+  const db = getAdminClient();
 
   const { data: block } = await db
     .from("store_blocks")
-    .select("id, title, description, price_brl, payment_type, billing_cycle")
+    .select("id, title, description, price_brl")
     .eq("id", blockId)
     .eq("organization_id", org.id)
     .eq("type", "product")
@@ -88,64 +74,34 @@ export async function createDirectCheckout(orgSlug: string, blockId: string) {
     unit_amount: Math.round(block.price_brl * 100),
   });
 
-  const isRecurring = block.payment_type === "recurring" && block.billing_cycle;
+  const checkoutResult = await stripe.createCheckoutSession({
+    stripeAccountId: org.stripe_account_id,
+    lineItems: [{ productId: block.id, productName: block.title ?? "Produto", quantity: 1, unitAmountBrl: block.price_brl }],
+    metadata: { orgId: org.id, orderId: order.id },
+  });
 
-  try {
-    const link = await createPaymentLink(apiKey, {
-      name: block.title ?? "Produto",
-      description: block.description ?? undefined,
-      billingType: "UNDEFINED",
-      chargeType: isRecurring ? "RECURRENT" : "DETACHED",
-      value: block.price_brl,
-      externalReference: order.id,
-      ...(isRecurring
-        ? {
-            subscriptionCycle: block.billing_cycle!.toUpperCase() as BillingCycle,
-            dueDateLimitDays: 5,
-          }
-        : {}),
-    });
-
-    await db
-      .from("orders")
-      .update({ asaas_payment_id: link.id, asaas_payment_link: link.url })
-      .eq("id", order.id);
-
-    return { url: link.url };
-  } catch (error) {
-    if (error instanceof AsaasApiError) {
-      logger.error("Direct checkout: Asaas error", { orgSlug, blockId, status: error.status, body: error.body });
-      return { error: "Erro ao gerar link de pagamento." };
-    }
-    logger.error("Direct checkout failed", { orgSlug, blockId, error: String(error) });
+  if (!checkoutResult.ok) {
+    logger.error("Direct checkout: Stripe error", { orgSlug, blockId, error: checkoutResult.error.message });
     return { error: "Erro ao gerar link de pagamento." };
   }
+
+  await db.from("orders")
+    .update({ stripe_checkout_session_id: checkoutResult.value.paymentId })
+    .eq("id", order.id);
+
+  return { url: checkoutResult.value.url };
 }
 
-const buyerSchema = z.object({
-  buyerEmail: z.email(),
-  buyerName: z.string().max(200).optional(),
-});
-
-/** Generates an Asaas payment link for a digital product and returns its URL. */
-export async function createDigitalProductCheckout(
-  orgSlug: string,
-  productId: string,
-  raw: { buyerEmail: string; buyerName?: string },
-) {
-  const parsed = buyerSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: "Informe um e-mail válido." };
-  }
-  const { buyerEmail, buyerName } = parsed.data;
-
-  const result = await getActiveOrgAndKey(orgSlug);
+/** Creates a Stripe Checkout Session for a digital product. */
+export async function createDigitalProductCheckout(orgSlug: string, productId: string) {
+  const result = await getActiveStripeOrg(orgSlug);
   if ("error" in result) return result;
-  const { db, org, apiKey } = result;
+  const { org } = result;
 
+  const db = getAdminClient();
   const { data: product } = await db
     .from("digital_products")
-    .select("id, title, description, price_brl, payment_type, billing_cycle, active")
+    .select("id, title, price_brl, payment_type, active")
     .eq("id", productId)
     .eq("organization_id", org.id)
     .eq("active", true)
@@ -155,76 +111,33 @@ export async function createDigitalProductCheckout(
     return { error: "Produto não encontrado ou sem preço definido." };
   }
 
-  const { data: purchase, error: purchaseError } = await db
-    .from("digital_product_purchases")
-    .insert({
-      product_id: product.id,
-      buyer_email: buyerEmail,
-      buyer_name: buyerName ?? null,
-      payment_type: product.payment_type,
-      status: "pending",
-    })
-    .select("id")
-    .single();
+  // Purchase record is created in the webhook after payment confirmation,
+  // using customer_details from the Stripe session.
+  const checkoutResult = await stripe.createCheckoutSession({
+    stripeAccountId: org.stripe_account_id,
+    lineItems: [{ productId: product.id, productName: product.title, quantity: 1, unitAmountBrl: product.price_brl }],
+    metadata: { orgId: org.id, productId: product.id },
+    mode: product.payment_type === "recurring" ? "subscription" : "payment",
+  });
 
-  if (purchaseError || !purchase) {
-    logger.error("Digital checkout: failed to create purchase", { orgSlug, productId, error: purchaseError?.message });
-    return { error: "Erro ao iniciar checkout." };
-  }
-
-  const isRecurring = product.payment_type === "recurring" && product.billing_cycle;
-
-  try {
-    const link = await createPaymentLink(apiKey, {
-      name: product.title,
-      description: product.description ?? undefined,
-      billingType: "UNDEFINED",
-      chargeType: isRecurring ? "RECURRENT" : "DETACHED",
-      value: product.price_brl,
-      externalReference: digitalPurchaseReference(purchase.id),
-      ...(isRecurring
-        ? {
-            subscriptionCycle: product.billing_cycle!.toUpperCase() as BillingCycle,
-            dueDateLimitDays: 5,
-          }
-        : {}),
-    });
-
-    await db
-      .from("digital_product_purchases")
-      .update({ asaas_payment_id: link.id })
-      .eq("id", purchase.id);
-
-    return { url: link.url };
-  } catch (error) {
-    if (error instanceof AsaasApiError) {
-      logger.error("Digital checkout: Asaas error", { orgSlug, productId, status: error.status, body: error.body });
-      return { error: "Erro ao gerar link de pagamento." };
-    }
-    logger.error("Digital checkout failed", { orgSlug, productId, error: String(error) });
+  if (!checkoutResult.ok) {
+    logger.error("Digital checkout: Stripe error", { orgSlug, productId, error: checkoutResult.error.message });
     return { error: "Erro ao gerar link de pagamento." };
   }
+
+  return { url: checkoutResult.value.url };
 }
 
-/** Generates an Asaas payment link for a course and returns its URL. */
-export async function createCourseCheckout(
-  orgSlug: string,
-  courseId: string,
-  raw: { buyerEmail: string; buyerName?: string },
-) {
-  const parsed = buyerSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: "Informe um e-mail válido." };
-  }
-  const { buyerEmail, buyerName } = parsed.data;
-
-  const result = await getActiveOrgAndKey(orgSlug);
+/** Creates a Stripe Checkout Session for a course enrollment. */
+export async function createCourseCheckout(orgSlug: string, courseId: string) {
+  const result = await getActiveStripeOrg(orgSlug);
   if ("error" in result) return result;
-  const { db, org, apiKey } = result;
+  const { org } = result;
 
+  const db = getAdminClient();
   const { data: course } = await db
     .from("courses")
-    .select("id, title, description, price_brl, active")
+    .select("id, title, price_brl, payment_type, active")
     .eq("id", courseId)
     .eq("organization_id", org.id)
     .eq("active", true)
@@ -234,45 +147,19 @@ export async function createCourseCheckout(
     return { error: "Curso não encontrado ou sem preço definido." };
   }
 
-  const { data: enrollment, error: enrollmentError } = await db
-    .from("course_enrollments")
-    .insert({
-      course_id: course.id,
-      buyer_email: buyerEmail,
-      buyer_name: buyerName ?? null,
-      payment_type: "one_time",
-      status: "pending",
-    })
-    .select("id")
-    .single();
+  // Enrollment record is created in the webhook after payment confirmation,
+  // using customer_details from the Stripe session.
+  const checkoutResult = await stripe.createCheckoutSession({
+    stripeAccountId: org.stripe_account_id,
+    lineItems: [{ productId: course.id, productName: course.title, quantity: 1, unitAmountBrl: course.price_brl }],
+    metadata: { orgId: org.id, courseId: course.id },
+    mode: course.payment_type === "recurring" ? "subscription" : "payment",
+  });
 
-  if (enrollmentError || !enrollment) {
-    logger.error("Course checkout: failed to create enrollment", { orgSlug, courseId, error: enrollmentError?.message });
-    return { error: "Erro ao iniciar checkout." };
-  }
-
-  try {
-    const link = await createPaymentLink(apiKey, {
-      name: course.title,
-      description: course.description ?? undefined,
-      billingType: "UNDEFINED",
-      chargeType: "DETACHED",
-      value: course.price_brl,
-      externalReference: courseEnrollmentReference(enrollment.id),
-    });
-
-    await db
-      .from("course_enrollments")
-      .update({ asaas_payment_id: link.id })
-      .eq("id", enrollment.id);
-
-    return { url: link.url };
-  } catch (error) {
-    if (error instanceof AsaasApiError) {
-      logger.error("Course checkout: Asaas error", { orgSlug, courseId, status: error.status, body: error.body });
-      return { error: "Erro ao gerar link de pagamento." };
-    }
-    logger.error("Course checkout failed", { orgSlug, courseId, error: String(error) });
+  if (!checkoutResult.ok) {
+    logger.error("Course checkout: Stripe error", { orgSlug, courseId, error: checkoutResult.error.message });
     return { error: "Erro ao gerar link de pagamento." };
   }
+
+  return { url: checkoutResult.value.url };
 }

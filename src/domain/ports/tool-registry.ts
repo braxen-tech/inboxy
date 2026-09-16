@@ -9,9 +9,13 @@ export interface CalendarContext {
   bookingUrl: string | null;
 }
 
+/** @deprecated Use PaymentContext instead */
 export interface AsaasContext {
-  /** Subconta API key for the org (encrypted at rest, decrypted at runtime) */
   apiKey: string;
+}
+
+export interface PaymentContext {
+  stripeAccountId: string;
 }
 
 export interface ChatwootContext {
@@ -32,7 +36,9 @@ export interface ToolContext {
   /** Local Supabase contact row ID */
   localContactId?: string;
   calendar?: CalendarContext;
+  /** @deprecated Use payment instead */
   asaas?: AsaasContext;
+  payment?: PaymentContext;
   chatwoot?: ChatwootContext;
 }
 

@@ -27,8 +27,8 @@ describe("plans", () => {
       cal_managed_user_id: 1,
       cal_access_token_enc: "x",
       cal_event_type_id: "1",
-      asaas_status: "active",
-      asaas_api_key_enc: "enc",
+      stripe_account_status: "active",
+      stripe_account_id: "acct_test",
     });
     expect(starterOnly).not.toContain("create_checkout");
 
@@ -37,8 +37,8 @@ describe("plans", () => {
       cal_managed_user_id: 1,
       cal_access_token_enc: "x",
       cal_event_type_id: "1",
-      asaas_status: "active",
-      asaas_api_key_enc: "enc",
+      stripe_account_status: "active",
+      stripe_account_id: "acct_test",
     });
     expect(proConnected).toContain("create_checkout");
     expect(proConnected).toContain("book_calendar_appointment");

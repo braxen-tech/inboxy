@@ -3,13 +3,13 @@
 import { z } from "zod/v4";
 import { getServerClientFromCookies } from "@/infrastructure/repositories/supabase-clients";
 import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
-import { AsaasBillingAdapter } from "@/infrastructure/adapters/asaas";
+import { StripeBillingAdapter } from "@/infrastructure/adapters/stripe";
 import { toOrgId } from "@/domain/value-objects";
-import type { PlanId } from "@/lib/plans";
+import { PLANS, type PlanId } from "@/lib/plans";
 import { needsBillingSetup } from "@/lib/billing-setup";
 import { scheduleTelemetryFlush } from "@/lib/schedule-telemetry-flush";
 
-const planSchema = z.enum(["starter", "professional", "business"]);
+const planSchema = z.enum(["free", "starter", "professional", "business"]);
 
 async function getOwnedOrg(orgSlug: string, userId: string) {
   const db = getAdminClient();
@@ -43,12 +43,22 @@ export async function createCheckoutSessionAction(orgSlug: string, plan: string)
     return { error: "Organização não encontrada ou sem permissão." };
   }
 
-  const adapter = new AsaasBillingAdapter(getAdminClient());
-  const result = await adapter.createCheckoutSession(
-    toOrgId(org.id),
-    parsed.data as PlanId,
-    user.email,
-  );
+  const planId = parsed.data as PlanId;
+
+  // Free plan — activate directly without a Stripe checkout.
+  if (planId === "free") {
+    const db = getAdminClient();
+    const plan = PLANS.free;
+    await db.from("organizations").update({
+      subscription_plan: "free",
+      subscription_status: "active",
+      message_quota: plan.messageQuota,
+    }).eq("id", org.id);
+    return { url: null };
+  }
+
+  const adapter = new StripeBillingAdapter(getAdminClient());
+  const result = await adapter.createCheckoutSession(toOrgId(org.id), planId, user.email);
 
   if (!result.ok) {
     return { error: result.error.message };

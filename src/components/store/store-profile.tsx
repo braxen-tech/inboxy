@@ -5,6 +5,8 @@ interface StoreProfileProps {
   bio: string | null;
   photoUrl: string | null;
   socialLinks: { platform: string; url: string }[];
+  orgId?: string;
+  orgSlug?: string;
 }
 
 export function StoreProfile({
@@ -12,6 +14,8 @@ export function StoreProfile({
   bio,
   photoUrl,
   socialLinks,
+  orgId,
+  orgSlug,
 }: StoreProfileProps) {
   return (
     <div className="flex flex-col items-center gap-4 pt-12 pb-8">
@@ -50,7 +54,7 @@ export function StoreProfile({
         </p>
       )}
 
-      <StoreSocialIcons links={socialLinks} />
+      <StoreSocialIcons links={socialLinks} orgId={orgId} orgSlug={orgSlug} />
     </div>
   );
 }

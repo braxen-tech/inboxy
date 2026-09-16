@@ -11,7 +11,7 @@ if (key) {
     defaults: "2026-01-30",
     person_profiles: "identified_only",
     capture_pageview: true,
-    capture_exceptions: true,
+    capture_exceptions: process.env.NODE_ENV === "production",
     debug: process.env.NODE_ENV === "development",
     session_recording: {
       maskAllInputs: true,
