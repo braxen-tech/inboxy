@@ -241,7 +241,7 @@ function SidebarContent({
   billingEnabled?: boolean;
 }) {
   return (
-    <>
+    <div className="flex h-full flex-col">
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4 pr-12 lg:pr-4">
         <Link
           href="/"
@@ -294,7 +294,7 @@ function SidebarContent({
           <ThemeToggle />
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -336,7 +336,7 @@ export function DashboardShell({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:h-screen lg:sticky lg:top-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
