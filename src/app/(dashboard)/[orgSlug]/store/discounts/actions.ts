@@ -37,17 +37,16 @@ export async function createDiscount(orgSlug: string, input: CreateDiscountInput
       metadata: { orgSlug, code: code.toUpperCase() },
     };
 
-    const coupon = await stripe.coupons.create(couponParams, { stripeAccount: org.stripe_account_id });
+    // Coupons/PromotionCodes are created on the platform account because
+    // checkout sessions use destination charges (not direct charges).
+    const coupon = await stripe.coupons.create(couponParams);
 
-    const promoCode = await stripe.promotionCodes.create(
-      {
-        promotion: { coupon: coupon.id, type: "coupon" },
-        code: code.toUpperCase(),
-        ...(maxUses ? { max_redemptions: maxUses } : {}),
-        ...(expiresAt ? { expires_at: Math.floor(new Date(expiresAt).getTime() / 1000) } : {}),
-      },
-      { stripeAccount: org.stripe_account_id },
-    );
+    const promoCode = await stripe.promotionCodes.create({
+      promotion: { coupon: coupon.id, type: "coupon" },
+      code: code.toUpperCase(),
+      ...(maxUses ? { max_redemptions: maxUses } : {}),
+      ...(expiresAt ? { expires_at: Math.floor(new Date(expiresAt).getTime() / 1000) } : {}),
+    });
 
     const db = getAdminClient();
     const { error: dbErr } = await db.from("store_discounts").insert({
@@ -91,14 +90,10 @@ export async function deactivateDiscount(orgSlug: string, discountId: string) {
 
   if (!discount) return { error: "Desconto não encontrado." };
 
-  if (org.stripe_account_id && discount.stripe_promo_code_id) {
+  if (discount.stripe_promo_code_id) {
     try {
       const stripe = getStripe();
-      await stripe.promotionCodes.update(
-        discount.stripe_promo_code_id,
-        { active: false },
-        { stripeAccount: org.stripe_account_id },
-      );
+      await stripe.promotionCodes.update(discount.stripe_promo_code_id, { active: false });
     } catch (err) {
       logger.warn("deactivateDiscount: Stripe promo code update failed", { discountId, error: String(err) });
     }
@@ -130,14 +125,10 @@ export async function reactivateDiscount(orgSlug: string, discountId: string) {
     return { error: "Limite de usos já atingido." };
   }
 
-  if (org.stripe_account_id && discount.stripe_promo_code_id) {
+  if (discount.stripe_promo_code_id) {
     try {
       const stripe = getStripe();
-      await stripe.promotionCodes.update(
-        discount.stripe_promo_code_id,
-        { active: true },
-        { stripeAccount: org.stripe_account_id },
-      );
+      await stripe.promotionCodes.update(discount.stripe_promo_code_id, { active: true });
     } catch (err) {
       logger.warn("reactivateDiscount: Stripe promo code update failed", { discountId, error: String(err) });
     }
@@ -163,10 +154,10 @@ export async function deleteDiscount(orgSlug: string, discountId: string) {
   if (!discount) return { error: "Desconto não encontrado." };
   if ((discount.uses_count ?? 0) > 0) return { error: "Não é possível excluir um desconto que já foi utilizado." };
 
-  if (org.stripe_account_id && discount.stripe_coupon_id) {
+  if (discount.stripe_coupon_id) {
     try {
       const stripe = getStripe();
-      await stripe.coupons.del(discount.stripe_coupon_id, { stripeAccount: org.stripe_account_id });
+      await stripe.coupons.del(discount.stripe_coupon_id);
     } catch (err) {
       logger.warn("deleteDiscount: Stripe coupon delete failed", { discountId, error: String(err) });
     }
