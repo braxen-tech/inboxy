@@ -109,6 +109,45 @@ export async function deactivateDiscount(orgSlug: string, discountId: string) {
   return { ok: true };
 }
 
+export async function reactivateDiscount(orgSlug: string, discountId: string) {
+  const org = await getOrgBySlug(orgSlug);
+  if (!org) return { error: "Organização não encontrada." };
+
+  const db = getAdminClient();
+  const { data: discount } = await db
+    .from("store_discounts")
+    .select("id, stripe_promo_code_id, max_uses, uses_count, expires_at")
+    .eq("id", discountId)
+    .eq("organization_id", org.id)
+    .maybeSingle();
+
+  if (!discount) return { error: "Desconto não encontrado." };
+
+  if (discount.expires_at && new Date(discount.expires_at) < new Date()) {
+    return { error: "Não é possível reativar um desconto expirado." };
+  }
+  if (discount.max_uses && (discount.uses_count ?? 0) >= discount.max_uses) {
+    return { error: "Limite de usos já atingido." };
+  }
+
+  if (org.stripe_account_id && discount.stripe_promo_code_id) {
+    try {
+      const stripe = getStripe();
+      await stripe.promotionCodes.update(
+        discount.stripe_promo_code_id,
+        { active: true },
+        { stripeAccount: org.stripe_account_id },
+      );
+    } catch (err) {
+      logger.warn("reactivateDiscount: Stripe promo code update failed", { discountId, error: String(err) });
+    }
+  }
+
+  await db.from("store_discounts").update({ active: true }).eq("id", discountId);
+  revalidatePath(`/${orgSlug}/store/discounts`);
+  return { ok: true };
+}
+
 export async function deleteDiscount(orgSlug: string, discountId: string) {
   const org = await getOrgBySlug(orgSlug);
   if (!org) return { error: "Organização não encontrada." };

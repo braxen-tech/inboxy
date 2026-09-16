@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Percent, Trash2, PowerOff, Plus, Tag, Loader2 } from "lucide-react";
+import { Percent, Trash2, PowerOff, Power, Plus, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { createDiscount, deactivateDiscount, deleteDiscount, listDiscounts } from "./actions";
+import { createDiscount, deactivateDiscount, reactivateDiscount, deleteDiscount, listDiscounts } from "./actions";
 
 interface Discount {
   id: string;
@@ -79,6 +79,14 @@ export default function DiscountsClient({ orgSlug, initialDiscounts }: Props) {
       const res = await deactivateDiscount(orgSlug, id);
       if ("error" in res) { setError(res.error ?? "Erro desconhecido."); return; }
       setDiscounts((prev) => prev.map((d) => d.id === id ? { ...d, active: false } : d));
+    });
+  }
+
+  function handleReactivate(id: string) {
+    startTransition(async () => {
+      const res = await reactivateDiscount(orgSlug, id);
+      if ("error" in res) { setError(res.error ?? "Erro desconhecido."); return; }
+      setDiscounts((prev) => prev.map((d) => d.id === id ? { ...d, active: true } : d));
     });
   }
 
@@ -255,7 +263,7 @@ export default function DiscountsClient({ orgSlug, initialDiscounts }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  {d.active && (
+                  {d.active ? (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -264,6 +272,16 @@ export default function DiscountsClient({ orgSlug, initialDiscounts }: Props) {
                       onClick={() => handleDeactivate(d.id)}
                     >
                       <PowerOff className="size-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Reativar"
+                      disabled={pending}
+                      onClick={() => handleReactivate(d.id)}
+                    >
+                      <Power className="size-4 text-green-600" />
                     </Button>
                   )}
                   {d.uses_count === 0 && (
