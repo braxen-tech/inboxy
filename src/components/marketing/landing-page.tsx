@@ -14,6 +14,8 @@ import {
   Zap,
 } from "lucide-react";
 import { BraxenContactCta } from "@/components/marketing/braxen-contact-cta";
+import { CreatorsMarquee } from "@/components/marketing/creators-marquee";
+import { HeroMockup } from "@/components/marketing/hero-mockup";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,58 +81,74 @@ export function LandingPage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="w-full py-20 lg:py-36">
-          <div className="container mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
+        <section className="relative w-full overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 pt-16 pb-32 sm:pt-20 lg:pb-44">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -right-24 size-[28rem] rounded-full bg-white/10 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute bottom-0 left-0 size-[24rem] rounded-full bg-indigo-400/20 blur-3xl"
+          />
+
+          <div className="relative container mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2">
               {/* Left column */}
               <div className="flex flex-col gap-6">
-                <div>
-                  <Badge variant="outline">Inboxy Creators</Badge>
-                </div>
+                <Badge className="w-fit gap-1.5 border-white/20 bg-white/15 text-white backdrop-blur-sm">
+                  ✨ Tudo o que você vende, em um só link
+                </Badge>
                 <div className="flex flex-col gap-4">
-                  <h1 className="max-w-lg text-5xl font-semibold tracking-tight text-balance md:text-6xl lg:text-7xl">
-                    Sua loja online para cursos, e-books e mentorias.
+                  <h1 className="max-w-xl text-5xl leading-[1.02] font-extrabold tracking-tight text-balance text-white sm:text-6xl lg:text-[5rem]">
+                    Sua loja de <span className="text-amber-300">criador</span>, completa.
                   </h1>
-                  <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-                    Crie sua vitrine em minutos, compartilhe seu link e comece a receber.
-                    Tudo em um só lugar, sem complicação.
+                  <p className="max-w-md text-lg leading-relaxed text-blue-50/90">
+                    Cursos, e-books e mentorias em uma vitrine só sua. Compartilhe seu link,
+                    receba pagamentos e entregue tudo automaticamente.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Link href="/login">
-                    <Button size="lg" className="gap-3">
+                    <Button
+                      size="lg"
+                      className="h-12 gap-3 rounded-full bg-white px-6 text-base text-blue-700 hover:bg-white/90"
+                    >
                       Criar minha loja grátis <MoveRight className="size-4" />
                     </Button>
                   </Link>
                   <Link href="#como-funciona">
-                    <Button size="lg" variant="outline">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-12 rounded-full border-white/30 bg-transparent px-6 text-base text-white hover:bg-white/10 hover:text-white"
+                    >
                       Ver como funciona
                     </Button>
                   </Link>
                 </div>
-                <p className="text-xs text-muted-foreground">Grátis para começar. Sem cartão de crédito.</p>
+                <p className="text-xs text-blue-50/70">Grátis para começar. Sem cartão de crédito.</p>
               </div>
 
-              {/* Right column — image grid */}
-              <div className="hidden grid-cols-2 gap-6 md:grid">
-                <img
-                  src="https://images.unsplash.com/photo-1753162661371-1404b71111e5?w=500&q=80"
-                  alt="Creator gravando vídeo de moda"
-                  className="aspect-square w-full rounded-2xl object-cover"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1758521540376-23c1b2f592d9?w=500&q=80"
-                  alt="Creator filmando com câmera e tripé"
-                  className="row-span-2 w-full rounded-2xl object-cover"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1758272422665-9df3d1fb0b9c?w=500&q=80"
-                  alt="Influencer gravando vídeo em estúdio"
-                  className="aspect-square w-full rounded-2xl object-cover"
-                />
-              </div>
+              {/* Right column — store mockup */}
+              <HeroMockup />
             </div>
           </div>
+
+          {/* Diagonal cut into the page background */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-24 origin-bottom-left -skew-y-2 bg-background sm:h-28"
+          />
+        </section>
+
+        {/* Prova social — criadores */}
+        <section className="-mt-px bg-muted/40 py-10">
+          <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
+            <p className="mb-6 text-xs font-medium tracking-[0.3em] text-muted-foreground uppercase">
+              Criadores que já vendem no Inboxy 🚀
+            </p>
+          </div>
+          <CreatorsMarquee />
         </section>
 
         {/* O que você pode vender */}
