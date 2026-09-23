@@ -137,6 +137,10 @@ export function LandingPage() {
           {/* Diagonal cut into the page background */}
           <div
             aria-hidden
+            className="absolute inset-x-0 bottom-0 h-20 bg-background"
+          />
+          <div
+            aria-hidden
             className="absolute inset-x-0 bottom-0 h-24 origin-bottom-left -skew-y-2 bg-background sm:h-28"
           />
         </section>
