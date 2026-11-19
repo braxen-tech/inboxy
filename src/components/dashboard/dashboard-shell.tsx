@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  BookOpen,
+  Bot,
   Calendar,
   ChevronDown,
   GraduationCap,
@@ -51,6 +53,15 @@ type NavItem = {
 function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
   return [
     {
+      label: t("attendance"),
+      items: [
+        { href: "kb", label: t("knowledgeBase"), icon: BookOpen },
+        { href: "agent", label: t("aiAgent"), icon: Bot },
+        { href: "customers", label: t("customers"), icon: Users },
+        { href: "broadcasts", label: t("broadcasts"), icon: Mail },
+      ],
+    },
+    {
       label: t("store"),
       items: [
         {
@@ -68,8 +79,6 @@ function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
         { href: "products", label: t("digitalProducts"), icon: Package },
         { href: "courses", label: t("courses"), icon: GraduationCap },
         { href: "mentoring", label: t("mentoring"), icon: Calendar },
-        { href: "customers", label: t("customers"), icon: Users },
-        { href: "broadcasts", label: t("broadcasts"), icon: Mail },
       ],
     },
     {

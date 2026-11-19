@@ -50,7 +50,10 @@
     "sair": "Sair"
   },
   "nav": {
-    "store": "Loja",
+    "attendance": "Atendimento",
+    "knowledgeBase": "Base de Conhecimento",
+    "aiAgent": "Agente IA",
+    "store": "Loja Online",
     "myStore": "Minha Loja",
     "profile": "Perfil",
     "content": "Conteúdo",

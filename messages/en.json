@@ -50,7 +50,10 @@
     "sair": "Sign out"
   },
   "nav": {
-    "store": "Store",
+    "attendance": "Support",
+    "knowledgeBase": "Knowledge Base",
+    "aiAgent": "AI Agent",
+    "store": "Online Store",
     "myStore": "My Store",
     "profile": "Profile",
     "content": "Content",

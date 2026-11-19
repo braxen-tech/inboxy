@@ -106,7 +106,7 @@ const themeSchema = z.object({
     backgroundColor: z.string().max(20),
     cardColor: z.string().max(20),
     textColor: z.string().max(20),
-    fontFamily: z.enum(["geist", "inter", "poppins", "playfair"]),
+    fontFamily: z.enum(["geist", "bricolage", "inter", "poppins", "playfair"]),
     borderRadius: z.enum(["sm", "md", "lg", "full"]),
     cardLayout: z.enum(["horizontal", "vertical"]),
     profileLayout: z.enum(["centered", "hero"]).optional(),
