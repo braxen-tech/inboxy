@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Inbox, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,8 @@ export function MarketingHeader({ showAuthButton = true }: MarketingHeaderProps)
           className="flex items-center gap-2 font-semibold tracking-tight"
           onClick={() => setMobileOpen(false)}
         >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
-            <Inbox className="size-4" aria-hidden />
+          <span className="flex size-8 items-center justify-center rounded-[10px_10px_10px_3px] bg-ibx-blue font-heading text-base font-extrabold text-white">
+            <span aria-hidden>i</span>
           </span>
           Inboxy
         </Link>

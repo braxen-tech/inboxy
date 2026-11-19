@@ -8,7 +8,6 @@ import {
   Calendar,
   ChevronDown,
   GraduationCap,
-  Inbox,
   LayoutGrid,
   LogOut,
   Menu,
@@ -250,8 +249,8 @@ function SidebarContent({
           onClick={onNavigate}
           className="flex min-w-0 flex-1 items-center gap-2"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
-            <Inbox className="size-4" aria-hidden />
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px_10px_10px_3px] bg-ibx-blue font-heading text-base font-extrabold text-white">
+            <span aria-hidden>i</span>
           </span>
           <div className="min-w-0">
             <span className="block truncate font-semibold text-sidebar-foreground">Inboxy</span>

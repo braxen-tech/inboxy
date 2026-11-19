@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/sign-out-button";
-import { LandingPage } from "@/components/marketing/landing-page";
+import { BusinessLanding } from "@/components/marketing/site/business-landing";
 import { getServerClientFromCookies, getAdminClient } from "@/infrastructure/repositories/supabase-clients";
 import { ensureUserOrganization } from "@/lib/ensure-user-organization";
 import { getOrgBySlug } from "@/lib/get-org";
@@ -12,7 +12,7 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    return <LandingPage />;
+    return <BusinessLanding />;
   }
 
   // End users (portal customers) never get an org-owner dashboard or an

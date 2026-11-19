@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -10,6 +10,12 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -18,7 +24,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Inboxy — Atenda, venda e agende em todos os canais",
   description:
-    "Inbox unificado para WhatsApp, Telegram, SMS, e-mail e chat no site. Agente de IA com vendas Stripe e agendamento Cal.com — tudo na mesma conversa.",
+    "Agente IA para o WhatsApp, Instagram e site da sua empresa: responde, vende e agenda — e um painel que mostra tudo.",
 };
 
 export default async function RootLayout({
@@ -32,7 +38,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale === "pt" ? "pt-BR" : locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

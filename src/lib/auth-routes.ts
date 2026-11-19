@@ -24,9 +24,15 @@ export const AUTH_RESERVED_SLUGS = new Set([
   "checkout",
   "portal",
   "download",
+  "criadores",
+  "empresas",
 ]);
 
+/** Public marketing pages (exact match, so org slugs like `/criadores-x` stay protected). */
+export const MARKETING_PUBLIC_PATHS = new Set(["/criadores"]);
+
 export function isAuthPublicPath(pathname: string): boolean {
+  if (MARKETING_PUBLIC_PATHS.has(pathname)) return true;
   return AUTH_PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

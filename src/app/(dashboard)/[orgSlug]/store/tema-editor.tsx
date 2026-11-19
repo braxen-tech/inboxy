@@ -118,6 +118,7 @@ export function StoreTemaEditor({ orgSlug, initialTheme }: Props) {
           onChange={(e) => setTheme({ ...theme, fontFamily: e.target.value as StoreTheme["fontFamily"] })}
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
+          <option value="bricolage">Bricolage Grotesque (Inboxy)</option>
           <option value="geist">Geist</option>
           <option value="inter">Inter</option>
           <option value="poppins">Poppins</option>

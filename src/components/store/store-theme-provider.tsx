@@ -9,7 +9,8 @@ interface StoreThemeProviderProps {
 }
 
 const FONT_MAP: Record<StoreTheme["fontFamily"], string> = {
-  geist: "'Geist', system-ui, sans-serif",
+  geist: "var(--font-geist-sans), 'Geist', system-ui, sans-serif",
+  bricolage: "var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif",
   inter: "'Inter', system-ui, sans-serif",
   poppins: "'Poppins', system-ui, sans-serif",
   playfair: "'Playfair Display', Georgia, serif",

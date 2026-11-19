@@ -4,7 +4,7 @@ export interface StoreTheme {
   backgroundColor: string;
   cardColor: string;
   textColor: string;
-  fontFamily: "geist" | "inter" | "poppins" | "playfair";
+  fontFamily: "geist" | "bricolage" | "inter" | "poppins" | "playfair";
   borderRadius: "sm" | "md" | "lg" | "full";
   cardLayout: "horizontal" | "vertical";
   profileLayout: "centered" | "hero";
@@ -21,7 +21,30 @@ export interface StoreTemplate {
   theme: StoreTheme;
 }
 
+/** The Inboxy design system theme: default for every new store. */
+export const INBOXY_STORE_THEME: StoreTheme = {
+  colorScheme: "light",
+  primaryColor: "#2340ff",
+  backgroundColor: "#f2efea",
+  cardColor: "#ffffff",
+  textColor: "#0e0e10",
+  fontFamily: "bricolage",
+  borderRadius: "lg",
+  cardLayout: "horizontal",
+  profileLayout: "centered",
+  coverImageUrl: null,
+};
+
 export const STORE_TEMPLATES: StoreTemplate[] = [
+  {
+    id: "inboxy",
+    name: "Inboxy",
+    description: "O visual padrão do Inboxy — claro, direto e com destaque em azul",
+    category: "Padrão",
+    previewDesktop: "/store-templates/inboxy-desktop.svg",
+    previewMobile: "/store-templates/inboxy-mobile.svg",
+    theme: INBOXY_STORE_THEME,
+  },
   {
     id: "wellness",
     name: "Bem-estar",
@@ -64,18 +87,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   },
 ];
 
-export const DEFAULT_STORE_THEME: StoreTheme = {
-  colorScheme: "light",
-  primaryColor: "#6366f1",
-  backgroundColor: "#ffffff",
-  cardColor: "#f8f9fa",
-  textColor: "#1a1a2e",
-  fontFamily: "geist",
-  borderRadius: "lg",
-  cardLayout: "horizontal",
-  profileLayout: "centered",
-  coverImageUrl: null,
-};
+export const DEFAULT_STORE_THEME: StoreTheme = { ...INBOXY_STORE_THEME };
 
 export function parseStoreTheme(raw: unknown): StoreTheme {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_STORE_THEME };
@@ -86,7 +98,7 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
     backgroundColor: typeof obj.backgroundColor === "string" ? obj.backgroundColor : DEFAULT_STORE_THEME.backgroundColor,
     cardColor: typeof obj.cardColor === "string" ? obj.cardColor : DEFAULT_STORE_THEME.cardColor,
     textColor: typeof obj.textColor === "string" ? obj.textColor : DEFAULT_STORE_THEME.textColor,
-    fontFamily: ["geist", "inter", "poppins", "playfair"].includes(obj.fontFamily as string)
+    fontFamily: ["geist", "bricolage", "inter", "poppins", "playfair"].includes(obj.fontFamily as string)
       ? (obj.fontFamily as StoreTheme["fontFamily"])
       : DEFAULT_STORE_THEME.fontFamily,
     borderRadius: ["sm", "md", "lg", "full"].includes(obj.borderRadius as string)
@@ -99,7 +111,7 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
 }
 
 export function storeThemeToCssVars(theme: StoreTheme): Record<string, string> {
-  const radiusMap = { sm: "0.25rem", md: "0.5rem", lg: "0.75rem", full: "9999px" };
+  const radiusMap = { sm: "0.5rem", md: "0.875rem", lg: "1.5rem", full: "9999px" };
   return {
     "--store-primary": theme.primaryColor,
     "--store-bg": theme.backgroundColor,
