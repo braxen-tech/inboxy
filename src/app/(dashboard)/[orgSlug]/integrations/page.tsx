@@ -2,11 +2,21 @@ import { getOrgBySlug } from "@/lib/get-org";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { IntegrationCard } from "./integration-card";
+import { ChatwootCredentialsForm } from "./chatwoot-credentials-form";
 import { CalComCredentialsForm } from "./cal-com-credentials-form";
 import { StripeOnboarding } from "./stripe-onboarding";
+import { buildAgentBotWebhookUrl } from "@/lib/chatwoot-agent-bot";
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
+}
+
+function ChatwootIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+      <path d="M12 2C6.48 2 2 6.03 2 11c0 2.76 1.36 5.22 3.5 6.87V22l3.93-2.16c.82.22 1.68.16 2.57.16 5.52 0 10-4.03 10-9S17.52 2 12 2z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function CalComIcon() {
@@ -38,6 +48,10 @@ export default async function IntegrationsPage({ params }: Props) {
   ]);
   if (!org) notFound();
 
+  const isChatwootActive = org.chatwoot_status === "active";
+  const chatwootWebhookUrl = org.chatwoot_agent_bot_webhook_secret
+    ? buildAgentBotWebhookUrl(org.chatwoot_agent_bot_webhook_secret)
+    : null;
   const isCalActive = !!org.cal_managed_user_id && !!org.cal_access_token_enc;
   const isStripeActive = org.stripe_account_status === "active";
 
@@ -49,6 +63,28 @@ export default async function IntegrationsPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <IntegrationCard
+          name="Chatwoot"
+          description="Conecte WhatsApp, Instagram e chat com agente de IA"
+          summary={
+            isChatwootActive
+              ? `Account ${org.chatwoot_account_id}`
+              : t("pending")
+          }
+          icon={<ChatwootIcon />}
+          status={isChatwootActive ? "active" : "pending"}
+        >
+          <ChatwootCredentialsForm
+            orgSlug={orgSlug}
+            isConnected={isChatwootActive}
+            savedApiUrl={org.chatwoot_api_url ?? ""}
+            savedAccountId={org.chatwoot_account_id ?? ""}
+            savedAgentBotId={org.chatwoot_agent_bot_id ?? ""}
+            agentBotWebhookUrl={chatwootWebhookUrl}
+            hasBotAccessToken={!!org.chatwoot_agent_bot_access_token}
+          />
+        </IntegrationCard>
+
         <IntegrationCard
           name="Cal.com"
           description={t("calDescription")}

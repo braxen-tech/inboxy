@@ -60,12 +60,12 @@ export function BusinessLanding() {
         <StickyDashboard
           id="painel"
           label="Para empresas"
-          title={<>Seu bot.<br />Seu painel.<br />Seu controle.</>}
+          title={<>Seu agente de IA.<br />Seu painel.<br />Seu controle.</>}
           features={[
             { hl: "dInbox", num: "01 — Conectar", title: "Conecte os canais da sua empresa", text: "Traga seu número de WhatsApp e suas redes. Em minutos, todas as conversas chegam em uma única caixa de entrada.", tags: ["WhatsApp", "Instagram", "Facebook", "Chat no site"] },
             { hl: "dInbox", num: "02 — Automatizar", title: "Um agente IA que resolve", text: "Treinado com as informações do seu negócio, ele responde, envia link de pagamento e agenda horários. Quando precisa, passa para um humano." },
             { hl: "dStats", num: "03 — Acompanhar", title: "Veja tudo em tempo real", text: "Receita, conversas, taxa de resolução, agendamentos. Cada número com histórico e comparação." },
-            { hl: "dChart", num: "04 — Crescer", title: "Decida com dados, não com achismo", text: "Descubra quais canais vendem mais, em que horário seus clientes chamam e onde o bot precisa de ajuda.", cta: { href: "#comecar", label: "Falar com especialista" } },
+            { hl: "dChart", num: "04 — Crescer", title: "Decida com dados, não com achismo", text: "Descubra quais canais vendem mais, em que horário seus clientes chamam e onde o agente precisa de ajuda.", cta: { href: "#comecar", label: "Falar com especialista" } },
           ]}
         />
 
@@ -108,7 +108,7 @@ export function BusinessLanding() {
             { k: "01", title: "Conecte seus canais", text: "WhatsApp, Instagram, Facebook e o chat do seu site em uma só caixa de entrada.", meta: "Minutos", color: "white" },
             { k: "02", title: "Treine o agente", text: "Envie preços, serviços, horários e políticas. O agente aprende com a sua base de conhecimento.", meta: "1 dia", color: "yellow" },
             { k: "03", title: "Ative a agenda e os pagamentos", text: "Conecte sua agenda e seus pagamentos para o agente marcar e cobrar sozinho.", meta: "1 clique", color: "blue" },
-            { k: "04", title: "Acompanhe no painel", text: "Conversas, vendas, agendamentos e desempenho do bot, em tempo real.", meta: "24/7", color: "ink" },
+            { k: "04", title: "Acompanhe no painel", text: "Conversas, vendas, agendamentos e desempenho do agente de IA, em tempo real.", meta: "24/7", color: "ink" },
           ]}
         />
 

@@ -57,8 +57,6 @@ function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
       items: [
         { href: "kb", label: t("knowledgeBase"), icon: BookOpen },
         { href: "agent", label: t("aiAgent"), icon: Bot },
-        { href: "customers", label: t("customers"), icon: Users },
-        { href: "broadcasts", label: t("broadcasts"), icon: Mail },
       ],
     },
     {
@@ -79,6 +77,8 @@ function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
         { href: "products", label: t("digitalProducts"), icon: Package },
         { href: "courses", label: t("courses"), icon: GraduationCap },
         { href: "mentoring", label: t("mentoring"), icon: Calendar },
+        { href: "customers", label: t("customers"), icon: Users },
+        { href: "broadcasts", label: t("broadcasts"), icon: Mail },
       ],
     },
     {

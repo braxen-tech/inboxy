@@ -90,7 +90,7 @@ export function AgentForm({
         <div>
           <h2 className="text-sm font-medium">Reengajamento automático</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Envia uma mensagem contextual quando o lead para de responder após o bot falar por
+            Envia uma mensagem contextual quando o lead para de responder após o agente de IA falar por
             último. Funciona dentro da janela de 24h do WhatsApp. Máximo de 1 nudge por conversa.
           </p>
         </div>

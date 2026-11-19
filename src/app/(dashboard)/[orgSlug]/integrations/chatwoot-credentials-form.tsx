@@ -83,14 +83,14 @@ export function ChatwootCredentialsForm({
         const failed = r.failedInboxes?.length ?? 0;
         const tokenNote =
           r.hasBotAccessToken === false
-            ? " Atenção: token do Agent Bot não foi obtido — reconecte ou verifique permissões de admin."
+            ? " Atenção: token do agente de IA não foi obtido — reconecte ou verifique permissões de admin."
             : "";
         setMessage({
           type: r.hasBotAccessToken === false ? "err" : "ok",
           text:
             (failed > 0
-              ? `Chatwoot conectado. Bot ID ${r.botId}. ${linked} inbox(es) vinculado(s); ${failed} falhou(aram).`
-              : `Chatwoot conectado. Bot ID ${r.botId} vinculado a ${linked} inbox(es).`) + tokenNote,
+              ? `Chatwoot conectado. Agente #${r.botId}. ${linked} inbox(es) vinculado(s); ${failed} falhou(aram).`
+              : `Chatwoot conectado. Agente #${r.botId} vinculado a ${linked} inbox(es).`) + tokenNote,
         });
         setApiToken("");
         router.refresh();
@@ -126,18 +126,18 @@ export function ChatwootCredentialsForm({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-sm space-y-2">
-        <p className="font-medium">Chatwoot + Agent Bot (automático)</p>
+        <p className="font-medium">Chatwoot + Agente de IA (automático)</p>
         <p className="text-muted-foreground text-xs">
-          Ao conectar, o Inboxy cria o Agent Bot no Chatwoot, vincula todos os inboxes existentes
+          Ao conectar, o Inboxy cria o agente de IA no Chatwoot, vincula todos os inboxes existentes
           e registra webhook para novos canais. Handoff: <strong>pending</strong> = IA ·{" "}
           <strong>open</strong> = humano. Se criar um canal novo e a IA não atender, clique em
-          Conectar de novo para re-vincular o bot a todos os inboxes.
+          Conectar de novo para re-vincular o agente a todos os inboxes.
         </p>
         <p className="text-xs text-muted-foreground">
           Use um API Access Token de <strong>administrador</strong> da conta Chatwoot.
         </p>
         <p className="text-xs text-muted-foreground border-t pt-2">
-          No painel: bot em <strong>Pending</strong>; após handoff, <strong>Open</strong> → aba{" "}
+          No painel: agente em <strong>Pending</strong>; após handoff, <strong>Open</strong> → aba{" "}
           <strong>Unassigned</strong> ou <strong>All</strong>.
         </p>
         <a
@@ -185,16 +185,16 @@ export function ChatwootCredentialsForm({
             />
           </div>
           <Button type="submit" disabled={pending}>
-            {pending ? "Configurando bot e inboxes..." : "Conectar Chatwoot"}
+            {pending ? "Configurando agente e inboxes..." : "Conectar Chatwoot"}
           </Button>
         </form>
       ) : (
         <div className="space-y-4">
           {!hasBotAccessToken && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-950 dark:text-amber-100">
-              As respostas estão saindo como <strong>agente humano</strong>, não como Agent Bot — por
+              As respostas estão saindo como <strong>agente humano</strong>, não como agente de IA — por
               isso o painel do Chatwoot pode ficar vazio. Clique em <strong>Reconectar</strong> abaixo
-              (token de admin) para regenerar o token do bot.
+              (token de admin) para regenerar o token do agente.
             </div>
           )}
           <div className="rounded-md bg-muted/50 p-3 text-xs space-y-1">
@@ -203,14 +203,14 @@ export function ChatwootCredentialsForm({
             </p>
             {savedAgentBotId && (
               <p>
-                <strong>Agent Bot ID</strong> <span className="font-mono">{savedAgentBotId}</span>
+                <strong>Agente de IA ID</strong> <span className="font-mono">{savedAgentBotId}</span>
               </p>
             )}
           </div>
 
           {webhookUrl && (
             <div className="space-y-2">
-              <Label>Outgoing URL (Agent Bot no Chatwoot)</Label>
+              <Label>Outgoing URL (Agente de IA no Chatwoot)</Label>
               <div className="flex gap-2">
                 <Input readOnly value={webhookUrl} className="font-mono text-xs bg-muted" />
                 <Button type="button" variant="outline" onClick={copyWebhookUrl}>
@@ -222,7 +222,7 @@ export function ChatwootCredentialsForm({
 
           {(linkedInboxes.length > 0 || isConnected) && (
             <p className="text-xs text-muted-foreground">
-              Novos inboxes no Chatwoot são vinculados ao bot automaticamente.
+              Novos inboxes no Chatwoot são vinculados ao agente de IA automaticamente.
             </p>
           )}
 

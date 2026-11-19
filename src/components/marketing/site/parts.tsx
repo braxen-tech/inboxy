@@ -164,11 +164,11 @@ export function Dashboard() {
     <div className="dash" id="bizDash">
       <div className="dash__side"><b>i</b><i className="on" /><i /><i /><i /><i /></div>
       <div className="dash__main">
-        <div className="dash__top"><h4>Visão geral · Novembro</h4><span className="live">Bot online</span></div>
+        <div className="dash__top"><h4>Visão geral · Novembro</h4><span className="live">Agente online</span></div>
         <div className="dash__stats" id="dStats">
           <div className="st"><span>Receita</span><strong data-count="12480" data-prefix="R$ ">R$ 0</strong><em>▲ 18%</em></div>
           <div className="st"><span>Conversas</span><strong data-count="1932">0</strong><em>▲ 12%</em></div>
-          <div className="st"><span>Resolvidas pelo bot</span><strong data-count="87" data-suffix="%">0%</strong><em>meta 80%</em></div>
+          <div className="st"><span>Resolvidas pelo agente</span><strong data-count="87" data-suffix="%">0%</strong><em>meta 80%</em></div>
         </div>
         <div className="dash__row">
           <div className="dash__chart" id="dChart">
@@ -179,10 +179,10 @@ export function Dashboard() {
             </div>
           </div>
           <div className="dash__inbox" id="dInbox">
-            <div className="msg"><i className="t-coral">A</i><div><b>Ana · WhatsApp</b><small>Agendado para 16h ✓</small></div><u>bot</u></div>
-            <div className="msg"><i className="t-yellow">J</i><div><b>João · Instagram</b><small>Link de pagamento enviado</small></div><u>bot</u></div>
+            <div className="msg"><i className="t-coral">A</i><div><b>Ana · WhatsApp</b><small>Agendado para 16h ✓</small></div><u>IA</u></div>
+            <div className="msg"><i className="t-yellow">J</i><div><b>João · Instagram</b><small>Link de pagamento enviado</small></div><u>IA</u></div>
             <div className="msg"><i className="t-blue">P</i><div><b>Paula · WhatsApp</b><small>Quero falar com atendente</small></div><u className="h">humano</u></div>
-            <div className="msg"><i className="t-ink">L</i><div><b>Lucas · Site</b><small>Vocês atendem sábado?</small></div><u>bot</u></div>
+            <div className="msg"><i className="t-ink">L</i><div><b>Lucas · Site</b><small>Vocês atendem sábado?</small></div><u>IA</u></div>
           </div>
         </div>
       </div>
