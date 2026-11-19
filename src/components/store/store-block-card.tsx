@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-// useState kept for error state
-import { Clock, ExternalLink } from "lucide-react";
 import { createDirectCheckout, createDigitalProductCheckout, createCourseCheckout } from "@/app/(store)/s/[slug]/actions";
 
-interface StoreBlock {
+export interface StoreBlock {
   id: string;
   type: "product" | "booking" | "link" | "course";
   title: string | null;
@@ -23,156 +21,212 @@ interface StoreBlock {
   course_id: string | null;
 }
 
-interface StoreBlockCardProps {
-  block: StoreBlock;
-  cardLayout: "horizontal" | "vertical";
-  orgSlug: string;
-  onBlockClick?: (blockId: string, blockType: string, blockTitle: string | null) => void;
-  discountPromoCodeId?: string;
+export type BlockClickHandler = (blockId: string, blockType: string, blockTitle: string | null) => void;
+
+/* ---------- Helpers ---------- */
+
+export type BlockKind = "course" | "digital" | "subscription" | "booking" | "product";
+
+export const KIND_LABEL: Record<BlockKind, string> = {
+  course: "Curso",
+  digital: "Produto digital",
+  subscription: "Assinatura",
+  booking: "Agendamento",
+  product: "Produto",
+};
+
+export const KIND_FILTER_LABEL: Record<BlockKind, string> = {
+  course: "Cursos",
+  digital: "Produtos digitais",
+  subscription: "Assinaturas",
+  booking: "Agendamentos",
+  product: "Outros",
+};
+
+export function blockKind(block: StoreBlock): BlockKind {
+  if (block.type === "course") return "course";
+  if (block.type === "booking") return "booking";
+  if (block.payment_type === "recurring") return "subscription";
+  if (block.digital_product_id) return "digital";
+  return "product";
 }
 
-function LinkCard({ block, onBlockClick }: { block: StoreBlock; onBlockClick?: StoreBlockCardProps["onBlockClick"] }) {
-  return (
-    <a
-      href={block.external_url ?? "#"}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => onBlockClick?.(block.id, block.type, block.title)}
-      className="flex items-center gap-3 rounded-[var(--store-radius)] p-4 transition-transform hover:scale-[1.02]"
-      style={{ backgroundColor: "var(--store-card)" }}
-    >
-      <ExternalLink className="size-5 shrink-0" style={{ color: "var(--store-primary)" }} />
-      <span className="flex-1 text-sm font-medium" style={{ color: "var(--store-text)" }}>
-        {block.title}
-      </span>
-      <ExternalLink className="size-4 shrink-0 opacity-40" style={{ color: "var(--store-text)" }} />
-    </a>
-  );
+function kindDetail(block: StoreBlock, kind: BlockKind): string {
+  switch (kind) {
+    case "course": return "Acesso imediato";
+    case "digital": return "Entrega imediata";
+    case "subscription": return "Cancele quando quiser";
+    case "booking": return block.duration_minutes ? `${block.duration_minutes} min` : "Escolha o horário";
+    default: return "";
+  }
 }
 
-function ProductOrBookingCard({
-  block,
-  cardLayout,
-  orgSlug,
-  onBlockClick,
-  discountPromoCodeId,
-}: {
-  block: StoreBlock;
-  cardLayout: "horizontal" | "vertical";
-  orgSlug: string;
-  onBlockClick?: StoreBlockCardProps["onBlockClick"];
-  discountPromoCodeId?: string;
-}) {
-  const isHorizontal = cardLayout === "horizontal";
-  const isPurchasable = (block.type === "product" || block.type === "course") && !!block.price_brl && block.price_brl > 0;
-  const isDigital = !!block.digital_product_id;
-  const isCourse = block.type === "course" && !!block.course_id;
+export function eyebrow(block: StoreBlock): string {
+  const kind = blockKind(block);
+  const detail = kindDetail(block, kind);
+  return detail ? `${KIND_LABEL[kind]} · ${detail}` : KIND_LABEL[kind];
+}
+
+/** Generic CTAs are replaced by one that says what happens next; custom texts are kept. */
+const GENERIC_CTAS = new Set(["comprar agora", "comprar", "saiba mais", "assinar agora", "ver mais"]);
+export function ctaLabel(block: StoreBlock): string {
+  const text = block.cta_text?.trim();
+  if (text && !GENERIC_CTAS.has(text.toLowerCase())) return text;
+  switch (blockKind(block)) {
+    case "course": return "Quero o curso";
+    case "subscription": return "Assinar";
+    case "booking": return "Agendar";
+    default: return "Comprar";
+  }
+}
+
+export function recurringSuffix(block: StoreBlock): string | null {
+  if (block.payment_type !== "recurring") return null;
+  const cycle = (block.billing_cycle ?? "").toLowerCase();
+  return cycle === "yearly" || cycle === "annual" || cycle === "year" ? "/ano" : "/mês";
+}
+
+export function isPurchasable(block: StoreBlock): boolean {
+  return (block.type === "product" || block.type === "course") && !!block.price_brl && block.price_brl > 0;
+}
+
+/* ---------- Checkout ---------- */
+
+export function useBlockCheckout(block: StoreBlock, orgSlug: string, discountPromoCodeId?: string, onBlockClick?: BlockClickHandler) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function handleBuyClick() {
+  function buy() {
     onBlockClick?.(block.id, block.type, block.title);
     setError(null);
     startTransition(async () => {
-      const result = isCourse
-        ? await createCourseCheckout(orgSlug, block.course_id!, discountPromoCodeId)
-        : isDigital
-          ? await createDigitalProductCheckout(orgSlug, block.digital_product_id!, discountPromoCodeId)
-          : await createDirectCheckout(orgSlug, block.id);
+      const result =
+        block.type === "course" && block.course_id
+          ? await createCourseCheckout(orgSlug, block.course_id, discountPromoCodeId)
+          : block.digital_product_id
+            ? await createDigitalProductCheckout(orgSlug, block.digital_product_id, discountPromoCodeId)
+            : await createDirectCheckout(orgSlug, block.id);
       if ("error" in result && result.error) {
         setError(result.error);
         return;
       }
-      if ("url" in result && result.url) {
-        window.location.href = result.url;
-      }
+      if ("url" in result && result.url) window.location.href = result.url;
     });
   }
 
+  return { buy, pending, error };
+}
+
+/* ---------- Pieces ---------- */
+
+/** The creator's uploaded image, or a generated cover in the store colors. */
+export function ProductCover({ block, variant, showKind = true, badge }: { block: StoreBlock; variant: number; showKind?: boolean; badge?: string }) {
+  const glyph = (block.title ?? "?").trim().charAt(0).toUpperCase() || "?";
   return (
-    <div
-      className={`overflow-hidden rounded-[var(--store-radius)] transition-transform hover:scale-[1.02] ${
-        isHorizontal ? "flex" : "flex flex-col"
-      }`}
-      style={{ backgroundColor: "var(--store-card)" }}
-    >
-      {block.image_url && (
-        <div className={isHorizontal ? "w-32 shrink-0 sm:w-40" : "w-full"}>
-          <img
-            src={block.image_url}
-            alt={block.title ?? ""}
-            className={`object-cover ${isHorizontal ? "h-full w-full" : "h-48 w-full"}`}
-          />
+    <div className="s-pcover">
+      {badge && <span className="s-badge">{badge}</span>}
+      {block.image_url ? (
+        <img src={block.image_url} alt="" loading="lazy" />
+      ) : (
+        <div className={`s-gen v${variant % 3}`} aria-hidden="true">
+          <div className="g-shape" />
+          <div className="g-glyph">{glyph}</div>
         </div>
       )}
-
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        {block.title && (
-          <h3 className="font-semibold leading-tight" style={{ color: "var(--store-text)" }}>
-            {block.title}
-          </h3>
-        )}
-
-        {block.description && (
-          <p className="text-sm leading-relaxed opacity-70 line-clamp-2" style={{ color: "var(--store-text)" }}>
-            {block.description}
-          </p>
-        )}
-
-        <div className="mt-auto flex items-center gap-2 pt-2">
-          {(block.type === "product" || block.type === "course") && block.price_display && (
-            <span className="text-sm font-bold" style={{ color: "var(--store-primary)" }}>
-              {block.price_display}
-              {block.payment_type === "recurring" && (
-                <span className="ml-1 text-xs font-normal opacity-70">/mês</span>
-              )}
-            </span>
-          )}
-{block.type === "booking" && block.duration_minutes && (
-            <span className="flex items-center gap-1 text-xs opacity-60" style={{ color: "var(--store-text)" }}>
-              <Clock className="size-3" />
-              {block.duration_minutes} min
-            </span>
-          )}
-        </div>
-
-        {isPurchasable ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={handleBuyClick}
-            className="mt-2 block rounded-[var(--store-radius)] px-4 py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
-          >
-            {pending ? "Aguarde..." : block.cta_text}
-          </button>
-        ) : (
-          block.external_url && (
-            <a
-              href={block.external_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => onBlockClick?.(block.id, block.type, block.title)}
-              className="mt-2 block rounded-[var(--store-radius)] px-4 py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{
-                backgroundColor: "var(--store-primary)",
-                color: "var(--store-bg)",
-              }}
-            >
-              {block.cta_text}
-            </a>
-          )
-        )}
-
-        {error && <p className="text-xs text-destructive">{error}</p>}
-      </div>
+      {showKind && <span className="s-kind">{KIND_LABEL[blockKind(block)]}</span>}
     </div>
   );
 }
 
-export function StoreBlockCard({ block, cardLayout, orgSlug, onBlockClick, discountPromoCodeId }: StoreBlockCardProps) {
-  if (block.type === "link") {
-    return <LinkCard block={block} onBlockClick={onBlockClick} />;
+function Price({ block, big = false }: { block: StoreBlock; big?: boolean }) {
+  if (!block.price_display) return null;
+  const suffix = recurringSuffix(block);
+  return big ? (
+    <div className="s-price">
+      <b className="s-mono">{block.price_display}</b>
+      {suffix && <small>{suffix}</small>}
+    </div>
+  ) : (
+    <span className="s-p s-mono">
+      {block.price_display} {suffix && <small>{suffix}</small>}
+    </span>
+  );
+}
+
+function Action({ block, orgSlug, discountPromoCodeId, onBlockClick, className }: {
+  block: StoreBlock; orgSlug: string; discountPromoCodeId?: string; onBlockClick?: BlockClickHandler; className: string;
+}) {
+  const { buy, pending, error } = useBlockCheckout(block, orgSlug, discountPromoCodeId, onBlockClick);
+  const label = ctaLabel(block);
+  if (isPurchasable(block)) {
+    return (
+      <>
+        <button type="button" className={className} disabled={pending} onClick={buy}>
+          {pending ? "Aguarde..." : `${label} →`}
+        </button>
+        {error && <p className="s-err" role="alert">{error}</p>}
+      </>
+    );
   }
-  return <ProductOrBookingCard block={block} cardLayout={cardLayout} orgSlug={orgSlug} onBlockClick={onBlockClick} discountPromoCodeId={discountPromoCodeId} />;
+  if (block.external_url) {
+    return (
+      <a className={className} href={block.external_url} target="_blank" rel="noopener noreferrer" onClick={() => onBlockClick?.(block.id, block.type, block.title)}>
+        {label} →
+      </a>
+    );
+  }
+  return null;
+}
+
+export function FeaturedProduct({ block, orgSlug, discountPromoCodeId, onBlockClick }: {
+  block: StoreBlock; orgSlug: string; discountPromoCodeId?: string; onBlockClick?: BlockClickHandler;
+}) {
+  const hasAccess = blockKind(block) === "course" || blockKind(block) === "digital";
+  return (
+    <article className="s-feat" id="destaque">
+      <ProductCover block={block} variant={0} badge="Destaque" />
+      <div className="s-feat-b">
+        <span className="s-eyebrow">{eyebrow(block)}</span>
+        <h2 className="s-display">{block.title}</h2>
+        {block.description && <p>{block.description}</p>}
+        <Price block={block} big />
+        <Action block={block} orgSlug={orgSlug} discountPromoCodeId={discountPromoCodeId} onBlockClick={onBlockClick} className="s-btn s-btn-primary s-btn-block" />
+        <div className="s-trustline">
+          <span>🔒 Pagamento seguro</span>
+          {hasAccess && <span>⚡ Acesso imediato</span>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function ProductCard({ block, index, orgSlug, discountPromoCodeId, onBlockClick }: {
+  block: StoreBlock; index: number; orgSlug: string; discountPromoCodeId?: string; onBlockClick?: BlockClickHandler;
+}) {
+  return (
+    <article className="s-card">
+      <ProductCover block={block} variant={index + 1} />
+      <div className="s-card-b">
+        <span className="s-eyebrow">{eyebrow(block)}</span>
+        <h3 className="s-display">{block.title}</h3>
+        {block.description && <p>{block.description}</p>}
+        <div className="s-card-foot">
+          <Price block={block} />
+          <Action block={block} orgSlug={orgSlug} discountPromoCodeId={discountPromoCodeId} onBlockClick={onBlockClick} className="s-btn s-btn-primary" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function LinkRow({ block, onBlockClick }: { block: StoreBlock; onBlockClick?: BlockClickHandler }) {
+  return (
+    <a className="s-link" href={block.external_url ?? "#"} target="_blank" rel="noopener noreferrer" onClick={() => onBlockClick?.(block.id, block.type, block.title)}>
+      <span className="ic" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></svg>
+      </span>
+      {block.title}
+      <span className="arr" aria-hidden="true">↗</span>
+    </a>
+  );
 }

@@ -87,7 +87,7 @@ export function StoreSocialIcons({ links, orgId, orgSlug }: { links: SocialLink[
   }
 
   return (
-    <div className="flex items-center justify-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {links.map(({ platform, url }) => {
         const SvgIcon = SVG_ICON_MAP[platform];
         const LucideIconComp = LUCIDE_ICON_MAP[platform];
@@ -101,7 +101,7 @@ export function StoreSocialIcons({ links, orgId, orgSlug }: { links: SocialLink[
             rel={platform === "email" ? undefined : "noopener noreferrer"}
             onClick={() => handleClick(platform)}
             className="flex size-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-            style={{ backgroundColor: "var(--store-card)" }}
+            style={{ backgroundColor: "var(--store-sunken)" }}
           >
             {SvgIcon ? (
               <SvgIcon className="size-5" style={{ color: "var(--store-text)" }} />

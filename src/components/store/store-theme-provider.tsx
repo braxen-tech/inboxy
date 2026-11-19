@@ -2,12 +2,14 @@
 
 import type { StoreTheme } from "@/lib/store-theme";
 import { storeThemeToCssVars } from "@/lib/store-theme";
+import "./store.css";
 
 interface StoreThemeProviderProps {
   theme: StoreTheme;
   children: React.ReactNode;
 }
 
+/** Font used for the store's headings; body text always uses Geist (Inboxy design system). */
 const FONT_MAP: Record<StoreTheme["fontFamily"], string> = {
   geist: "var(--font-geist-sans), 'Geist', system-ui, sans-serif",
   bricolage: "var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif",
@@ -21,31 +23,10 @@ export function StoreThemeProvider({ theme, children }: StoreThemeProviderProps)
 
   return (
     <div
-      style={{
-        ...cssVars,
-        fontFamily: FONT_MAP[theme.fontFamily],
-        backgroundColor: "var(--store-bg)",
-        color: "var(--store-text)",
-      } as React.CSSProperties}
-      className="relative min-h-screen"
+      style={{ ...cssVars, "--store-display": FONT_MAP[theme.fontFamily] } as React.CSSProperties}
+      className={`ibx-store${theme.colorScheme === "dark" ? " is-dark" : ""}`}
     >
-      {theme.coverImageUrl && (
-        <>
-          <div
-            className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${theme.coverImageUrl})` }}
-            aria-hidden="true"
-          />
-          <div
-            className="fixed inset-0"
-            style={{ backgroundColor: theme.colorScheme === "dark" ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.35)" }}
-            aria-hidden="true"
-          />
-        </>
-      )}
-      <div className="relative z-10">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

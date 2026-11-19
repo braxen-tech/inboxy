@@ -72,7 +72,7 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
   return (
     <div
       className="sticky top-0 z-50 relative flex items-center justify-center gap-3 px-10 py-2.5 text-sm font-medium"
-      style={{ backgroundColor: "var(--store-primary)", color: "var(--store-bg)" }}
+      style={{ backgroundColor: "var(--store-primary)", color: "var(--store-on-primary)" }}
     >
       <span
         className={`text-center leading-snug${bannerClickable ? " cursor-pointer" : ""}`}
@@ -89,7 +89,7 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
             rel="noopener noreferrer"
             onClick={() => { try { window.posthog?.capture("store_banner_click", { banner_id: banner.id, org_slug: orgSlug }); } catch {} }}
             className="shrink-0 rounded-full border px-3 py-0.5 text-xs font-semibold opacity-90 hover:opacity-100 transition-opacity"
-            style={{ borderColor: "var(--store-bg)", color: "var(--store-bg)" }}
+            style={{ borderColor: "var(--store-on-primary)", color: "var(--store-on-primary)" }}
           >
             {linkLabel}
           </a>
@@ -99,7 +99,7 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
             onClick={handleLinkClick}
             disabled={pending}
             className="shrink-0 rounded-full border px-3 py-0.5 text-xs font-semibold opacity-90 hover:opacity-100 transition-opacity disabled:opacity-60"
-            style={{ borderColor: "var(--store-bg)", color: "var(--store-bg)" }}
+            style={{ borderColor: "var(--store-on-primary)", color: "var(--store-on-primary)" }}
           >
             {pending ? "..." : linkLabel}
           </button>
@@ -111,7 +111,7 @@ export function StoreBanner({ banner, orgSlug, discountPromoCodeId }: StoreBanne
         aria-label="Fechar banner"
         onClick={dismiss}
         className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 opacity-70 hover:opacity-100 transition-opacity"
-        style={{ color: "var(--store-bg)" }}
+        style={{ color: "var(--store-on-primary)" }}
       >
         <X className="size-3.5" />
       </button>

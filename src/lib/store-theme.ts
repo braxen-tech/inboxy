@@ -110,10 +110,26 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
   };
 }
 
+/** Text color (ink or white) with the best contrast on a hex background. */
+export function readableOn(hex: string): string {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return "#ffffff";
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  // contrast vs white = 1.05/(L+.05); vs ink (#0e0e10, L≈.0045) = (L+.05)/.0545
+  return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0545 ? "#ffffff" : "#0e0e10";
+}
+
 export function storeThemeToCssVars(theme: StoreTheme): Record<string, string> {
-  const radiusMap = { sm: "0.5rem", md: "0.875rem", lg: "1.5rem", full: "9999px" };
+  const radiusMap = { sm: "0.5rem", md: "0.875rem", lg: "1.5rem", full: "1.75rem" };
   return {
     "--store-primary": theme.primaryColor,
+    "--store-on-primary": readableOn(theme.primaryColor),
     "--store-bg": theme.backgroundColor,
     "--store-card": theme.cardColor,
     "--store-text": theme.textColor,
