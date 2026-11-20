@@ -16,7 +16,7 @@ export class RemoveFromCartTool implements AgentTool {
   constructor(private db: SupabaseClient) {}
 
   async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
-    if (!ctx.asaas) {
+    if (!ctx.payment) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 

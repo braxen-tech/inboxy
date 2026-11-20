@@ -9,7 +9,7 @@ function makeCtx(overrides?: Partial<ToolContext>): ToolContext {
     orgId: "org-1" as OrgId,
     contactPhone: "+5511999999999",
     conversationId: "conv-1",
-    asaas: { apiKey: "asaas-key-xxx" },
+    payment: { stripeAccountId: "acct_test" },
     ...overrides,
   };
 }
@@ -32,10 +32,10 @@ function makeMockCatalog(images: string[] = ["https://storage.example.com/produc
 }
 
 describe("ShowProductImagesTool", () => {
-  it("returns error when asaas context is missing", async () => {
+  it("returns error when the store (Stripe) is not connected", async () => {
     const catalog = makeMockCatalog();
     const tool = new ShowProductImagesTool(catalog);
-    const ctx = makeCtx({ asaas: undefined });
+    const ctx = makeCtx({ payment: undefined });
 
     const result = await tool.execute(ctx, { productId: "prod_123" });
 

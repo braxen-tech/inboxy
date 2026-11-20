@@ -32,7 +32,7 @@ export class CheckOrderStatusTool implements AgentTool {
   constructor(private db: SupabaseClient) {}
 
   async execute(ctx: ToolContext): Promise<Result<string, ToolError>> {
-    if (!ctx.asaas) {
+    if (!ctx.payment) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada." });
     }
 

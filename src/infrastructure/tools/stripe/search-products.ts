@@ -16,7 +16,7 @@ export class SearchProductsTool implements AgentTool {
   constructor(private catalog: ProductCatalog) {}
 
   async execute(ctx: ToolContext, input: unknown): Promise<Result<string, ToolError>> {
-    if (!ctx.asaas) {
+    if (!ctx.payment) {
       return Err({ code: "EXECUTION_FAILED", message: "Loja não configurada para esta organização." });
     }
 
