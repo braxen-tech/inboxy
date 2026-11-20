@@ -40,8 +40,12 @@ export class SearchProductsTool implements AgentTool {
 
     const lines: string[] = [`${result.value.length} produto(s) encontrado(s):\n`];
     for (const p of result.value) {
+      const r = p.defaultPrice?.recurring;
+      const period = r
+        ? ` por ${r.intervalCount > 1 ? `${r.intervalCount} ` : ""}${{ day: "dia", week: "semana", month: "mês", year: "ano" }[r.interval]}${r.intervalCount > 1 ? "(es)" : ""} (assinatura)`
+        : "";
       const price = p.defaultPrice
-        ? `R$ ${(p.defaultPrice.unitAmount / 100).toFixed(2).replace(".", ",")}`
+        ? `R$ ${(p.defaultPrice.unitAmount / 100).toFixed(2).replace(".", ",")}${period}`
         : "Preço sob consulta";
       const desc = p.description ? ` — ${p.description.slice(0, 80)}` : "";
       lines.push(`• ${p.name} | product_id: ${p.id} | ${price}${desc}`);

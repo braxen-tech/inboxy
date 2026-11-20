@@ -88,6 +88,7 @@ function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
             { href: "store/discounts", label: t("discounts"), icon: Tag },
           ],
         },
+        { href: "catalog", label: t("catalog"), icon: Tag },
         { href: "products", label: t("digitalProducts"), icon: Package },
         { href: "courses", label: t("courses"), icon: GraduationCap },
         { href: "mentoring", label: t("mentoring"), icon: Calendar },

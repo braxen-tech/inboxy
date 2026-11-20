@@ -1,3 +1,4 @@
+import type { RecurringInterval } from "./payment-gateway";
 import type { Result } from "../errors";
 
 export interface Product {
@@ -14,7 +15,7 @@ export interface Price {
   id: string;
   unitAmount: number;
   currency: string;
-  recurring: null | { interval: string };
+  recurring: null | RecurringInterval;
 }
 
 export type CatalogError = {

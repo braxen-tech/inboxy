@@ -76,4 +76,5 @@ export type {
   CheckoutLineItem,
   CheckoutResult,
   PaymentError,
+  RecurringInterval,
 } from "./payment-gateway";

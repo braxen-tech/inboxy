@@ -1,9 +1,16 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CatalogError, Product, ProductCatalog } from "@/domain/ports";
+import type { CatalogError, Product, ProductCatalog, RecurringInterval } from "@/domain/ports";
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { getStripe } from "./client";
+
+const INTERVALS = new Set(["day", "week", "month", "year"]);
+
+function toRecurring(r: Stripe.Price.Recurring | null): RecurringInterval | null {
+  if (!r || !INTERVALS.has(r.interval)) return null;
+  return { interval: r.interval as RecurringInterval["interval"], intervalCount: r.interval_count };
+}
 
 function mapProduct(p: Stripe.Product): Product {
   const price = typeof p.default_price === "object" && p.default_price ? p.default_price : null;
@@ -18,7 +25,7 @@ function mapProduct(p: Stripe.Product): Product {
             id: price.id,
             unitAmount: price.unit_amount,
             currency: price.currency,
-            recurring: price.recurring ? { interval: price.recurring.interval } : null,
+            recurring: toRecurring(price.recurring),
           }
         : null,
     active: p.active,

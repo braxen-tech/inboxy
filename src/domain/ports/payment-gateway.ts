@@ -5,6 +5,13 @@ export interface CheckoutLineItem {
   productName: string;
   quantity: number;
   unitAmountBrl: number; // in BRL, e.g. 97.50
+  /** Set for recurring items; the session then runs in subscription mode. */
+  recurring?: RecurringInterval;
+}
+
+export interface RecurringInterval {
+  interval: "day" | "week" | "month" | "year";
+  intervalCount: number;
 }
 
 export interface CheckoutInput {

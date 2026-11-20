@@ -34,7 +34,7 @@ export function createToolRegistry(deps: ToolRegistryDeps): InMemoryToolRegistry
   registry.register(new AddToCartTool(deps.db, deps.productCatalog));
   registry.register(new ViewCartTool(deps.db));
   registry.register(new RemoveFromCartTool(deps.db));
-  registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway));
+  registry.register(new CreateCheckoutTool(deps.db, deps.paymentGateway, deps.productCatalog));
   registry.register(new CheckOrderStatusTool(deps.db));
   registry.register(new ShowProductImagesTool(deps.productCatalog));
   registry.register(new TransferToHumanTool(deps.db));

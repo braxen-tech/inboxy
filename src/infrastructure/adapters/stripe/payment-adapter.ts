@@ -13,7 +13,9 @@ export class StripePaymentAdapter implements PaymentGateway {
   async createCheckoutSession(
     input: CheckoutInput,
   ): Promise<Result<CheckoutResult, PaymentError>> {
-    const { stripeAccountId, lineItems, metadata, mode = "payment", discountPromoCodeId, allowPromoCodes } = input;
+    const { stripeAccountId, lineItems, metadata, discountPromoCodeId, allowPromoCodes } = input;
+    const hasRecurringItem = lineItems.some((i) => i.recurring);
+    const mode = hasRecurringItem ? "subscription" : (input.mode ?? "payment");
 
     if (!stripeAccountId) {
       return Err({ code: "AUTH_FAILED", message: "Stripe Connected Account ID not configured." });
@@ -41,7 +43,12 @@ export class StripePaymentAdapter implements PaymentGateway {
               name: item.productName,
               metadata: { productId: item.productId },
             },
-            ...(isSubscription ? { recurring: { interval: "month" } } : {}),
+            // Legacy callers pass mode="subscription" without per-item intervals: monthly.
+            ...(item.recurring
+              ? { recurring: { interval: item.recurring.interval, interval_count: item.recurring.intervalCount } }
+              : isSubscription && !hasRecurringItem
+                ? { recurring: { interval: "month" as const } }
+                : {}),
           },
           quantity: item.quantity,
         })),
