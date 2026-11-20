@@ -1,4 +1,4 @@
-import type { MessagingChannel, InboundMessage, SendParams, SendError, WebhookError } from "@/domain/ports";
+import type { MessagingChannel, InboundMessage, SendParams, SendTarget, SendError, WebhookError } from "@/domain/ports";
 import type { Result } from "@/domain/errors";
 import { Ok, Err } from "@/domain/errors";
 import { ChatwootClient } from "./client";
@@ -72,13 +72,19 @@ export class ChatwootAdapter implements MessagingChannel {
     }
 
     const message: InboundMessage = {
+      channel: "chatwoot",
       externalMessageId: String(payload.id),
-      chatwootConversationId: payload.conversation.id,
+      externalConversationId: String(payload.conversation.id),
+      senderExternalId: payload.sender.id != null ? String(payload.sender.id) : null,
       senderName: payload.sender.name ?? null,
       senderPhone: payload.sender.phone_number ?? null,
       senderEmail: payload.sender.email ?? null,
-      chatwootChannel: parseChatwootChannel(payload.conversation.channel),
-      chatwootInboxId: payload.conversation.inbox_id ?? null,
+      chatwoot: {
+        conversationId: payload.conversation.id,
+        senderId: payload.sender.id ?? null,
+        channel: parseChatwootChannel(payload.conversation.channel),
+        inboxId: payload.conversation.inbox_id ?? null,
+      },
       content: payload.content,
       timestamp: new Date(payload.created_at),
       accountId: String(payload.account.id),
@@ -88,13 +94,17 @@ export class ChatwootAdapter implements MessagingChannel {
   }
 
   async send(params: SendParams): Promise<Result<string, SendError>> {
-    const client = new ChatwootClient(params.apiUrl, params.apiToken);
+    const target = params.target;
+    if (target.kind !== "chatwoot") {
+      return Err({ code: "API_ERROR", message: `ChatwootAdapter cannot send to ${target.kind}` });
+    }
+    const client = new ChatwootClient(target.apiUrl, target.apiToken);
 
     if (params.attachments?.length) {
       for (const att of params.attachments) {
         const result = await client.sendMessageWithAttachment(
-          params.accountId,
-          params.conversationId,
+          target.accountId,
+          target.conversationId,
           "",
           att.url,
           att.filename,
@@ -112,18 +122,22 @@ export class ChatwootAdapter implements MessagingChannel {
       }
     }
 
-    return this.sendText(client, params);
+    return this.sendText(client, { ...params, target });
   }
 
-  private async sendText(client: ChatwootClient, params: SendParams): Promise<Result<string, SendError>> {
+  private async sendText(
+    client: ChatwootClient,
+    params: SendParams<Extract<SendTarget, { kind: "chatwoot" }>>,
+  ): Promise<Result<string, SendError>> {
+    const { target } = params;
     let lastError = "";
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const result = await client.sendMessage(
-        params.accountId,
-        params.conversationId,
+        target.accountId,
+        target.conversationId,
         params.content,
-        params.agentBotId != null ? { agentBotId: params.agentBotId } : undefined,
+        target.agentBotId != null ? { agentBotId: target.agentBotId } : undefined,
       );
 
       if (result.ok) {

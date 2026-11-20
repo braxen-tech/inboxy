@@ -256,16 +256,16 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
         ? Number(org.chatwoot_agent_bot_id)
         : undefined;
 
-    const sendParams = {
+    const target = {
+      kind: "chatwoot" as const,
       apiUrl: org.chatwoot_api_url,
       apiToken: sendToken,
       accountId: org.chatwoot_account_id,
       conversationId: conversation.chatwoot_conversation_id,
-      content: reply,
       agentBotId,
     };
 
-    let sendResult = await messagingChannel.send(sendParams);
+    let sendResult = await messagingChannel.send({ target, content: reply });
 
     if (
       !sendResult.ok &&
@@ -281,7 +281,10 @@ export async function sendFollowupMessage(deps: Deps, input: SendFollowupInput):
         chatwoot_agent_bot_id: org.chatwoot_agent_bot_id,
       }, ctx);
       if (freshToken) {
-        sendResult = await messagingChannel.send({ ...sendParams, apiToken: freshToken });
+        sendResult = await messagingChannel.send({
+          target: { ...target, apiToken: freshToken },
+          content: reply,
+        });
       }
     }
 

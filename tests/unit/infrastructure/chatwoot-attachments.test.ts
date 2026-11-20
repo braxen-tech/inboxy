@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { SendParams } from "@/domain/ports";
 import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
 
 const mockSendMessage = vi.fn();
@@ -16,11 +17,14 @@ vi.mock("@/infrastructure/adapters/chatwoot/client", () => {
 describe("ChatwootAdapter.send with attachments", () => {
   const adapter = new ChatwootAdapter();
 
-  const baseParams = {
-    apiUrl: "https://chatwoot.example.com",
-    apiToken: "token-123",
-    accountId: "1",
-    conversationId: 42,
+  const baseParams: SendParams = {
+    target: {
+      kind: "chatwoot",
+      apiUrl: "https://chatwoot.example.com",
+      apiToken: "token-123",
+      accountId: "1",
+      conversationId: 42,
+    },
     content: "Here is the product",
   };
 

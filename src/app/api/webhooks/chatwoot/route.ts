@@ -93,9 +93,9 @@ export async function POST(request: Request) {
       accountId,
       orgId: org.id,
       externalMessageId: event.message.externalMessageId,
-      ...(event.message.chatwootChannel ? { chatwootChannel: event.message.chatwootChannel } : {}),
-      ...(event.message.chatwootInboxId != null
-        ? { chatwootInboxId: event.message.chatwootInboxId }
+      ...(event.message.chatwoot?.channel ? { chatwootChannel: event.message.chatwoot?.channel } : {}),
+      ...(event.message.chatwoot?.inboxId != null
+        ? { chatwootInboxId: event.message.chatwoot.inboxId }
         : {}),
     });
     return NextResponse.json({ status: "ok" });

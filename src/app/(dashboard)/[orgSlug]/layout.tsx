@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { MuiProvider } from "@/components/mui-provider";
 import { PostHogIdentify } from "@/components/posthog-identify";
 import { isPilotMode } from "@/lib/billing-setup";
 import { getOrgBySlug } from "@/lib/get-org";
@@ -35,6 +36,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
           plan={org.subscription_plan}
         />
       )}
+      <MuiProvider>
       <DashboardShell
         orgSlug={orgSlug}
         orgName={org.name}
@@ -43,6 +45,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
       >
         {children}
       </DashboardShell>
+      </MuiProvider>
     </>
   );
 }

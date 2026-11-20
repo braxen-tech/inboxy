@@ -19,8 +19,8 @@ describe("parseChatwootWebhookPayload", () => {
     if (event.type !== "message_created") return;
     expect(event.message.externalMessageId).toBe("10");
     expect(event.conversationStatus).toBe("pending");
-    expect(event.message.chatwootChannel).toBe("Channel::Whatsapp");
-    expect(event.message.chatwootInboxId).toBe(3);
+    expect(event.message.chatwoot?.channel).toBe("Channel::Whatsapp");
+    expect(event.message.chatwoot?.inboxId).toBe(3);
   });
 
   it("leaves channel null when absent from payload", () => {
@@ -30,8 +30,8 @@ describe("parseChatwootWebhookPayload", () => {
     });
     expect(event.type).toBe("message_created");
     if (event.type !== "message_created") return;
-    expect(event.message.chatwootChannel).toBeNull();
-    expect(event.message.chatwootInboxId).toBeNull();
+    expect(event.message.chatwoot?.channel).toBeNull();
+    expect(event.message.chatwoot?.inboxId).toBeNull();
   });
 
   it("parses conversation_updated", () => {

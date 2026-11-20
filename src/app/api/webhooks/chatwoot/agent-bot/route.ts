@@ -126,10 +126,10 @@ export async function POST(request: Request) {
       accountId,
       orgId: orgForProcessing.id,
       externalMessageId: event.message.externalMessageId,
-      chatwootConversationId: event.message.chatwootConversationId,
-      ...(event.message.chatwootChannel ? { chatwootChannel: event.message.chatwootChannel } : {}),
-      ...(event.message.chatwootInboxId != null
-        ? { chatwootInboxId: event.message.chatwootInboxId }
+      chatwootConversationId: event.message.chatwoot?.conversationId,
+      ...(event.message.chatwoot?.channel ? { chatwootChannel: event.message.chatwoot?.channel } : {}),
+      ...(event.message.chatwoot?.inboxId != null
+        ? { chatwootInboxId: event.message.chatwoot.inboxId }
         : {}),
     });
     return NextResponse.json({ status: "ok" });

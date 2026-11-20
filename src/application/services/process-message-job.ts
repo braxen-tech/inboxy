@@ -1,5 +1,5 @@
 import { processIncomingMessage } from "@/application/use-cases/process-incoming-message";
-import { ChatwootAdapter } from "@/infrastructure/adapters/chatwoot/adapter";
+import { createMessagingChannel } from "@/infrastructure/adapters/messaging-channel-factory";
 import { ClaudeAdapter } from "@/infrastructure/adapters/claude/adapter";
 import { CalComAdapter } from "@/infrastructure/adapters/cal-com/adapter";
 import { AsaasDbCatalogAdapter } from "@/infrastructure/adapters/asaas";
@@ -33,7 +33,6 @@ export async function runProcessIncomingMessageJob(
   }
 
   const db = getAdminClient();
-  const messagingChannel = new ChatwootAdapter();
   const agentRunner = new ClaudeAdapter();
   const voyage = createVoyageEmbeddingAdapter();
   const knowledgeRetriever = voyage ? new PgVectorKnowledgeRetriever(db, voyage) : undefined;
@@ -47,7 +46,7 @@ export async function runProcessIncomingMessageJob(
   const secretStore = new AesSecretStore(encryptionKey);
 
   await processIncomingMessage(
-    { db, agentRunner, messagingChannel, toolRegistry, secretStore },
+    { db, agentRunner, resolveChannel: createMessagingChannel, toolRegistry, secretStore },
     input,
   );
 }

@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AgentRunner, MessagingChannel, ToolRegistry } from "@/domain/ports";
+import type { AgentRunner, ChannelKind, MessagingChannel, ToolRegistry } from "@/domain/ports";
+import {
+  buildSendTarget,
+  getChannelConnection,
+  type ChannelConnection,
+} from "@/application/services/channel-connections";
 import type { SecretStore } from "@/domain/ports";
 import type { MessageId, ConversationId } from "@/domain/value-objects";
 import { toOrgId, toCorrelationId } from "@/domain/value-objects";
@@ -48,9 +53,23 @@ async function orgHasReadyKbDocuments(db: SupabaseClient, orgId: string): Promis
 interface Deps {
   db: SupabaseClient;
   agentRunner: AgentRunner;
-  messagingChannel: MessagingChannel;
+  resolveChannel: (kind: ChannelKind) => MessagingChannel;
   toolRegistry: ToolRegistry;
   secretStore: SecretStore;
+}
+
+/** Sends through a native connection (WhatsApp Cloud / Telegram) to the conversation's contact. */
+async function sendViaConnection(
+  resolveChannel: Deps["resolveChannel"],
+  secretStore: SecretStore,
+  connection: ChannelConnection,
+  externalContactId: string,
+  content: string,
+) {
+  return resolveChannel(connection.channel).send({
+    target: buildSendTarget(connection, secretStore, externalContactId),
+    content,
+  });
 }
 
 interface Input {
@@ -61,7 +80,8 @@ interface Input {
 }
 
 export async function processIncomingMessage(deps: Deps, input: Input): Promise<void> {
-  const { db, agentRunner, messagingChannel, toolRegistry, secretStore } = deps;
+  const { db, agentRunner, resolveChannel, toolRegistry, secretStore } = deps;
+  const chatwootChannel = resolveChannel("chatwoot");
   const { orgId, conversationId, messageId, correlationId } = input;
   const ctx = { correlationId, orgId, conversationId };
 
@@ -78,8 +98,8 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       .eq("id", orgId)
       .single();
 
-    if (!org || org.chatwoot_status !== "active") {
-      logger.warn("Org not found or Chatwoot disconnected", ctx);
+    if (!org) {
+      logger.warn("Org not found", ctx);
       return;
     }
 
@@ -99,6 +119,21 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
+    // Native conversations carry their connection; everything else goes through Chatwoot.
+    const connection: ChannelConnection | null = conversation.channel_connection_id
+      ? await getChannelConnection(db, conversation.channel_connection_id)
+      : null;
+
+    if (conversation.channel_connection_id) {
+      if (!connection || connection.status !== "active" || !conversation.external_contact_id) {
+        reportPipelineAbort("channel_connection_inactive", ctx);
+        return;
+      }
+    } else if (org.chatwoot_status !== "active") {
+      logger.warn("Chatwoot disconnected", ctx);
+      return;
+    }
+
     if (!isBotQueueStatus(conversation.status)) {
       logger.info("Conversation not in bot queue, skipping", {
         ...ctx,
@@ -115,6 +150,28 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     const messageQuota = org.message_quota ?? 500;
     const monthlyUsage = await getMonthlyUsage(db, orgId);
+
+    if (monthlyUsage.messagesOut >= messageQuota && connection) {
+      await db.from("conversations").update({ status: "open" }).eq("id", conversationId);
+      const quotaSend = await sendViaConnection(
+        resolveChannel,
+        secretStore,
+        connection,
+        conversation.external_contact_id,
+        QUOTA_HANDOFF_MESSAGE,
+      );
+      if (!quotaSend.ok) reportMessageSendFailed(ctx, quotaSend.error);
+      await notifyQuotaExceeded(db, orgId, org.owner_user_id, {
+        messagesOut: monthlyUsage.messagesOut,
+        quota: messageQuota,
+      });
+      captureServerEvent("quota_exceeded_handoff", {
+        ...ctx,
+        messages_out: monthlyUsage.messagesOut,
+        quota: messageQuota,
+      });
+      return;
+    }
 
     if (monthlyUsage.messagesOut >= messageQuota) {
       let handoffToken: string | undefined;
@@ -147,11 +204,14 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
           logContext: { ...ctx, trigger: "quota" },
         });
 
-        await messagingChannel.send({
-          apiUrl: org.chatwoot_api_url,
-          apiToken: handoffToken,
-          accountId: org.chatwoot_account_id,
-          conversationId: conversation.chatwoot_conversation_id,
+        await chatwootChannel.send({
+          target: {
+            kind: "chatwoot",
+            apiUrl: org.chatwoot_api_url,
+            apiToken: handoffToken,
+            accountId: org.chatwoot_account_id,
+            conversationId: conversation.chatwoot_conversation_id,
+          },
           content: QUOTA_HANDOFF_MESSAGE,
         });
       } else {
@@ -205,6 +265,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     let availableLabels: string[] | undefined;
     let availableAgents: { name: string; email?: string }[] | undefined;
     if (
+      !connection &&
       org.chatwoot_status === "active" &&
       org.chatwoot_api_token &&
       org.chatwoot_api_url &&
@@ -260,7 +321,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
     }
 
     let chatwootCtx: import("@/domain/ports").ChatwootContext | undefined;
-    if (org.chatwoot_status === "active" && org.chatwoot_api_token && org.chatwoot_account_id) {
+    if (!connection && org.chatwoot_status === "active" && org.chatwoot_api_token && org.chatwoot_account_id) {
       let botAccessToken: string | null = null;
       if (org.chatwoot_agent_bot_access_token) {
         try {
@@ -296,7 +357,7 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
           : {}),
       };
       logger.info("Chatwoot context initialized", { accountId: org.chatwoot_account_id, conversationId: conversation.chatwoot_conversation_id });
-    } else {
+    } else if (!connection) {
       logger.warn("Chatwoot context not available", { chatwoot_status: org.chatwoot_status, has_api_token: !!org.chatwoot_api_token, has_account_id: !!org.chatwoot_account_id });
     }
 
@@ -344,6 +405,37 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     if (!reply || reply.trim().length === 0) {
       reportPipelineAbort("empty_reply", ctx);
+      return;
+    }
+
+    if (connection) {
+      const nativeResult = await sendViaConnection(
+        resolveChannel,
+        secretStore,
+        connection,
+        conversation.external_contact_id,
+        reply,
+      );
+      if (!nativeResult.ok) {
+        reportMessageSendFailed(ctx, nativeResult.error);
+        await db.from("messages").update({ status: "failed" }).eq("id", messageId);
+        return;
+      }
+      await recordReply(db, {
+        orgId,
+        conversationId,
+        messageId,
+        correlationId,
+        reply,
+        externalMessageId: `${connection.channel === "telegram" ? "tg" : "wa"}-out:${nativeResult.value}`,
+        aiMetadata: {
+          inputTokens,
+          outputTokens,
+          cacheReadTokens: agentResult.value.cacheReadTokens,
+          cacheCreationTokens: agentResult.value.cacheCreationTokens,
+          channel: connection.channel,
+        },
+      });
       return;
     }
 
@@ -417,16 +509,16 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
 
     logger.info("Sending Chatwoot reply", { ...ctx, usedBotToken, agentBotConfigured, agentBotId });
 
-    const sendParams = {
+    const target = {
+      kind: "chatwoot" as const,
       apiUrl: org.chatwoot_api_url,
       apiToken: sendToken,
       accountId: org.chatwoot_account_id,
       conversationId: conversation.chatwoot_conversation_id,
-      content: reply,
       agentBotId,
     };
 
-    let sendResult = await messagingChannel.send(sendParams);
+    let sendResult = await chatwootChannel.send({ target, content: reply });
 
     if (
       !sendResult.ok &&
@@ -442,7 +534,10 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
         chatwoot_agent_bot_id: org.chatwoot_agent_bot_id,
       }, ctx);
       if (freshToken) {
-        sendResult = await messagingChannel.send({ ...sendParams, apiToken: freshToken });
+        sendResult = await chatwootChannel.send({
+          target: { ...target, apiToken: freshToken },
+          content: reply,
+        });
       }
     }
 
@@ -455,46 +550,69 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       return;
     }
 
-    await db.from("messages").insert({
-      organization_id: orgId,
-      conversation_id: conversationId,
-      direction: "outbound",
-      content: reply,
-      external_message_id: `cw:${sendResult.value}`,
-      status: "replied",
-      ai_metadata: {
+    await recordReply(db, {
+      orgId,
+      conversationId,
+      messageId,
+      correlationId,
+      reply,
+      externalMessageId: `cw:${sendResult.value}`,
+      aiMetadata: {
         inputTokens,
         outputTokens,
         cacheReadTokens: agentResult.value.cacheReadTokens,
         cacheCreationTokens: agentResult.value.cacheCreationTokens,
         sentAsBot: usedBotToken,
       },
-      correlation_id: correlationId,
-    });
-
-    await db
-      .from("messages")
-      .update({ status: "replied" })
-      .eq("id", messageId);
-
-    await db
-      .from("conversations")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conversationId);
-
-    await incrementUsage(db, orgId, {
-      messagesOut: 1,
-      aiInputTokens: inputTokens,
-      aiOutputTokens: outputTokens,
-    });
-
-    logger.info("Message processed successfully", { ...ctx, tokens: inputTokens + outputTokens });
-    captureServerEvent("message_processed", {
-      ...ctx,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
     });
   } finally {
     await releaseConversationLock(db, conversationId);
   }
+}
+
+async function recordReply(
+  db: SupabaseClient,
+  r: {
+    orgId: string;
+    conversationId: string;
+    messageId: string;
+    correlationId: string;
+    reply: string;
+    externalMessageId: string;
+    aiMetadata: Record<string, unknown> & { inputTokens: number; outputTokens: number };
+  },
+): Promise<void> {
+  const ctx = { correlationId: r.correlationId, orgId: r.orgId, conversationId: r.conversationId };
+  const { inputTokens, outputTokens } = r.aiMetadata;
+
+  await db.from("messages").insert({
+    organization_id: r.orgId,
+    conversation_id: r.conversationId,
+    direction: "outbound",
+    content: r.reply,
+    external_message_id: r.externalMessageId,
+    status: "replied",
+    ai_metadata: r.aiMetadata,
+    correlation_id: r.correlationId,
+  });
+
+  await db.from("messages").update({ status: "replied" }).eq("id", r.messageId);
+
+  await db
+    .from("conversations")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", r.conversationId);
+
+  await incrementUsage(db, r.orgId, {
+    messagesOut: 1,
+    aiInputTokens: inputTokens,
+    aiOutputTokens: outputTokens,
+  });
+
+  logger.info("Message processed successfully", { ...ctx, tokens: inputTokens + outputTokens });
+  captureServerEvent("message_processed", {
+    ...ctx,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+  });
 }

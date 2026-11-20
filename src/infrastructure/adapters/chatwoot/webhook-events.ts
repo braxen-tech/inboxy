@@ -78,14 +78,19 @@ export function parseChatwootWebhookPayload(payload: RawPayload): ChatwootWebhoo
   }
 
   const message: InboundMessage = {
+    channel: "chatwoot",
     externalMessageId: String(payload.id),
-    chatwootConversationId: payload.conversation.id,
+    externalConversationId: String(payload.conversation.id),
+    senderExternalId: payload.sender?.id != null ? String(payload.sender.id) : null,
     senderName: payload.sender?.name ?? null,
     senderPhone: payload.sender?.phone_number ?? null,
     senderEmail: payload.sender?.email ?? null,
-    senderChatwootId: payload.sender?.id ?? null,
-    chatwootChannel: parseChatwootChannel(payload.conversation.channel),
-    chatwootInboxId: payload.conversation.inbox_id ?? null,
+    chatwoot: {
+      conversationId: payload.conversation.id,
+      senderId: payload.sender?.id ?? null,
+      channel: parseChatwootChannel(payload.conversation.channel),
+      inboxId: payload.conversation.inbox_id ?? null,
+    },
     content: payload.content,
     timestamp: new Date(payload.created_at ?? Date.now()),
     accountId: String(payload.account.id),

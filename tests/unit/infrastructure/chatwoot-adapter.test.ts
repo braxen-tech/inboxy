@@ -50,14 +50,16 @@ describe("ChatwootAdapter.parseWebhook", () => {
     expect(result.value).toHaveLength(1);
     const msg = result.value[0];
     expect(msg.externalMessageId).toBe("42");
-    expect(msg.chatwootConversationId).toBe(5678);
+    expect(msg.chatwoot?.conversationId).toBe(5678);
+    expect(msg.externalConversationId).toBe("5678");
+    expect(msg.channel).toBe("chatwoot");
     expect(msg.senderName).toBe("Maria");
     expect(msg.senderPhone).toBe("+5511999990000");
     expect(msg.senderEmail).toBe("maria@example.com");
     expect(msg.content).toBe("Olá, gostaria de agendar uma consulta");
     expect(msg.accountId).toBe("1");
-    expect(msg.chatwootChannel).toBe("Channel::Telegram");
-    expect(msg.chatwootInboxId).toBe(1);
+    expect(msg.chatwoot?.channel).toBe("Channel::Telegram");
+    expect(msg.chatwoot?.inboxId).toBe(1);
   });
 
   it("rejects invalid secret", async () => {

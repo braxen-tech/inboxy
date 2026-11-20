@@ -27,12 +27,25 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import AppBar from "@mui/material/AppBar";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Collapse from "@mui/material/Collapse";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import type { Theme } from "@mui/material/styles";
+import type { SystemStyleObject } from "@mui/system";
 import { SignOutButton } from "@/components/sign-out-button";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
+
+const DRAWER_WIDTH = 256;
 
 interface DashboardShellProps {
   orgSlug: string;
@@ -42,12 +55,13 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
+type Icon = React.ComponentType<{ className?: string; size?: number }>;
+
 type NavItem = {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  external?: boolean;
-  subItems?: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
+  icon: Icon;
+  subItems?: Array<{ href: string; label: string; icon: Icon }>;
 };
 
 function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
@@ -90,18 +104,12 @@ function buildNavGroups(t: ReturnType<typeof useTranslations<"nav">>) {
         { href: "settings", label: t("settings"), icon: Settings },
       ],
     },
-  ] as { label: string | null; items: NavItem[] }[];
-}
-
-function SidebarSignOutLabel() {
-  const t = useTranslations("common");
-  return <>{t("sair")}</>;
+  ] as { label: string; items: NavItem[] }[];
 }
 
 const COLLAPSED_GROUPS_STORAGE_KEY = "inboxy:collapsed-nav-groups";
 
 function loadCollapsedGroups(): Set<string> {
-  if (typeof window === "undefined") return new Set();
   try {
     const raw = window.localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY);
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
@@ -110,16 +118,37 @@ function loadCollapsedGroups(): Set<string> {
   }
 }
 
+function isPathActive(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+// The sidebar stays dark in both themes, so it reads the sidebar tokens from globals.css.
+const navItemSx: SystemStyleObject<Theme> = {
+  borderRadius: 2,
+  px: 1.5,
+  py: 1,
+  color: "color-mix(in srgb, var(--sidebar-foreground) 70%, transparent)",
+  "&:hover": {
+    bgcolor: "color-mix(in srgb, var(--sidebar-accent) 60%, transparent)",
+    color: "var(--sidebar-accent-foreground)",
+  },
+  "&.Mui-selected, &.Mui-selected:hover": {
+    bgcolor: "var(--sidebar-accent)",
+    color: "var(--sidebar-accent-foreground)",
+  },
+  "& .MuiListItemIcon-root": { minWidth: 28, color: "inherit" },
+};
+
 function NavLinks({
   orgSlug,
   pathname,
   onNavigate,
-  billingEnabled = true,
+  billingEnabled,
 }: {
   orgSlug: string;
   pathname: string;
   onNavigate?: () => void;
-  billingEnabled?: boolean;
+  billingEnabled: boolean;
 }) {
   const t = useTranslations("nav");
   const groups = buildNavGroups(t).map((group) => ({
@@ -147,166 +176,177 @@ function NavLinks({
   }
 
   return (
-    <nav className="flex flex-col gap-4 px-3 py-2">
-      {groups.map((group, i) => {
-        const isCollapsed = group.label ? collapsed.has(group.label) : false;
-        const groupHasActiveItem = group.items.some((item) => {
-          const path = `/${orgSlug}/${item.href}`;
-          return pathname === path || pathname.startsWith(`${path}/`);
-        });
-        const showItems = !isCollapsed || groupHasActiveItem;
+    <Box component="nav" sx={{ display: "flex", flexDirection: "column", gap: 2, px: 1.5, py: 1 }}>
+      {groups.map((group) => {
+        const groupHasActiveItem = group.items.some((item) =>
+          isPathActive(pathname, `/${orgSlug}/${item.href}`),
+        );
+        const open = !collapsed.has(group.label) || groupHasActiveItem;
 
         return (
-          <div key={group.label ?? `group-${i}`} className="flex flex-col gap-1">
-            {group.label && (
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.label!)}
-                className="flex items-center justify-between px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
-              >
-                {group.label}
-                <ChevronDown className={cn("size-3.5 transition-transform", isCollapsed ? "-rotate-90" : "")} aria-hidden />
-              </button>
-            )}
-            {showItems && group.items.map(({ href, label, icon: Icon, external, subItems }) => {
-              const path = external ? href : `/${orgSlug}/${href}`;
-              const isActive = !external && (pathname === path || pathname.startsWith(`${path}/`));
+          <List key={group.label} disablePadding dense>
+            <ListItemButton
+              onClick={() => toggleGroup(group.label)}
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1,
+                color: "color-mix(in srgb, var(--sidebar-foreground) 40%, transparent)",
+                "&:hover": {
+                  bgcolor: "transparent",
+                  color: "color-mix(in srgb, var(--sidebar-foreground) 70%, transparent)",
+                },
+              }}
+            >
+              <ListItemText
+                primary={group.label}
+                slotProps={{
+                  primary: { sx: { fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" } },
+                }}
+              />
+              <ChevronDown
+                size={14}
+                aria-hidden
+                style={{ transition: "transform 150ms", transform: open ? "none" : "rotate(-90deg)" }}
+              />
+            </ListItemButton>
 
-              if (external) {
+            <Collapse in={open} timeout="auto">
+              {group.items.map(({ href, label, icon: Icon, subItems }) => {
+                const path = `/${orgSlug}/${href}`;
+                const active = isPathActive(pathname, path);
                 return (
-                  <a
-                    key={href}
-                    href={path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    {label}
-                  </a>
+                  <Box key={href} sx={{ mt: 0.5 }}>
+                    <ListItemButton component={Link} href={path} onClick={onNavigate} selected={active} sx={navItemSx}>
+                      <ListItemIcon><Icon size={16} aria-hidden /></ListItemIcon>
+                      <ListItemText primary={label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 500 } } }} />
+                    </ListItemButton>
+                    {active && subItems?.map(({ href: subHref, label: subLabel, icon: SubIcon }) => {
+                      const subPath = `/${orgSlug}/${subHref}`;
+                      const subActive = isPathActive(pathname, subPath);
+                      return (
+                        <ListItemButton
+                          key={subHref}
+                          component={Link}
+                          href={subPath}
+                          onClick={onNavigate}
+                          sx={{
+                            ...navItemSx,
+                            pl: 4.5,
+                            py: 0.75,
+                            ...(subActive && { color: "var(--sidebar-accent-foreground)" }),
+                          }}
+                        >
+                          <ListItemIcon><SubIcon size={14} aria-hidden /></ListItemIcon>
+                          <ListItemText primary={subLabel} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 500 } } }} />
+                        </ListItemButton>
+                      );
+                    })}
+                  </Box>
                 );
-              }
-
-              return (
-                <div key={href}>
-                  <Link
-                    href={path}
-                    onClick={onNavigate}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    {label}
-                  </Link>
-                  {isActive && subItems && subItems.map(({ href: subHref, label: subLabel, icon: SubIcon }) => {
-                    const subPath = `/${orgSlug}/${subHref}`;
-                    const isSubActive = pathname === subPath || pathname.startsWith(`${subPath}/`);
-                    return (
-                      <Link
-                        key={subHref}
-                        href={subPath}
-                        onClick={onNavigate}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg py-2 pl-9 pr-3 text-sm font-medium transition-colors",
-                          isSubActive
-                            ? "text-sidebar-accent-foreground"
-                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground",
-                        )}
-                      >
-                        <SubIcon className="size-3.5 shrink-0" aria-hidden />
-                        {subLabel}
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+              })}
+            </Collapse>
+          </List>
         );
       })}
-    </nav>
+    </Box>
   );
 }
 
 function SidebarContent({
   orgSlug,
   orgName,
-  chatwootActive,
   pathname,
   onNavigate,
-  billingEnabled = true,
+  onClose,
+  billingEnabled,
 }: {
   orgSlug: string;
   orgName: string;
-  chatwootActive: boolean;
   pathname: string;
   onNavigate?: () => void;
-  billingEnabled?: boolean;
+  onClose?: () => void;
+  billingEnabled: boolean;
 }) {
+  const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4 pr-12 lg:pr-4">
-        <Link
+    <Box sx={{ display: "flex", height: "100%", flexDirection: "column" }}>
+      <Box
+        sx={{
+          display: "flex",
+          height: 56,
+          alignItems: "center",
+          gap: 1,
+          px: 2,
+          borderBottom: "1px solid var(--sidebar-border)",
+        }}
+      >
+        <Box
+          component={Link}
           href="/"
           onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-2"
+          sx={{ display: "flex", minWidth: 0, flex: 1, alignItems: "center", gap: 1, color: "inherit", textDecoration: "none" }}
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px_10px_10px_3px] bg-ibx-blue font-heading text-base font-extrabold text-white">
+          <Box
+            sx={{
+              display: "flex",
+              width: 32,
+              height: 32,
+              flexShrink: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "10px 10px 10px 3px",
+              bgcolor: "#2340ff",
+              color: "#fff",
+              fontFamily: "var(--font-bricolage)",
+              fontWeight: 800,
+            }}
+          >
             <span aria-hidden>i</span>
-          </span>
-          <div className="min-w-0">
-            <span className="block truncate font-semibold text-sidebar-foreground">Inboxy</span>
-            <span className="block truncate text-xs text-sidebar-foreground/60">{orgName}</span>
-          </div>
-        </Link>
-      </div>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography noWrap sx={{ fontWeight: 600, fontSize: 15 }}>Inboxy</Typography>
+            <Typography noWrap sx={{ fontSize: 12, opacity: 0.6 }}>{orgName}</Typography>
+          </Box>
+        </Box>
+        {onClose && (
+          <IconButton aria-label={tNav("closeMenu")} onClick={onClose} size="small" sx={{ color: "inherit", opacity: 0.7 }}>
+            <X size={20} />
+          </IconButton>
+        )}
+      </Box>
 
-      <div className="px-4 py-3">
-        {/* <Badge
-          variant="secondary"
-          className={cn(
-            "w-full justify-center text-xs",
-            chatwootActive
-              ? "bg-green-500/15 text-green-700 dark:text-green-400"
-              : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-          )}
-        >
-          {chatwootActive ? "Chatwoot ativo" : "Chatwoot pendente"}
-        </Badge> */}
-      </div>
+      <Box sx={{ minHeight: 0, flex: 1, overflowY: "auto", pt: 1.5 }}>
+        <NavLinks orgSlug={orgSlug} pathname={pathname} onNavigate={onNavigate} billingEnabled={billingEnabled} />
+      </Box>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <NavLinks
-          orgSlug={orgSlug}
-          pathname={pathname}
-          onNavigate={onNavigate}
-          billingEnabled={billingEnabled}
-        />
-      </div>
-
-      <div className="shrink-0 border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-1">
+      <Box sx={{ flexShrink: 0, borderTop: "1px solid var(--sidebar-border)", p: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <SignOutButton
             variant="ghost"
             className="flex-1 justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
           >
             <LogOut className="size-4" aria-hidden />
-            <SidebarSignOutLabel />
+            {tCommon("sair")}
           </SignOutButton>
           <LanguageToggle />
           <ThemeToggle />
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }
+
+const drawerPaperSx: SystemStyleObject<Theme> = {
+  width: DRAWER_WIDTH,
+  boxSizing: "border-box",
+  bgcolor: "var(--sidebar)",
+  color: "var(--sidebar-foreground)",
+  borderRight: "1px solid var(--sidebar-border)",
+  backgroundImage: "none",
+};
 
 export function DashboardShell({
   orgSlug,
@@ -320,89 +360,73 @@ export function DashboardShell({
   const tNav = useTranslations("nav");
   const tDash = useTranslations("dashboard");
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [mobileOpen]);
-
   return (
-    <div className="min-h-screen bg-background lg:flex">
-      {mobileOpen && (
-        <button
-          type="button"
-          aria-label={tNav("closeMenu")}
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:h-screen lg:sticky lg:top-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: { lg: "flex" } }}>
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{ display: { xs: "block", lg: "none" }, "& .MuiDrawer-paper": drawerPaperSx }}
       >
-        <button
-          type="button"
-          aria-label={tNav("closeMenu")}
-          className="absolute right-3 top-3 rounded-lg p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        >
-          <X className="size-5" />
-        </button>
-
         <SidebarContent
           orgSlug={orgSlug}
           orgName={orgName}
-          chatwootActive={chatwootActive}
           pathname={pathname}
           onNavigate={() => setMobileOpen(false)}
+          onClose={() => setMobileOpen(false)}
           billingEnabled={billingEnabled}
         />
-      </aside>
+      </Drawer>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80 lg:hidden">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={tNav("openMenu")}
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="size-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">Inboxy</p>
-            <p className="truncate text-xs text-muted-foreground">{orgName}</p>
-          </div>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "shrink-0 text-xs",
-              chatwootActive
-                ? "bg-green-500/15 text-green-700"
-                : "bg-amber-500/15 text-amber-700",
-            )}
-          >
-            {chatwootActive ? tDash("statusActive") : tDash("statusPending")}
-          </Badge>
-        </header>
+      <Drawer
+        variant="permanent"
+        open
+        sx={{
+          display: { xs: "none", lg: "block" },
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": { ...drawerPaperSx, position: "sticky", top: 0, height: "100vh" },
+        }}
+      >
+        <SidebarContent orgSlug={orgSlug} orgName={orgName} pathname={pathname} billingEnabled={billingEnabled} />
+      </Drawer>
 
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <Box sx={{ display: "flex", minWidth: 0, flex: 1, flexDirection: "column" }}>
+        <AppBar
+          position="sticky"
+          color="inherit"
+          elevation={0}
+          sx={{
+            display: { lg: "none" },
+            bgcolor: "background.default",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Toolbar sx={{ minHeight: 56, gap: 1.5, px: 2 }} disableGutters>
+            <IconButton aria-label={tNav("openMenu")} onClick={() => setMobileOpen(true)} edge="start">
+              <Menu size={20} />
+            </IconButton>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography noWrap sx={{ fontWeight: 600 }}>Inboxy</Typography>
+              <Typography noWrap variant="caption" color="text.secondary" component="p">{orgName}</Typography>
+            </Box>
+            <Chip
+              size="small"
+              color={chatwootActive ? "success" : "warning"}
+              variant="outlined"
+              label={chatwootActive ? tDash("statusActive") : tDash("statusPending")}
+            />
+          </Toolbar>
+        </AppBar>
+
+        <Box component="main" sx={{ flex: 1, overflow: "auto" }}>
+          <Box sx={{ mx: "auto", width: "100%", maxWidth: 1024, px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 4 } }}>
             {children}
-          </div>
-        </main>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }

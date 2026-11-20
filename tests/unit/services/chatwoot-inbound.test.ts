@@ -1,20 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { EventBus } from "@/domain/ports";
+import type { EventBus, InboundMessage } from "@/domain/ports";
 import { processChatwootInboundMessage } from "@/application/services/chatwoot-inbound";
 
 vi.mock("@/application/services/usage-tracker", () => ({
   incrementUsage: vi.fn().mockResolvedValue(undefined),
 }));
 
-const baseMessage = {
+const baseMessage: InboundMessage = {
+  channel: "chatwoot",
   externalMessageId: "ext-1",
-  chatwootConversationId: 42,
+  externalConversationId: "42",
+  senderExternalId: null,
   senderName: "Patient",
   senderPhone: "+5511999999999",
   senderEmail: null,
-  chatwootChannel: "Channel::Whatsapp",
-  chatwootInboxId: 7,
+  chatwoot: { conversationId: 42, channel: "Channel::Whatsapp", inboxId: 7 },
   content: "Olá",
   timestamp: new Date(),
   accountId: "1",

@@ -5,6 +5,10 @@ export type {
   SendError,
   WebhookError,
   Attachment,
+  SendTarget,
+  ChannelKind,
+  NativeChannelKind,
+  ChatwootInboundMeta,
 } from "./messaging-channel";
 
 export type {

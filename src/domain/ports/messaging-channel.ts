@@ -1,19 +1,31 @@
 import type { Result } from "../errors";
 
+export type NativeChannelKind = "whatsapp_cloud" | "telegram";
+export type ChannelKind = "chatwoot" | NativeChannelKind;
+
+export interface ChatwootInboundMeta {
+  conversationId: number;
+  /** Chatwoot contact ID from webhook sender.id */
+  senderId?: number | null;
+  /** Raw Chatwoot channel type, e.g. Channel::Whatsapp */
+  channel?: string | null;
+  inboxId?: number | null;
+}
+
 export interface InboundMessage {
+  channel: ChannelKind;
   externalMessageId: string;
-  chatwootConversationId: number;
+  /** Channel-side thread key: Chatwoot conversation id, WhatsApp wa_id, Telegram chat id. */
+  externalConversationId: string;
+  senderExternalId: string | null;
   senderName: string | null;
   senderPhone: string | null;
   senderEmail: string | null;
-  /** Chatwoot contact ID from webhook sender.id */
-  senderChatwootId?: number | null;
-  /** Raw Chatwoot channel type, e.g. Channel::Whatsapp */
-  chatwootChannel?: string | null;
-  chatwootInboxId?: number | null;
   content: string;
   timestamp: Date;
+  /** Chatwoot account id, WhatsApp phone_number_id, Telegram bot id. */
   accountId: string;
+  chatwoot?: ChatwootInboundMeta;
 }
 
 export interface Attachment {
@@ -21,15 +33,23 @@ export interface Attachment {
   filename?: string;
 }
 
-export interface SendParams {
-  apiUrl: string;
-  apiToken: string;
-  accountId: string;
-  conversationId: number;
+export type SendTarget =
+  | {
+      kind: "chatwoot";
+      apiUrl: string;
+      apiToken: string;
+      accountId: string;
+      conversationId: number;
+      /** When set, message is sent as Chatwoot AgentBot (requires bot access token). */
+      agentBotId?: number;
+    }
+  | { kind: "whatsapp_cloud"; phoneNumberId: string; accessToken: string; to: string }
+  | { kind: "telegram"; botToken: string; chatId: string };
+
+export interface SendParams<T extends SendTarget = SendTarget> {
+  target: T;
   content: string;
   attachments?: Attachment[];
-  /** When set, message is sent as Chatwoot AgentBot (requires bot access token). */
-  agentBotId?: number;
 }
 
 export type SendError = {
