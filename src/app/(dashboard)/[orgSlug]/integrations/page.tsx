@@ -6,6 +6,45 @@ import { ChatwootCredentialsForm } from "./chatwoot-credentials-form";
 import { CalComCredentialsForm } from "./cal-com-credentials-form";
 import { StripeOnboarding } from "./stripe-onboarding";
 import { buildAgentBotWebhookUrl } from "@/lib/chatwoot-agent-bot";
+import { TelegramConnectForm, WhatsAppConnectForm } from "./channel-connect-forms";
+import { getAdminClient } from "@/infrastructure/repositories/supabase-clients";
+import { buildChannelWebhookUrl } from "@/application/use-cases/connect-channel";
+
+interface ConnectionRow {
+  id: string;
+  channel: "whatsapp_cloud" | "telegram";
+  status: string;
+  config: Record<string, string | null | undefined>;
+  webhook_secret: string;
+  last_error: string | null;
+}
+
+async function getChannelConnections(orgId: string): Promise<ConnectionRow[]> {
+  // Returns [] until migration 00047 is applied.
+  const { data } = await getAdminClient()
+    .from("channel_connections")
+    .select("id, channel, status, config, webhook_secret, last_error")
+    .eq("organization_id", orgId);
+  return (data as ConnectionRow[] | null) ?? [];
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+      <path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.4l-4.5 1.1z" stroke="#25D366" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M9 8.5c.3 2.6 2.4 4.9 5 5.5l1-1.2 2 1-.4 1.6c-3.8.3-8-3.5-8-7.6L10 7.4l1 2-1 1.1" fill="#25D366" />
+    </svg>
+  );
+}
+
+function TelegramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+      <path d="M21 4L3 11l6 2 2 6 3-4 5 4 2-15z" stroke="#229ED9" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M9 13l9-7" stroke="#229ED9" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 interface Props {
   params: Promise<{ orgSlug: string }>;
@@ -48,6 +87,12 @@ export default async function IntegrationsPage({ params }: Props) {
   ]);
   if (!org) notFound();
 
+  const connections = await getChannelConnections(org.id);
+  const wa = connections.find((c) => c.channel === "whatsapp_cloud");
+  const tg = connections.find((c) => c.channel === "telegram");
+  const isWaActive = wa?.status === "active";
+  const isTgActive = tg?.status === "active";
+
   const isChatwootActive = org.chatwoot_status === "active";
   const chatwootWebhookUrl = org.chatwoot_agent_bot_webhook_secret
     ? buildAgentBotWebhookUrl(org.chatwoot_agent_bot_webhook_secret)
@@ -63,6 +108,39 @@ export default async function IntegrationsPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <IntegrationCard
+          name="WhatsApp"
+          description="API oficial da Meta (WhatsApp Cloud API) com o agente de IA"
+          summary={isWaActive ? (wa?.config.display_phone_number ?? "Conectado") : t("pending")}
+          icon={<WhatsAppIcon />}
+          status={isWaActive ? "active" : "pending"}
+        >
+          <WhatsAppConnectForm
+            orgSlug={orgSlug}
+            isConnected={isWaActive}
+            displayPhoneNumber={wa?.config.display_phone_number ?? null}
+            savedPhoneNumberId={wa?.config.phone_number_id ?? ""}
+            savedWabaId={wa?.config.waba_id ?? ""}
+            webhookUrl={wa ? buildChannelWebhookUrl(wa.id) : null}
+            verifyToken={wa?.webhook_secret ?? null}
+          />
+        </IntegrationCard>
+
+        <IntegrationCard
+          name="Telegram"
+          description="Atenda pelo seu bot do Telegram com o agente de IA"
+          summary={isTgActive && tg?.config.bot_username ? `@${tg.config.bot_username}` : t("pending")}
+          icon={<TelegramIcon />}
+          status={isTgActive ? "active" : "pending"}
+        >
+          <TelegramConnectForm
+            orgSlug={orgSlug}
+            isConnected={isTgActive}
+            botUsername={tg?.config.bot_username ?? null}
+            lastError={tg?.last_error ?? null}
+          />
+        </IntegrationCard>
+
         <IntegrationCard
           name="Chatwoot"
           description="Conecte WhatsApp, Instagram e chat com agente de IA"
