@@ -8,3 +8,4 @@ export {
   type ConnectedAccountStatus,
   type CreateConnectedAccountResult,
 } from "./connect-adapter";
+export { StripeCatalogAdapter } from "./catalog-adapter";
