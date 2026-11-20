@@ -256,6 +256,13 @@ export async function processIncomingMessage(deps: Deps, input: Input): Promise<
       createdAt: new Date(m.created_at as string),
     }));
 
+    // Messages sent in quick succession: an earlier job already replied after this one arrived.
+    if (history.at(-1)?.direction === "outbound") {
+      logger.info("Already answered by a newer reply, skipping", ctx);
+      await db.from("messages").update({ status: "replied" }).eq("id", messageId);
+      return;
+    }
+
     const enabledToolNames = resolveEnabledToolsForOrg({
       ...org,
       hasKbDocuments: await orgHasReadyKbDocuments(db, orgId),
