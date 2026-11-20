@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createHmac } from "node:crypto";
-import { parseWhatsAppCloudPayload } from "@/infrastructure/adapters/whatsapp-cloud/webhook-events";
+import { parseWhatsAppCloudPayload, parseWhatsAppDeliveryFailures } from "@/infrastructure/adapters/whatsapp-cloud/webhook-events";
 import { verifyMetaSignature } from "@/infrastructure/adapters/whatsapp-cloud/client";
 import { WhatsAppCloudAdapter } from "@/infrastructure/adapters/whatsapp-cloud/adapter";
 
@@ -82,6 +82,21 @@ describe("parseWhatsAppCloudPayload", () => {
     };
     expect(parseWhatsAppCloudPayload(statusOnly)).toEqual([]);
     expect(parseWhatsAppCloudPayload({ object: "page" })).toEqual([]);
+  });
+});
+
+describe("parseWhatsAppDeliveryFailures", () => {
+  it("extracts failed statuses with Meta's error code", () => {
+    const failures = parseWhatsAppDeliveryFailures({
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "messages", value: { statuses: [
+        { id: "wamid.OK", status: "delivered", recipient_id: "1" },
+        { id: "wamid.BAD", status: "failed", recipient_id: "5521", errors: [{ code: 131026, title: "Message undeliverable", error_data: { details: "x" } }] },
+      ] } }] }],
+    });
+    expect(failures).toEqual([
+      { messageId: "wamid.BAD", recipientId: "5521", code: 131026, title: "Message undeliverable", details: "x" },
+    ]);
   });
 });
 

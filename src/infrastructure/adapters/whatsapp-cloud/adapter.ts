@@ -10,7 +10,11 @@ import { Ok, Err } from "@/domain/errors";
 import { logger } from "@/lib/logger";
 import { isImageUrl, postJsonWithRetry } from "../http-send";
 import { GRAPH_BASE_URL, verifyMetaSignature } from "./client";
-import { parseWhatsAppCloudPayload, type WaWebhookPayload } from "./webhook-events";
+import {
+  parseWhatsAppCloudPayload,
+  parseWhatsAppDeliveryFailures,
+  type WaWebhookPayload,
+} from "./webhook-events";
 
 // Meta error codes that mean "slow down".
 const RATE_LIMIT_CODES = new Set([4, 80007, 130429, 131048, 131056]);
@@ -40,6 +44,10 @@ export class WhatsAppCloudAdapter implements MessagingChannel {
       payload = JSON.parse(raw);
     } catch {
       return Err({ code: "PARSE_FAILED", message: "Failed to parse webhook body as JSON" });
+    }
+
+    for (const failure of parseWhatsAppDeliveryFailures(payload)) {
+      logger.warn("WhatsApp delivery failed", { ...failure });
     }
 
     const messages = parseWhatsAppCloudPayload(payload);

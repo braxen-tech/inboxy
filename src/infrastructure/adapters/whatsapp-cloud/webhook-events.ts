@@ -21,6 +21,42 @@ interface WaMessage {
   document?: { caption?: string; filename?: string };
 }
 
+interface WaStatus {
+  id?: string;
+  status?: string;
+  recipient_id?: string;
+  errors?: Array<{ code?: number; title?: string; message?: string; error_data?: { details?: string } }>;
+}
+
+export interface WaDeliveryFailure {
+  messageId: string;
+  recipientId: string;
+  code: number | null;
+  title: string;
+  details: string | null;
+}
+
+/** Outbound messages Meta reports as failed (sent OK but not delivered). */
+export function parseWhatsAppDeliveryFailures(payload: WaWebhookPayload): WaDeliveryFailure[] {
+  const out: WaDeliveryFailure[] = [];
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      for (const s of change.value?.statuses ?? []) {
+        if (s.status !== "failed") continue;
+        const err = s.errors?.[0];
+        out.push({
+          messageId: s.id ?? "",
+          recipientId: s.recipient_id ?? "",
+          code: err?.code ?? null,
+          title: err?.title ?? err?.message ?? "unknown",
+          details: err?.error_data?.details ?? null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 export interface WaWebhookPayload {
   object?: string;
   entry?: Array<{
@@ -31,7 +67,7 @@ export interface WaWebhookPayload {
         metadata?: { phone_number_id?: string; display_phone_number?: string };
         contacts?: WaContact[];
         messages?: WaMessage[];
-        statuses?: unknown[];
+        statuses?: WaStatus[];
       };
     }>;
   }>;
